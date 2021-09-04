@@ -1,0 +1,36 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<title>Document</title>
+	<script>
+		const ws = new WebSocket('ws://127.0.0.1:32805/ws');
+		ws.onmessage = async (evt) => {
+
+			if (evt.data instanceof Blob) {
+				const t = await evt.data.text();
+				console.log(t);
+			}
+			else {
+				console.log(evt.data);
+			}
+		};
+		ws.onopen = function() {
+			console.log("Connected");
+		};
+		ws.onclose = function() {
+			console.log("Closed");
+		};
+
+		function sendToSocket(value) {
+			console.log("Sending value to socket " + value + " ");
+			ws.send(value);
+		}
+	</script>
+</head>
+<body>
+<button type="button" onclick="sendToSocket('WOT')">send</button>
+</body>
+</html>
