@@ -1,0 +1,9 @@
+.idea/
+.vs/
+bin/
+Debug/
+obj/
+dalamud/
+
+NextUIPlugin.sln.DotSettings.user
+NextUIPlugin/NextUIPlugin.csproj.user
