@@ -14,6 +14,9 @@
 		<Reference Include="Dalamud, Version=5.2.7.0, Culture=neutral, PublicKeyToken=null">
 			<HintPath>C:\Users\Kaminari\AppData\Roaming\XIVLauncher\addon\Hooks\dev\Dalamud.dll</HintPath>
 		</Reference>
+		<Reference Include="FFXIVClientStructs, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+		  <HintPath>C:\Users\Kaminari\AppData\Roaming\XIVLauncher\addon\Hooks\dev\FFXIVClientStructs.dll</HintPath>
+		</Reference>
 		<Reference Include="ImGui.NET, Version=1.72.0.0, Culture=neutral, PublicKeyToken=null">
 			<HintPath>C:\Users\Kaminari\AppData\Roaming\XIVLauncher\addon\Hooks\dev\ImGui.NET.dll</HintPath>
 		</Reference>

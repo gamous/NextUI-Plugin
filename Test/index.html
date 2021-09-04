@@ -17,10 +17,10 @@
 				console.log(evt.data);
 			}
 		};
-		ws.onopen = function() {
+		ws.onopen = () => {
 			console.log("Connected");
 		};
-		ws.onclose = function() {
+		ws.onclose = () => {
 			console.log("Closed");
 		};
 
@@ -28,9 +28,24 @@
 			console.log("Sending value to socket " + value + " ");
 			ws.send(value);
 		}
+		
+		function setTarget() {
+			const tEl = document.getElementById('targetId');
+			if (!tEl || !tEl.value) {
+				return;
+			}
+
+			sendToSocket(JSON.stringify({
+				guid: 'aaa',
+				type: 'setTarget',
+				target: +tEl.value,
+				message: ''
+			}))
+		}
 	</script>
 </head>
 <body>
 <button type="button" onclick="sendToSocket('WOT')">send</button>
+<input type="text" id="targetId"><button type="button" onclick="setTarget()">set target</button>
 </body>
 </html>

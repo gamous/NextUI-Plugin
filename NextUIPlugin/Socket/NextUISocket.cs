@@ -2,7 +2,6 @@
 using System.Globalization;
 using System.Linq;
 using System.Net;
-using System.Text;
 using Dalamud.Game.ClientState.Actors.Types;
 using Dalamud.Plugin;
 using Newtonsoft.Json;
@@ -20,10 +19,13 @@ namespace NextUIPlugin.Socket {
 		protected override void OnMessage(MessageEventArgs e) {
 			try {
 				SocketEvent ev = JsonConvert.DeserializeObject<SocketEvent>(e.Data);
-				switch (ev.type) {
-					case "setTarget":
-						XivSetTarget(ev);
+				if (ev == null) {
+					return;
+				}
 
+				switch (ev.type) {
+					case "setTarget": 
+						XivSetTarget(ev);
 						break;
 					default:
 						XivUnrecognizedCommand(ev);
@@ -45,12 +47,11 @@ namespace NextUIPlugin.Socket {
 
 		protected void XivSetTarget(SocketEvent ev) {
 			try {
-				int targetId = int.Parse(ev.target, NumberStyles.HexNumber);
+				int targetId = int.Parse(ev.target);
 				Actor target = pluginInterface.ClientState.Actors.First(a => a.ActorId == targetId);
-				if (target != null) {
-					pluginInterface.ClientState.Targets.SetCurrentTarget(target);
-				}
-
+				pluginInterface.ClientState.Targets.SetCurrentTarget(target);
+				// pluginInterface.ClientState.
+				// Marshal.WriteIntPtr(this.address.TargetManager, offset, actorAddress);
 				Send(JsonConvert.SerializeObject(new SocketResponse {
 					guid = ev.guid, target = ev.target, success = true
 				}));
@@ -67,18 +68,16 @@ namespace NextUIPlugin.Socket {
 	public class NextUISocket {
 		public int Port { get; set; }
 		protected HttpServer server;
-		protected readonly SocketHandler socketHandler;
 		protected readonly DalamudPluginInterface pluginInterface;
 
 		public NextUISocket(DalamudPluginInterface pluginInterface, int port) {
 			this.pluginInterface = pluginInterface;
 			Port = port;
-			socketHandler = new SocketHandler(pluginInterface);
 		}
 
 		public void Start() {
 			server = new HttpServer(IPAddress.Loopback, Port, false);
-			server.AddWebSocketService("/ws", () => socketHandler);
+			server.AddWebSocketService("/ws", () => new SocketHandler(pluginInterface));
 			server.Start();
 		}
 

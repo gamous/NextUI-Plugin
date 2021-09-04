@@ -1,5 +1,8 @@
-﻿using System.Numerics;
+﻿using System;
+using System.Collections.Generic;
+using System.Numerics;
 using Dalamud.Game.Command;
+using Dalamud.Hooking;
 using Dalamud.Plugin;
 using ImGuiNET;
 using Newtonsoft.Json;
@@ -17,7 +20,6 @@ namespace NextUIPlugin {
 
 		// ReSharper disable once InconsistentNaming
 		protected bool isNextUISetupOpen;
-		public int socketPort = 32805;
 		public NextUISocket socketServer;
 
 		protected DataHandler dataHandler;
@@ -31,28 +33,47 @@ namespace NextUIPlugin {
 			});
 
 			configuration = pluginInterface.GetPluginConfig() as NextUIConfiguration ?? new NextUIConfiguration();
+			PrepareConfig(configuration);
+			PluginLog.Information(JsonConvert.SerializeObject(configuration));
 
 			pluginInterface.UiBuilder.OnOpenConfigUi += (sender, args) => isNextUISetupOpen = true;
 			pluginInterface.UiBuilder.OnBuildUi += UiBuilder_OnBuildUi;
 
-			socketServer = new NextUISocket(pluginInterface, socketPort);
+			socketServer = new NextUISocket(pluginInterface, configuration.socketPort);
 			socketServer.Start();
 
 			dataHandler = new DataHandler(pluginInterface);
 			dataHandler.onPlayerNameChanged += NameChanged;
 			dataHandler.onTargetChanged += TargetChanged;
+			dataHandler.onPartyChanged += PartyChanged;
+		}
+
+		protected void PartyChanged(List<int> party) {
+			socketServer.Broadcast(JsonConvert.SerializeObject(new SocketEventPartyChanged {
+				guid = Guid.NewGuid().ToString(),
+				type = "partyChanged",
+				party = party.ToArray()
+			}));
 		}
 
 		protected void NameChanged(string name) {
 			socketServer.Broadcast("player name: " + name);
 		}
 
-		protected void TargetChanged(int id, string name) {
+		protected void TargetChanged(string type, int id, string name) {
 			socketServer.Broadcast(JsonConvert.SerializeObject(new {
-				Event = "targetChanged",
-				ActorId = id,
-				ActorName = name
+				@event = "targetChanged",
+				targetType = type,
+				actorId = id,
+				actorName = name
 			}));
+		}
+
+		protected void PrepareConfig(NextUIConfiguration nextUiConfiguration) {
+			if (nextUiConfiguration.socketPort <= 1024 || nextUiConfiguration.socketPort > short.MaxValue) {
+				PluginLog.Log("Resetting port to 32805");
+				nextUiConfiguration.socketPort = 32805;
+			}
 		}
 
 		protected void UpdateConfig() {
@@ -74,7 +95,7 @@ namespace NextUIPlugin {
 			ImGui.Text("Configure socket port in order to push game data into NextUI.");
 			ImGui.Separator();
 
-			ImGui.InputInt("Socket Port", ref socketPort);
+			ImGui.InputInt("Socket Port", ref configuration.socketPort);
 
 			if (ImGui.Button("Save")) {
 				pluginInterface.SavePluginConfig(configuration);
@@ -94,6 +115,7 @@ namespace NextUIPlugin {
 		public void Dispose() {
 			pluginInterface.CommandManager.RemoveHandler("/nu");
 			pluginInterface.Dispose();
+			dataHandler.Dispose();
 			socketServer.Stop();
 		}
 
