@@ -87,12 +87,12 @@ namespace NextUIPlugin.Socket {
 				server?.Stop();
 			}
 			catch (Exception e) {
-				Serilog
+				PluginLog.Log(e.ToString());
 			}
 		}
 
 		public void Broadcast(string message) {
-			server.WebSocketServices.Broadcast(Encoding.UTF8.GetBytes(message));
+			server.WebSocketServices.Broadcast(message);
 		}
 	}
 }
