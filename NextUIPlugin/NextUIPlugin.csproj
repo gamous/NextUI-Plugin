@@ -5,23 +5,41 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-		<PackageReference Include="Serilog" Version="2.11.0-dev-01367" />
-		<PackageReference Include="WebSocketSharp" Version="1.0.3-rc11" />
+		<PackageReference Include="WebSocketSharp" Version="1.0.3-rc11"/>
 	</ItemGroup>
 
+	<!-- Dalamud Configuration -->
+	<PropertyGroup>
+		<DalamudVersion>5.2.7.0</DalamudVersion>
+		<DalamudLocal>../dalamud/</DalamudLocal>
+		<DalamudXIVLauncher>$(APPDATA)\XIVLauncher\addon\Hooks\$(DalamudVersion)</DalamudXIVLauncher>
+	</PropertyGroup>
+
+	<!-- Assembly Reference Locations -->
+	<PropertyGroup>
+		<AssemblySearchPaths>
+			$(AssemblySearchPaths);
+			$(DalamudLocal);
+			$(DalamudXIVLauncher);
+		</AssemblySearchPaths>
+	</PropertyGroup>
+
 	<ItemGroup>
-		<Reference Include="Dalamud, Version=5.2.7.0, Culture=neutral, PublicKeyToken=null">
-			<HintPath>C:\Users\Kaminari\AppData\Roaming\XIVLauncher\addon\Hooks\dev\Dalamud.dll</HintPath>
+		<Reference Include="Dalamud">
+			<Private>false</Private>
 		</Reference>
-		<Reference Include="FFXIVClientStructs, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-		  <HintPath>C:\Users\Kaminari\AppData\Roaming\XIVLauncher\addon\Hooks\dev\FFXIVClientStructs.dll</HintPath>
+		<Reference Include="Microsoft.CSharp"/>
+		<Reference Include="Newtonsoft.Json">
+			<Private>false</Private>
 		</Reference>
-		<Reference Include="ImGui.NET, Version=1.72.0.0, Culture=neutral, PublicKeyToken=null">
-			<HintPath>C:\Users\Kaminari\AppData\Roaming\XIVLauncher\addon\Hooks\dev\ImGui.NET.dll</HintPath>
+		<Reference Include="ImGui.NET">
+			<Private>false</Private>
 		</Reference>
-		<Reference Include="ImGuiScene, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-			<HintPath>C:\Users\Kaminari\AppData\Roaming\XIVLauncher\addon\Hooks\dev\ImGuiScene.dll</HintPath>
+		<Reference Include="ImGuiScene">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Serilog">
+			<Private>false</Private>
 		</Reference>
 	</ItemGroup>
 

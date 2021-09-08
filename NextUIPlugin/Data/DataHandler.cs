@@ -19,7 +19,8 @@ namespace NextUIPlugin.Data {
 
 		public DataHandler(DalamudPluginInterface pluginInterface) {
 			this.pluginInterface = pluginInterface;
-			this.pluginInterface.Framework.OnUpdateEvent += FrameworkOnOnUpdateEvent;
+			// TODO: For now
+			//this.pluginInterface.Framework.OnUpdateEvent += FrameworkOnOnUpdateEvent;
 		}
 
 		protected void FrameworkOnOnUpdateEvent(Framework framework) {
