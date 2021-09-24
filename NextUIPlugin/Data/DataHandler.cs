@@ -23,6 +23,7 @@ namespace NextUIPlugin.Data {
 			//this.pluginInterface.Framework.OnUpdateEvent += FrameworkOnOnUpdateEvent;
 		}
 
+/*
 		protected void FrameworkOnOnUpdateEvent(Framework framework) {
 			PlayerCharacter player = pluginInterface.ClientState.LocalPlayer;
 			if (player is null) {
@@ -72,9 +73,9 @@ namespace NextUIPlugin.Data {
 			}
 
 		}
-
+*/
 		public void Dispose() {
-			pluginInterface.Framework.OnUpdateEvent -= FrameworkOnOnUpdateEvent;
+			//pluginInterface.Framework.OnUpdateEvent -= FrameworkOnOnUpdateEvent;
 		}
 	}
 }

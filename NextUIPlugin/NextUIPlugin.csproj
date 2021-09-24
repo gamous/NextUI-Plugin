@@ -5,7 +5,8 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="WebSocketSharp" Version="1.0.3-rc11"/>
+		<PackageReference Include="DalamudPackager" Version="2.1.2" />
+		<PackageReference Include="WebSocketSharp" Version="1.0.3-rc11" />
 	</ItemGroup>
 
 	<!-- Dalamud Configuration -->
@@ -28,7 +29,7 @@
 		<Reference Include="Dalamud">
 			<Private>false</Private>
 		</Reference>
-		<Reference Include="Microsoft.CSharp"/>
+		<Reference Include="Microsoft.CSharp" />
 		<Reference Include="Newtonsoft.Json">
 			<Private>false</Private>
 		</Reference>
@@ -42,5 +43,4 @@
 			<Private>false</Private>
 		</Reference>
 	</ItemGroup>
-
 </Project>
