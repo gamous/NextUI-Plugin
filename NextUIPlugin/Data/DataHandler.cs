@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Dalamud.Game.ClientState.Actors.Types;
 using Dalamud.Game.Internal;
 using Dalamud.Plugin;
 

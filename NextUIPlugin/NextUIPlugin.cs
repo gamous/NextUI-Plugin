@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using ImGuiNET;
 using System.Numerics;
+using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.Command;
-using Dalamud.Hooking;
+using Dalamud.Interface;
+using Dalamud.Logging;
 using Dalamud.Plugin;
-using ImGuiNET;
 using Newtonsoft.Json;
 using NextUIPlugin.Configuration;
 using NextUIPlugin.Data;
@@ -17,6 +17,10 @@ namespace NextUIPlugin {
 
 		protected DalamudPluginInterface pluginInterface;
 		public NextUIConfiguration configuration;
+		// public readonly UiBuilder uiBuilder;
+		public readonly CommandManager commandManager;
+		public readonly ObjectTable objectTable;
+		public readonly TargetManager targetManager;
 
 		// ReSharper disable once InconsistentNaming
 		protected bool isNextUISetupOpen;
@@ -24,10 +28,18 @@ namespace NextUIPlugin {
 
 		protected DataHandler dataHandler;
 
-		public void Initialize(DalamudPluginInterface dalamudPluginInterface) {
-			pluginInterface = dalamudPluginInterface;
+		public NextUIPlugin(
+			CommandManager commandManager,
+			DalamudPluginInterface pluginInterface,
+			ObjectTable objectTable,
+			TargetManager targetManager
+		) {
+			this.commandManager = commandManager;
+			this.pluginInterface = pluginInterface;
+			this.objectTable = objectTable;
+			this.targetManager = targetManager;
 
-			pluginInterface.CommandManager.AddHandler("/nu", new CommandInfo(OnCommandDebugCombo) {
+			commandManager.AddHandler("/nu", new CommandInfo(OnCommandDebugCombo) {
 				HelpMessage = "Open NextUI Plugin configuration",
 				ShowInHelp = true
 			});
@@ -36,18 +48,19 @@ namespace NextUIPlugin {
 			PrepareConfig(configuration);
 			PluginLog.Information(JsonConvert.SerializeObject(configuration));
 
-			pluginInterface.UiBuilder.OnOpenConfigUi += (sender, args) => isNextUISetupOpen = true;
-			pluginInterface.UiBuilder.OnBuildUi += UiBuilder_OnBuildUi;
+			pluginInterface.UiBuilder.OpenConfigUi += UiBuilder_OnOpenConfigUi;
+			pluginInterface.UiBuilder.Draw += UiBuilder_OnBuildUi;
 
-			socketServer = new NextUISocket(pluginInterface, configuration.socketPort);
+			socketServer = new NextUISocket(objectTable, targetManager, configuration.socketPort);
 			socketServer.Start();
 
 			dataHandler = new DataHandler(pluginInterface);
-			dataHandler.onPlayerNameChanged += NameChanged;
-			dataHandler.onTargetChanged += TargetChanged;
-			dataHandler.onPartyChanged += PartyChanged;
+			// dataHandler.onPlayerNameChanged += NameChanged;
+			// dataHandler.onTargetChanged += TargetChanged;
+			// dataHandler.onPartyChanged += PartyChanged;
 		}
 
+		/*
 		protected void PartyChanged(List<int> party) {
 			socketServer.Broadcast(JsonConvert.SerializeObject(new SocketEventPartyChanged {
 				guid = Guid.NewGuid().ToString(),
@@ -68,6 +81,7 @@ namespace NextUIPlugin {
 				actorName = name
 			}));
 		}
+		*/
 
 		protected void PrepareConfig(NextUIConfiguration nextUiConfiguration) {
 			if (nextUiConfiguration.socketPort <= 1024 || nextUiConfiguration.socketPort > short.MaxValue) {
@@ -77,6 +91,10 @@ namespace NextUIPlugin {
 		}
 
 		protected void UpdateConfig() {
+		}
+
+		public void UiBuilder_OnOpenConfigUi() {
+			isNextUISetupOpen = true;
 		}
 
 		public void UiBuilder_OnBuildUi() {
@@ -113,7 +131,7 @@ namespace NextUIPlugin {
 		}
 
 		public void Dispose() {
-			pluginInterface.CommandManager.RemoveHandler("/nu");
+			commandManager.RemoveHandler("/nu");
 			pluginInterface.Dispose();
 			dataHandler.Dispose();
 			socketServer.Stop();

@@ -1,8 +1,9 @@
 ﻿using System;
-using System.Globalization;
-using System.Linq;
 using System.Net;
-using Dalamud.Game.ClientState.Actors.Types;
+using Dalamud.Game.ClientState;
+using Dalamud.Game.ClientState.Objects;
+using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Logging;
 using Dalamud.Plugin;
 using Newtonsoft.Json;
 using WebSocketSharp;
@@ -10,23 +11,28 @@ using WebSocketSharp.Server;
 
 namespace NextUIPlugin.Socket {
 	public class SocketHandler : WebSocketBehavior {
-		protected readonly DalamudPluginInterface pluginInterface;
+		protected readonly ObjectTable objectTable;
+		protected readonly TargetManager targetManager;
 
-		public SocketHandler(DalamudPluginInterface pluginInterface) {
-			this.pluginInterface = pluginInterface;
+		public SocketHandler(
+			ObjectTable objectTable,
+			TargetManager targetManager
+		) {
+			this.objectTable = objectTable;
+			this.targetManager = targetManager;
 		}
 
 		protected override void OnMessage(MessageEventArgs e) {
 			try {
-				SocketEvent ev = JsonConvert.DeserializeObject<SocketEvent>(e.Data);
+				SocketEvent? ev = JsonConvert.DeserializeObject<SocketEvent>(e.Data);
 				if (ev == null) {
 					return;
 				}
 
 				switch (ev.type) {
-					case "setTarget": 
-						XivSetTarget(ev);
-						break;
+					case "setTarget": XivSetTarget(ev, "target"); break;
+					case "setFocus": XivSetTarget(ev, "focus"); break;
+					case "setMouseOver": XivSetTarget(ev, "mouseOver"); break;
 					default:
 						XivUnrecognizedCommand(ev);
 						break;
@@ -45,13 +51,22 @@ namespace NextUIPlugin.Socket {
 			}));
 		}
 
-		protected void XivSetTarget(SocketEvent ev) {
+		protected void XivSetTarget(SocketEvent ev, string type) {
 			try {
-				int targetId = int.Parse(ev.target);
-				Actor target = pluginInterface.ClientState.Actors.First(a => a.ActorId == targetId);
-				pluginInterface.ClientState.Targets.SetCurrentTarget(target);
-				// pluginInterface.ClientState.
-				// Marshal.WriteIntPtr(this.address.TargetManager, offset, actorAddress);
+				uint targetId = uint.Parse(ev.target);
+				GameObject? target = objectTable.SearchById(targetId);
+				if (target == null) {
+					Send(JsonConvert.SerializeObject(new SocketResponse {
+						guid = ev.guid, target = ev.target, success = false, message = "Invalid object ID"
+					}));
+				}
+
+				switch (type) {
+					case "target": targetManager.SetTarget(target); break;
+					case "focus": targetManager.SetFocusTarget(target); break;
+					case "mouseOver": targetManager.SetMouseOverTarget(target); break;
+				}
+
 				Send(JsonConvert.SerializeObject(new SocketResponse {
 					guid = ev.guid, target = ev.target, success = true
 				}));
@@ -68,16 +83,23 @@ namespace NextUIPlugin.Socket {
 	public class NextUISocket {
 		public int Port { get; set; }
 		protected HttpServer server;
-		protected readonly DalamudPluginInterface pluginInterface;
 
-		public NextUISocket(DalamudPluginInterface pluginInterface, int port) {
-			this.pluginInterface = pluginInterface;
+		protected readonly ObjectTable objectTable;
+		protected readonly TargetManager targetManager;
+
+		public NextUISocket(
+			ObjectTable objectTable,
+			TargetManager targetManager,
+			int port
+		) {
+			this.objectTable = objectTable;
+			this.targetManager = targetManager;
 			Port = port;
 		}
 
 		public void Start() {
 			server = new HttpServer(IPAddress.Loopback, Port, false);
-			server.AddWebSocketService("/ws", () => new SocketHandler(pluginInterface));
+			server.AddWebSocketService("/ws", () => new SocketHandler(objectTable, targetManager));
 			server.Start();
 		}
 
