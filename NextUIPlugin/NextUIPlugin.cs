@@ -1,5 +1,7 @@
 ﻿using ImGuiNET;
 using System.Numerics;
+using Dalamud.Data;
+using Dalamud.Game;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.Command;
 using Dalamud.Interface;
@@ -8,6 +10,7 @@ using Dalamud.Plugin;
 using Newtonsoft.Json;
 using NextUIPlugin.Configuration;
 using NextUIPlugin.Data;
+using NextUIPlugin.Service;
 using NextUIPlugin.Socket;
 
 namespace NextUIPlugin {
@@ -17,10 +20,13 @@ namespace NextUIPlugin {
 
 		protected DalamudPluginInterface pluginInterface;
 		public NextUIConfiguration configuration;
-		// public readonly UiBuilder uiBuilder;
+
+		/** Dalamud injected services */
 		public readonly CommandManager commandManager;
 		public readonly ObjectTable objectTable;
 		public readonly TargetManager targetManager;
+
+		public static MouseOverService? mouseOverService;
 
 		// ReSharper disable once InconsistentNaming
 		protected bool isNextUISetupOpen;
@@ -32,12 +38,15 @@ namespace NextUIPlugin {
 			CommandManager commandManager,
 			DalamudPluginInterface pluginInterface,
 			ObjectTable objectTable,
-			TargetManager targetManager
+			TargetManager targetManager,
+			SigScanner sigScanner, 
+			DataManager dataManager
 		) {
 			this.commandManager = commandManager;
 			this.pluginInterface = pluginInterface;
 			this.objectTable = objectTable;
 			this.targetManager = targetManager;
+			mouseOverService = new MouseOverService(sigScanner, dataManager);
 
 			commandManager.AddHandler("/nu", new CommandInfo(OnCommandDebugCombo) {
 				HelpMessage = "Open NextUI Plugin configuration",
@@ -101,7 +110,6 @@ namespace NextUIPlugin {
 			if (!isNextUISetupOpen) {
 				return;
 			}
-
 
 			ImGui.SetNextWindowSize(new Vector2(740, 490));
 			ImGui.Begin(

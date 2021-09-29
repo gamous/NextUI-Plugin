@@ -1,10 +1,9 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Net;
-using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Logging;
-using Dalamud.Plugin;
 using Newtonsoft.Json;
 using WebSocketSharp;
 using WebSocketSharp.Server;
@@ -30,9 +29,21 @@ namespace NextUIPlugin.Socket {
 				}
 
 				switch (ev.type) {
-					case "setTarget": XivSetTarget(ev, "target"); break;
-					case "setFocus": XivSetTarget(ev, "focus"); break;
-					case "setMouseOver": XivSetTarget(ev, "mouseOver"); break;
+					case "setTarget":
+						XivSetTarget(ev, "target");
+						break;
+					case "setFocus":
+						XivSetTarget(ev, "focus");
+						break;
+					case "setMouseOver":
+						XivSetTarget(ev, "mouseOver");
+						break;
+					case "setMouseOverEx":
+						XivSetMouseOver(ev);
+						break;
+					case "clearMouseOverEx":
+						XivSetMouseOver(ev, false);
+						break;
 					default:
 						XivUnrecognizedCommand(ev);
 						break;
@@ -59,16 +70,49 @@ namespace NextUIPlugin.Socket {
 					Send(JsonConvert.SerializeObject(new SocketResponse {
 						guid = ev.guid, target = ev.target, success = false, message = "Invalid object ID"
 					}));
+					return;
 				}
 
 				switch (type) {
-					case "target": targetManager.SetTarget(target); break;
-					case "focus": targetManager.SetFocusTarget(target); break;
-					case "mouseOver": targetManager.SetMouseOverTarget(target); break;
+					case "target":
+						targetManager.SetTarget(target);
+						break;
+					case "focus":
+						targetManager.SetFocusTarget(target);
+						break;
+					case "mouseOver":
+						targetManager.SetMouseOverTarget(target);
+						break;
 				}
 
 				Send(JsonConvert.SerializeObject(new SocketResponse {
-					guid = ev.guid, target = ev.target, success = true
+					guid = ev.guid, target = ev.target, success = true, message = ""
+				}));
+			}
+			catch (Exception err) {
+				Send(JsonConvert.SerializeObject(new SocketResponse {
+					guid = ev.guid, target = ev.target, success = false, message = err.ToString()
+				}));
+			}
+		}
+
+		protected void XivSetMouseOver(SocketEvent ev, bool set = true) {
+			try {
+				uint targetId = uint.Parse(ev.target);
+				GameObject? target = objectTable.SearchById(targetId);
+				if (target == null) {
+					Send(JsonConvert.SerializeObject(new SocketResponse {
+						guid = ev.guid, target = ev.target, success = false, message = "Invalid object ID"
+					}));
+					return;
+				}
+
+				if (NextUIPlugin.mouseOverService != null) {
+					NextUIPlugin.mouseOverService.Target = set ? target : null;
+				}
+
+				Send(JsonConvert.SerializeObject(new SocketResponse {
+					guid = ev.guid, target = ev.target, success = true, message = "Mouse over set: " + target.Name.TextValue
 				}));
 			}
 			catch (Exception err) {
@@ -82,7 +126,7 @@ namespace NextUIPlugin.Socket {
 	// ReSharper disable once InconsistentNaming
 	public class NextUISocket {
 		public int Port { get; set; }
-		protected HttpServer server;
+		protected HttpServer? server;
 
 		protected readonly ObjectTable objectTable;
 		protected readonly TargetManager targetManager;
@@ -113,7 +157,7 @@ namespace NextUIPlugin.Socket {
 		}
 
 		public void Broadcast(string message) {
-			server.WebSocketServices.Broadcast(message);
+			server?.WebSocketServices.Broadcast(message);
 		}
 	}
 }

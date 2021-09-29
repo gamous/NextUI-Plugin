@@ -72,18 +72,14 @@
 	<!-- NuGet Packages -->
 	<ItemGroup>
 		<PackageReference Include="DalamudPackager" Version="2.1.2" />
+		<PackageReference Include="Fleck" Version="1.2.0" />
+		<PackageReference Include="Lumina" Version="3.3.0" />
+		<PackageReference Include="Lumina.Excel" Version="5.50.0" />
 		<PackageReference Include="WebSocketSharp" Version="1.0.3-rc11" />
 	</ItemGroup>
 
 	<!-- Dalamud Packager Task-->
 	<Target Name="DalamudPackage" AfterTargets="Build">
-		<DalamudPackager
-				ProjectDir="$(ProjectDir)"
-				OutputPath="$(TargetDir)..\$(Configuration)"
-				AssemblyName="$(AssemblyName)"
-				MakeZip="true"
-				Exclude="NextUIPlugin.pdb"
-				VersionComponents="4"
-		/>
+		<DalamudPackager ProjectDir="$(ProjectDir)" OutputPath="$(TargetDir)..\$(Configuration)" AssemblyName="$(AssemblyName)" MakeZip="true" Exclude="NextUIPlugin.pdb" VersionComponents="4" />
 	</Target>
 </Project>
