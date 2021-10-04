@@ -2,6 +2,7 @@
 using System.Numerics;
 using Dalamud.Data;
 using Dalamud.Game;
+using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.Command;
 using Dalamud.Interface;
@@ -18,13 +19,17 @@ namespace NextUIPlugin {
 	public class NextUIPlugin : IDalamudPlugin {
 		public string Name => "NextUIPlugin";
 
-		protected DalamudPluginInterface pluginInterface;
 		public NextUIConfiguration configuration;
 
 		/** Dalamud injected services */
 		public readonly CommandManager commandManager;
-		public readonly ObjectTable objectTable;
-		public readonly TargetManager targetManager;
+
+		public static DalamudPluginInterface pluginInterface = null!;
+		public static ObjectTable objectTable = null!;
+		public static Framework framework = null!;
+		public static ClientState clientState = null!;
+		public static DataManager dataManager = null!;
+		public static TargetManager targetManager = null!;
 
 		public static MouseOverService? mouseOverService;
 
@@ -39,13 +44,18 @@ namespace NextUIPlugin {
 			DalamudPluginInterface pluginInterface,
 			ObjectTable objectTable,
 			TargetManager targetManager,
-			SigScanner sigScanner, 
-			DataManager dataManager
+			Framework framework,
+			SigScanner sigScanner,
+			DataManager dataManager,
+			ClientState clientState
 		) {
 			this.commandManager = commandManager;
-			this.pluginInterface = pluginInterface;
-			this.objectTable = objectTable;
-			this.targetManager = targetManager;
+			NextUIPlugin.pluginInterface = pluginInterface;
+			NextUIPlugin.objectTable = objectTable;
+			NextUIPlugin.targetManager = targetManager;
+			NextUIPlugin.framework = framework;
+			NextUIPlugin.clientState = clientState;
+			NextUIPlugin.dataManager = dataManager;
 			mouseOverService = new MouseOverService(sigScanner, dataManager);
 
 			commandManager.AddHandler("/nu", new CommandInfo(OnCommandDebugCombo) {
@@ -63,10 +73,31 @@ namespace NextUIPlugin {
 			socketServer = new NextUISocket(objectTable, targetManager, configuration.socketPort);
 			socketServer.Start();
 
-			dataHandler = new DataHandler(pluginInterface);
+			dataHandler = new DataHandler();
 			// dataHandler.onPlayerNameChanged += NameChanged;
-			// dataHandler.onTargetChanged += TargetChanged;
+			dataHandler.onTargetChanged += OnTargetChanged;
+			dataHandler.CastStart += CastStart;
 			// dataHandler.onPartyChanged += PartyChanged;
+		}
+
+		protected void CastStart(string target, uint actionId, string name, float currentTime, float totalTime) {
+			socketServer.Broadcast(JsonConvert.SerializeObject(new {
+				@event = "castStart",
+				target = target,
+				actionId = actionId,
+				actionName = name,
+				currentTime = currentTime,
+				totalTime = totalTime,
+			}));
+		}
+
+		protected void OnTargetChanged(string type, uint? id, string? name) {
+			// socketServer.Broadcast(JsonConvert.SerializeObject(new {
+			// 	@event = "targetChanged",
+			// 	targetType = type,
+			// 	actorId = id,
+			// 	actorName = name
+			// }));
 		}
 
 		/*
@@ -82,14 +113,7 @@ namespace NextUIPlugin {
 			socketServer.Broadcast("player name: " + name);
 		}
 
-		protected void TargetChanged(string type, int id, string name) {
-			socketServer.Broadcast(JsonConvert.SerializeObject(new {
-				@event = "targetChanged",
-				targetType = type,
-				actorId = id,
-				actorName = name
-			}));
-		}
+		
 		*/
 
 		protected void PrepareConfig(NextUIConfiguration nextUiConfiguration) {
@@ -142,7 +166,7 @@ namespace NextUIPlugin {
 			commandManager.RemoveHandler("/nu");
 			pluginInterface.Dispose();
 			dataHandler.Dispose();
-			socketServer.Stop();
+			socketServer.Dispose();
 		}
 
 		protected void OnCommandDebugCombo(string command, string arguments) {

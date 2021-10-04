@@ -1,80 +1,109 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using Dalamud.Game.Internal;
-using Dalamud.Plugin;
+using Dalamud.Game;
+using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.ClientState.Objects.Types;
+using NextUIPlugin.Service;
+using SpellAction = Lumina.Excel.GeneratedSheets.Action;
+using BattleChara = FFXIVClientStructs.FFXIV.Client.Game.Character.BattleChara;
 
 namespace NextUIPlugin.Data {
 	public class DataHandler : IDisposable {
-		protected readonly DalamudPluginInterface pluginInterface;
+		public Action<string>? onPlayerNameChanged;
+		public Action<string, uint?, string?>? onTargetChanged;
+		public Action<uint, string>? onHoverChanged;
+		public Action<List<uint>>? onPartyChanged;
+		public Action<string, uint, string, float, float>? CastStart;
 
-		public Action<string> onPlayerNameChanged;
-		public Action<string, int, string> onTargetChanged;
-		public Action<int, string> onHoverChanged;
-		public Action<List<int>> onPartyChanged;
+		protected readonly Dictionary<string, uint?> targets = new();
+		protected readonly Dictionary<string, bool> casts = new();
+		protected List<uint> party = new List<uint>();
 
-		protected readonly Dictionary<string, int> targets = new Dictionary<string, int>();
-		protected List<int> party = new List<int>();
-
-		public DataHandler(DalamudPluginInterface pluginInterface) {
-			this.pluginInterface = pluginInterface;
-			// TODO: For now
-			//this.pluginInterface.Framework.OnUpdateEvent += FrameworkOnOnUpdateEvent;
+		public DataHandler() {
+			NextUIPlugin.framework.Update += FrameworkOnUpdate;
 		}
 
-/*
-		protected void FrameworkOnOnUpdateEvent(Framework framework) {
-			PlayerCharacter player = pluginInterface.ClientState.LocalPlayer;
-			if (player is null) {
-				return;
-			}
+		protected unsafe void FrameworkOnUpdate(Framework framework) {
+			WatchCasts();
 
-			Dictionary<string, Actor> currentTargets = new Dictionary<string, Actor> {
-				{ "target", pluginInterface.ClientState.Targets.CurrentTarget },
-				{ "hover", pluginInterface.ClientState.Targets.MouseOverTarget },
-				{ "focus", pluginInterface.ClientState.Targets.FocusTarget },
+			Dictionary<string, GameObject?> currentTargets = new() {
+				{ "target", NextUIPlugin.targetManager.Target },
+				{ "targetOfTarget", NextUIPlugin.targetManager.Target?.TargetObject },
+				{ "hover", NextUIPlugin.targetManager.MouseOverTarget },
+				{ "focus", NextUIPlugin.targetManager.FocusTarget },
 			};
-
-			foreach (KeyValuePair<string, Actor> entry in currentTargets) {
-				if (!targets.ContainsKey(entry.Key)) {
-					targets[entry.Key] = 0;
+			
+			foreach ((string key, GameObject? value) in currentTargets) {
+				if (!targets.ContainsKey(key)) {
+					targets[key] = null;
 				}
 
-				if (entry.Value != null) {
-					if (targets[entry.Key] != entry.Value.ActorId) {
-						targets[entry.Key] = entry.Value.ActorId;
-						onTargetChanged?.Invoke(entry.Key, entry.Value.ActorId, entry.Value.Name);
+				if (value != null) {
+					if (targets[key] != value.ObjectId) {
+						targets[key] = value.ObjectId;
+						onTargetChanged?.Invoke(key, value.ObjectId, value.Name.TextValue);
 					}
 				}
 				else {
-					if (targets[entry.Key] != 0) {
-						targets[entry.Key] = 0;
-						onTargetChanged?.Invoke(entry.Key, 0, "");
+					if (targets[key] != null) {
+						targets[key] = null;
+						onTargetChanged?.Invoke(key, null, null);
 					}
 				}
 			}
-
-			List<int> currentParty = pluginInterface.ClientState.PartyList
-				.Select(partyMember => partyMember.Actor.ActorId).ToList();
-
-			if (party.Count != currentParty.Count) {
-				onPartyChanged?.Invoke(currentParty);
-			}
-			else {
-				List<int> firstNotSecond = party.Except(currentParty).ToList();
-				List<int> secondNotFirst = currentParty.Except(party).ToList();
-		
-				bool eq = !firstNotSecond.Any() && !secondNotFirst.Any();
-				if (!eq) {
-					onPartyChanged?.Invoke(currentParty);
-					party = currentParty;
-				}
-			}
-
+			
+			// List<int> currentParty = NextUIPlugin.clientState.
+			// 	.Select(partyMember => partyMember.Actor.ActorId).ToList();
+			//
+			// if (party.Count != currentParty.Count) {
+			// 	onPartyChanged?.Invoke(currentParty);
+			// }
+			// else {
+			// 	List<int> firstNotSecond = party.Except(currentParty).ToList();
+			// 	List<int> secondNotFirst = currentParty.Except(party).ToList();
+			//
+			// 	bool eq = !firstNotSecond.Any() && !secondNotFirst.Any();
+			// 	if (!eq) {
+			// 		onPartyChanged?.Invoke(currentParty);
+			// 		party = currentParty;
+			// 	}
+			// }
 		}
-*/
+
+		protected unsafe void WatchCasts() {
+			Dictionary<string, GameObject?> actorsCasts = new() {
+				{ "player", NextUIPlugin.clientState.LocalPlayer },
+				{ "target", NextUIPlugin.targetManager.Target },
+				{ "targetOfTarget", NextUIPlugin.targetManager.Target?.TargetObject },
+				{ "focus", NextUIPlugin.targetManager.FocusTarget },
+			};
+
+			foreach ((string key, GameObject? actor) in actorsCasts) {
+				if (actor == null) {
+					continue;
+				}
+
+				if (!casts.ContainsKey(key)) {
+					casts[key] = false;
+				}
+
+				BattleChara* battleChara = (BattleChara*)actor.Address;
+				BattleChara.CastInfo castInfo = battleChara->SpellCastInfo;
+
+				bool isCasting = castInfo.IsCasting > 0;
+				bool targetIsCasting = casts[key];
+
+				if (isCasting != targetIsCasting && isCasting) {
+					string castName = ActionService.GetActionNameFromCastInfo(castInfo);
+					CastStart?.Invoke(key, castInfo.ActionID, castName, castInfo.CurrentCastTime, castInfo.TotalCastTime);
+				}
+
+				casts[key] = isCasting;
+			}
+		}
+
 		public void Dispose() {
-			//pluginInterface.Framework.OnUpdateEvent -= FrameworkOnOnUpdateEvent;
+			NextUIPlugin.framework.Update -= FrameworkOnUpdate;
 		}
 	}
 }

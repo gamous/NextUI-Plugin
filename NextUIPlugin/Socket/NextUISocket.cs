@@ -1,132 +1,18 @@
 ﻿using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.Net;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Logging;
+using Fleck;
 using Newtonsoft.Json;
-using WebSocketSharp;
-using WebSocketSharp.Server;
 
 namespace NextUIPlugin.Socket {
-	public class SocketHandler : WebSocketBehavior {
-		protected readonly ObjectTable objectTable;
-		protected readonly TargetManager targetManager;
-
-		public SocketHandler(
-			ObjectTable objectTable,
-			TargetManager targetManager
-		) {
-			this.objectTable = objectTable;
-			this.targetManager = targetManager;
-		}
-
-		protected override void OnMessage(MessageEventArgs e) {
-			try {
-				SocketEvent? ev = JsonConvert.DeserializeObject<SocketEvent>(e.Data);
-				if (ev == null) {
-					return;
-				}
-
-				switch (ev.type) {
-					case "setTarget":
-						XivSetTarget(ev, "target");
-						break;
-					case "setFocus":
-						XivSetTarget(ev, "focus");
-						break;
-					case "setMouseOver":
-						XivSetTarget(ev, "mouseOver");
-						break;
-					case "setMouseOverEx":
-						XivSetMouseOver(ev);
-						break;
-					case "clearMouseOverEx":
-						XivSetMouseOver(ev, false);
-						break;
-					default:
-						XivUnrecognizedCommand(ev);
-						break;
-				}
-			}
-			catch (Exception err) {
-				Send(JsonConvert.SerializeObject(new SocketResponse {
-					success = false, message = "Unrecognized data: " + e.Data + " " + err
-				}));
-			}
-		}
-
-		protected void XivUnrecognizedCommand(SocketEvent ev) {
-			Send(JsonConvert.SerializeObject(new SocketResponse {
-				guid = ev.guid, success = false, message = "Unrecognized command: " + ev.type
-			}));
-		}
-
-		protected void XivSetTarget(SocketEvent ev, string type) {
-			try {
-				uint targetId = uint.Parse(ev.target);
-				GameObject? target = objectTable.SearchById(targetId);
-				if (target == null) {
-					Send(JsonConvert.SerializeObject(new SocketResponse {
-						guid = ev.guid, target = ev.target, success = false, message = "Invalid object ID"
-					}));
-					return;
-				}
-
-				switch (type) {
-					case "target":
-						targetManager.SetTarget(target);
-						break;
-					case "focus":
-						targetManager.SetFocusTarget(target);
-						break;
-					case "mouseOver":
-						targetManager.SetMouseOverTarget(target);
-						break;
-				}
-
-				Send(JsonConvert.SerializeObject(new SocketResponse {
-					guid = ev.guid, target = ev.target, success = true, message = ""
-				}));
-			}
-			catch (Exception err) {
-				Send(JsonConvert.SerializeObject(new SocketResponse {
-					guid = ev.guid, target = ev.target, success = false, message = err.ToString()
-				}));
-			}
-		}
-
-		protected void XivSetMouseOver(SocketEvent ev, bool set = true) {
-			try {
-				uint targetId = uint.Parse(ev.target);
-				GameObject? target = objectTable.SearchById(targetId);
-				if (target == null) {
-					Send(JsonConvert.SerializeObject(new SocketResponse {
-						guid = ev.guid, target = ev.target, success = false, message = "Invalid object ID"
-					}));
-					return;
-				}
-
-				if (NextUIPlugin.mouseOverService != null) {
-					NextUIPlugin.mouseOverService.Target = set ? target : null;
-				}
-
-				Send(JsonConvert.SerializeObject(new SocketResponse {
-					guid = ev.guid, target = ev.target, success = true, message = "Mouse over set: " + target.Name.TextValue
-				}));
-			}
-			catch (Exception err) {
-				Send(JsonConvert.SerializeObject(new SocketResponse {
-					guid = ev.guid, target = ev.target, success = false, message = err.ToString()
-				}));
-			}
-		}
-	}
-
 	// ReSharper disable once InconsistentNaming
-	public class NextUISocket {
+	public class NextUISocket: IDisposable {
 		public int Port { get; set; }
-		protected HttpServer? server;
+		protected WebSocketServer? server;
+		List<IWebSocketConnection> sockets = new();
 
 		protected readonly ObjectTable objectTable;
 		protected readonly TargetManager targetManager;
@@ -142,22 +28,120 @@ namespace NextUIPlugin.Socket {
 		}
 
 		public void Start() {
-			server = new HttpServer(IPAddress.Loopback, Port, false);
-			server.AddWebSocketService("/ws", () => new SocketHandler(objectTable, targetManager));
-			server.Start();
+			server = new WebSocketServer("ws://" + IPAddress.Loopback + ":" + Port + "/ws");
+			server.ListenerSocket.NoDelay = true;
+			server.RestartAfterListenError = true;
+
+			server.Start(socket => {
+				socket.OnOpen = () => { sockets.Add(socket); };
+				socket.OnClose = () => { sockets.Remove(socket); };
+				socket.OnMessage = message => { OnMessage(message, socket); };
+			});
+		}
+
+		protected void OnMessage(string data, IWebSocketConnection socket) {
+			try {
+				SocketEvent? ev = JsonConvert.DeserializeObject<SocketEvent>(data);
+				if (ev == null) {
+					return;
+				}
+
+				switch (ev.type) {
+					case "setTarget":
+						XivSetTarget(socket, ev, "target");
+						break;
+					case "setFocus":
+						XivSetTarget(socket, ev, "focus");
+						break;
+					case "setMouseOver":
+						XivSetTarget(socket, ev, "mouseOver");
+						break;
+					case "setMouseOverEx":
+						XivSetMouseOver(socket, ev);
+						break;
+					case "clearMouseOverEx":
+						XivSetMouseOver(socket, ev, false);
+						break;
+					default:
+						socket.Send(JsonResponse(false, "", "Unrecognized command: " + ev.type));
+						break;
+				}
+			}
+			catch (Exception err) {
+				socket.Send(JsonResponse(false, "", "Unrecognized data: " + data + " " + err));
+			}
+		}
+
+		protected void XivSetTarget(IWebSocketConnection socket, SocketEvent ev, string type) {
+			try {
+				uint targetId = uint.Parse(ev.target);
+				GameObject? target = objectTable.SearchById(targetId);
+				if (target == null) {
+					socket.Send(JsonResponse(false, ev.guid, "Invalid object ID", ev.target));
+					return;
+				}
+
+				switch (type) {
+					case "target":
+						targetManager.SetTarget(target);
+						break;
+					case "focus":
+						targetManager.SetFocusTarget(target);
+						break;
+					case "mouseOver":
+						targetManager.SetMouseOverTarget(target);
+						break;
+				}
+
+				socket.Send(JsonResponse(true, ev.guid, "", ev.target));
+			}
+			catch (Exception err) {
+				socket.Send(JsonResponse(false, ev.guid, err.ToString(), ev.target));
+			}
+		}
+
+		protected void XivSetMouseOver(IWebSocketConnection socket, SocketEvent ev, bool set = true) {
+			try {
+				uint targetId = uint.Parse(ev.target);
+				GameObject? target = objectTable.SearchById(targetId);
+				if (target == null) {
+					socket.Send(JsonResponse(false, ev.guid, "Invalid object ID", ev.target));
+					return;
+				}
+
+				if (NextUIPlugin.mouseOverService != null) {
+					NextUIPlugin.mouseOverService.Target = set ? target : null;
+				}
+
+				socket.Send(JsonResponse(true, ev.guid, "Mouse over set: " + target.Name.TextValue, ev.target));
+			}
+			catch (Exception err) {
+				socket.Send(JsonResponse(false, ev.guid, err.ToString(), ev.target));
+			}
+		}
+
+		public string JsonResponse(bool success, string guid, string message, string target = "") {
+			return JsonConvert.SerializeObject(new SocketResponse {
+				guid = guid, success = success, message = message, target = target
+			});
+		}
+
+		public void Broadcast(string message) {
+			sockets.ForEach(s => s.Send(message));
 		}
 
 		public void Stop() {
 			try {
-				server?.Stop();
+				server?.Dispose();
 			}
 			catch (Exception e) {
 				PluginLog.Log(e.ToString());
 			}
 		}
 
-		public void Broadcast(string message) {
-			server?.WebSocketServices.Broadcast(message);
+		public void Dispose() {
+			sockets.ForEach(s => s.Close()); 
+			server?.Dispose();
 		}
 	}
 }
