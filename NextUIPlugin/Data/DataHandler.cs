@@ -13,7 +13,7 @@ namespace NextUIPlugin.Data {
 		public Action<string, uint?, string?>? onTargetChanged;
 		public Action<uint, string>? onHoverChanged;
 		public Action<List<uint>>? onPartyChanged;
-		public Action<string, uint, string, float, float>? CastStart;
+		public Action<string, uint, string, float, float, uint>? CastStart;
 
 		protected readonly Dictionary<string, uint?> targets = new();
 		protected readonly Dictionary<string, bool> casts = new();
@@ -94,8 +94,15 @@ namespace NextUIPlugin.Data {
 				bool targetIsCasting = casts[key];
 
 				if (isCasting != targetIsCasting && isCasting) {
-					string castName = ActionService.GetActionNameFromCastInfo(castInfo);
-					CastStart?.Invoke(key, castInfo.ActionID, castName, castInfo.CurrentCastTime, castInfo.TotalCastTime);
+					string castName = ActionService.GetActionNameFromCastInfo(actor.TargetObject, castInfo);
+					CastStart?.Invoke(
+						key, 
+						castInfo.ActionID, 
+						castName, 
+						castInfo.CurrentCastTime, 
+						castInfo.TotalCastTime,
+						castInfo.CastTargetID
+					);
 				}
 
 				casts[key] = isCasting;

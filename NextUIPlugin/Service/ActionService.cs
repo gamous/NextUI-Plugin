@@ -1,10 +1,40 @@
-﻿using FFXIVClientStructs.FFXIV.Client.Game;
+﻿/*
+Copyright(c) 2021 DevlUI (https://github.com/delvui/delvui)
+Modifications Copyright(c) 2021 NextUI
+
+Full License: https://github.com/DelvUI/DelvUI/blob/main/LICENSE
+*/
+
+using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Objects.Types;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using Lumina.Excel.GeneratedSheets;
 using BattleChara = FFXIVClientStructs.FFXIV.Client.Game.Character.BattleChara;
 
 namespace NextUIPlugin.Service {
 	public class ActionService {
-		public static string GetActionNameFromCastInfo(BattleChara.CastInfo castInfo) {
+		public static string GetActionNameFromCastInfo(GameObject? target, BattleChara.CastInfo castInfo) {
+			ObjectKind? targetKind = target?.ObjectKind;
+
+
+			switch (targetKind) {
+				case null:
+					break;
+				case ObjectKind.Aetheryte:
+					return "Attuning...";
+				case ObjectKind.EventObj:
+				case ObjectKind.EventNpc:
+					return "Interacting...";
+			}
+
+			if (castInfo.ActionID == 1 && castInfo.ActionType != ActionType.Mount) {
+				return "Interacting...";
+			}
+
+			if (castInfo.CastTargetID == 0xE0000000) {
+				return "Interacting...";
+			}
+
 			switch (castInfo.ActionType) {
 				case ActionType.PetAction:
 				case ActionType.Spell:
@@ -23,7 +53,8 @@ namespace NextUIPlugin.Service {
 					return item?.Name.ToString() ?? "Using item...";
 
 				case ActionType.Companion:
-					Companion? companion = NextUIPlugin.dataManager.GetExcelSheet<Companion>()?.GetRow(castInfo.ActionID);
+					Companion? companion =
+						NextUIPlugin.dataManager.GetExcelSheet<Companion>()?.GetRow(castInfo.ActionID);
 					return companion?.Singular.ToString() ?? "";
 				case ActionType.None:
 				case ActionType.General:

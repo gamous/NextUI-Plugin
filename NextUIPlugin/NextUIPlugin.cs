@@ -80,7 +80,14 @@ namespace NextUIPlugin {
 			// dataHandler.onPartyChanged += PartyChanged;
 		}
 
-		protected void CastStart(string target, uint actionId, string name, float currentTime, float totalTime) {
+		protected void CastStart(
+			string target, 
+			uint actionId, 
+			string name, 
+			float currentTime, 
+			float totalTime,
+			uint targetId
+		) {
 			socketServer.Broadcast(JsonConvert.SerializeObject(new {
 				@event = "castStart",
 				target = target,
@@ -88,6 +95,7 @@ namespace NextUIPlugin {
 				actionName = name,
 				currentTime = currentTime,
 				totalTime = totalTime,
+				targetId,
 			}));
 		}
 
