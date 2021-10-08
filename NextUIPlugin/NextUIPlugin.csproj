@@ -85,14 +85,14 @@
 	</ItemGroup>
 
 	<!-- Dalamud Packager Task-->
-	<Target Name="DalamudPackager" AfterTargets="Build">
-		<DalamudPackager
-				ProjectDir="$(ProjectDir)"
-				OutputPath="$(TargetDir)..\$(Configuration)"
-				AssemblyName="$(AssemblyName)"
-				MakeZip="true"
-				Exclude="NextUIPlugin.pdb;NextUIPlugin.deps.json"
-				VersionComponents="4"
-		/>
-	</Target>
+<!--	<Target Name="DalamudPackager" AfterTargets="Build">-->
+<!--		<DalamudPackager-->
+<!--				ProjectDir="$(ProjectDir)"-->
+<!--				OutputPath="$(TargetDir)..\$(Configuration)"-->
+<!--				AssemblyName="$(AssemblyName)"-->
+<!--				MakeZip="true"-->
+<!--				Exclude="NextUIPlugin.pdb;NextUIPlugin.deps.json"-->
+<!--				VersionComponents="4"-->
+<!--		/>-->
+<!--	</Target>-->
 </Project>
