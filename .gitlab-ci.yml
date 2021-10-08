@@ -11,5 +11,4 @@ build:
         - wget https://goatcorp.github.io/dalamud-distrib/stg/latest.zip
         - mkdir dalamud
         - unzip latest.zip -d dalamud
-        - echo $PWD
         - dotnet build -c Release
