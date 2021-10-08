@@ -6,6 +6,6 @@ install:
     - dotnet restore
 script:
     - wget https://goatcorp.github.io/dalamud-distrib/latest.zip
-    - mkdir $PWD/$TRAVIS_REPO_SLUG/dalamud
-    - unzip latest.zip $PWD/$TRAVIS_REPO_SLUG/dalamud
+    - mkdir $PWD/dalamud
+    - unzip latest.zip $PWD/dalamud
     - dotnet build
