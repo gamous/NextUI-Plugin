@@ -5,8 +5,8 @@ const v = process.argv[2];
 let prop = fs.readFileSync('./Properties/AssemblyInfo.cs').toString();
 
 prop = prop
-	.replace(/AssemblyFileVersion\("([^"\*]+)"\)]/g, `AssemblyFileVersion("${v}")`)
-	.replace(/AssemblyVersion\("([^"\*]+)"\)]/g, `AssemblyVersion("${v}")`);
+	.replace(/AssemblyFileVersion\("(.*)"\)]/g, `AssemblyFileVersion("${v}")]`)
+	.replace(/AssemblyVersion\("(.*)"\)]/g, `AssemblyVersion("${v}")]`);
 
 fs.writeFileSync('./Properties/AssemblyInfo.cs', prop);
 
