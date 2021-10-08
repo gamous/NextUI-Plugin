@@ -4,6 +4,7 @@ stages:
 before_script:
     - apt-get update
     - apt-get install zip unzip
+    - curl --location --output /usr/local/bin/release-cli "https://release-cli-downloads.s3.amazonaws.com/latest/release-cli-linux-amd64"
 build:
     stage: build
     script:
