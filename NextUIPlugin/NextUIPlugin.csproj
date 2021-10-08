@@ -50,11 +50,16 @@
 		</AssemblySearchPaths>
 	</PropertyGroup>
 
+	<!-- Included Content -->
+	<ItemGroup>
+		<Content Include="NextUIPlugin.json" CopyToOutputDirectory="Always"/>
+	</ItemGroup>
+	
+    <!-- Library References -->
 	<ItemGroup>
 		<Reference Include="Dalamud">
 			<Private>false</Private>
 		</Reference>
-		<Reference Include="Microsoft.CSharp" />
 		<Reference Include="Newtonsoft.Json">
 			<Private>false</Private>
 		</Reference>
