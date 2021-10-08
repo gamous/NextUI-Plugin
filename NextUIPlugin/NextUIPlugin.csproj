@@ -85,7 +85,7 @@
 
 	<!-- NuGet Packages -->
 	<ItemGroup>
-		<PackageReference Include="DalamudPackager" Version="2.1.2" />
+		<PackageReference Include="DalamudPackager" Version="2.1.3" />
 		<PackageReference Include="Fleck" Version="1.2.0" />
 	</ItemGroup>
 
