@@ -8,4 +8,5 @@ script:
     - wget https://goatcorp.github.io/dalamud-distrib/stg/latest.zip
     - mkdir $PWD/dalamud
     - unzip latest.zip -d $PWD/dalamud
+    - echo $PWD
     - dotnet build -c Release
