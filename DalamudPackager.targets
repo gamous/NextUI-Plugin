@@ -4,7 +4,7 @@
 		<DalamudPackager
 				ProjectDir="$(ProjectDir)"
 				OutputPath="$(OutputPath)"
-				AssemblyName="$(AssemblyName)"
+				AssemblyName="NextUIPlugin"
 				MakeZip="true"
 				Include="NextUIPlugin.dll;Fleck.dll;"
 				VersionComponents="4"
