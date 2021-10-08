@@ -43,7 +43,9 @@ publish:
         - eval $(ssh-agent -s)
         - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
         - mkdir -p ~/.ssh
-        - chmod 700 ~/.ssh
+        - chmod 644 ~/.ssh
+        - touch ~/.ssh/known_hosts
+        - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
         - git config --global user.email "runner@gitlab.com"
         - git config --global user.name "Gitlab Runner"
     script: 
