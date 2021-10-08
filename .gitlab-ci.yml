@@ -2,11 +2,13 @@ image: mcr.microsoft.com/dotnet/sdk:5.0
 stages:
     - install
     - build
+before_script:
+    - apt-get update
+    - apt-get install zip unzip
 install:
     stage: install
     script:
         - dotnet restore
-        - sudo apt-get install unzip
         - wget https://goatcorp.github.io/dalamud-distrib/stg/latest.zip
         - mkdir $PWD/dalamud
         - unzip latest.zip -d $PWD/dalamud
