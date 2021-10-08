@@ -85,7 +85,7 @@
 	</ItemGroup>
 
 	<!-- Dalamud Packager Task-->
-	<Target Name="DalamudPackage" AfterTargets="Build">
+	<Target Name="DalamudPackager" AfterTargets="Build">
 		<DalamudPackager
 				ProjectDir="$(ProjectDir)"
 				OutputPath="$(TargetDir)..\$(Configuration)"
