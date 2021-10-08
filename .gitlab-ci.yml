@@ -54,4 +54,4 @@ publish:
         - node build.js NextUIPlugin https://gitlab.com/kaminariss/nextui-plugin $CI_COMMIT_TAG
         - git add .
         - git commit -m "Update $CI_COMMIT_TAG"
-        - git push origin master
+        - git push
