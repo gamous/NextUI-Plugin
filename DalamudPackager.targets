@@ -2,7 +2,7 @@
 <Project>
 	<Target Name="PackagePlugin" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
 		<DalamudPackager
-				ProjectDir="$(ProjectDir)"
+				ProjectDir="/home/travis/build/kaminaris/Next-UI-Plugin/NextUIPlugin"
 				OutputPath="$(OutputPath)"
 				AssemblyName="NextUIPlugin"
 				MakeZip="true"
