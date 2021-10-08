@@ -5,4 +5,7 @@ dotnet: 5.0
 install:
     - dotnet restore
 script:
+    - mkdir $TRAVIS_REPO_SLUG/dalamud
+    - wget https://goatcorp.github.io/dalamud-distrib/latest.zip -P $TRAVIS_REPO_SLUG
+    - unzip $TRAVIS_REPO_SLUG/dalamud/latest.zip $TRAVIS_REPO_SLUG/dalamud
     - dotnet build
