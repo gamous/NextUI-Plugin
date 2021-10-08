@@ -5,9 +5,7 @@ dotnet: 5.0
 install:
     - dotnet restore
 script:
-    - wget https://goatcorp.github.io/dalamud-distrib/latest.zip
+    - wget https://goatcorp.github.io/dalamud-distrib/stg/latest.zip
     - mkdir $PWD/dalamud
     - unzip latest.zip -d $PWD/dalamud
-    - echo $PWD/dalamud
-    - ls -lah $PWD/dalamud
     - dotnet build
