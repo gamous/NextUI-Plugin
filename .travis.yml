@@ -7,5 +7,7 @@ install:
 script:
     - wget https://goatcorp.github.io/dalamud-distrib/latest.zip
     - mkdir $PWD/dalamud
-    - unzip latest.zip $PWD/dalamud
+    - unzip latest.zip -d $PWD/dalamud
+    - echo $PWD/dalamud
+    - ls -lah $PWD/dalamud
     - dotnet build
