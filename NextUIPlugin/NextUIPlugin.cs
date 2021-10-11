@@ -5,7 +5,6 @@ using Dalamud.Game;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.Command;
-using Dalamud.Interface;
 using Dalamud.Logging;
 using Dalamud.Plugin;
 using Newtonsoft.Json;
@@ -58,11 +57,6 @@ namespace NextUIPlugin {
 			NextUIPlugin.dataManager = dataManager;
 			mouseOverService = new MouseOverService(sigScanner, dataManager);
 
-			commandManager.AddHandler("/nu", new CommandInfo(OnCommandDebugCombo) {
-				HelpMessage = "Open NextUI Plugin configuration",
-				ShowInHelp = true
-			});
-
 			configuration = pluginInterface.GetPluginConfig() as NextUIConfiguration ?? new NextUIConfiguration();
 			PrepareConfig(configuration);
 			PluginLog.Information(JsonConvert.SerializeObject(configuration));
@@ -78,6 +72,11 @@ namespace NextUIPlugin {
 			dataHandler.onTargetChanged += OnTargetChanged;
 			dataHandler.CastStart += CastStart;
 			// dataHandler.onPartyChanged += PartyChanged;
+
+			commandManager.AddHandler("/nu", new CommandInfo(OnCommandDebugCombo) {
+				HelpMessage = "Open NextUI Plugin configuration",
+				ShowInHelp = true
+			});
 		}
 
 		protected void CastStart(

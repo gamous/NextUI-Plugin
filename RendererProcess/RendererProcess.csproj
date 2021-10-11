@@ -9,7 +9,7 @@
 
 	<!-- Assembly Configuration -->
 	<PropertyGroup>
-		<AssemblyName>NextUIPlugin</AssemblyName>
+		<AssemblyName>NextUIRenderer</AssemblyName>
 		<AssemblyVersion>0.1.0.0</AssemblyVersion>
 		<FileVersion>0.1.0.0</FileVersion>
 		<InformationalVersion>0.1.0.0</InformationalVersion>
@@ -17,7 +17,7 @@
 
 	<!-- Build Configuration -->
 	<PropertyGroup>
-		<OutputType>Library</OutputType>
+		<OutputType>Exe</OutputType>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 		<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -32,7 +32,7 @@
 		<CefSharpPlatformTarget>x64</CefSharpPlatformTarget>
 		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 
-		<!--		<SelfContained>false</SelfContained>-->
+		<SelfContained>false</SelfContained>
 	</PropertyGroup>
 
 	<!-- Release Configuration -->
@@ -56,28 +56,8 @@
 		</AssemblySearchPaths>
 	</PropertyGroup>
 
-	<!-- Included Content -->
-	<ItemGroup>
-		<Content Include="NextUIPlugin.json" CopyToOutputDirectory="Always"/>
-	</ItemGroup>
-
 	<!-- Library References -->
 	<ItemGroup>
-		<Reference Include="Dalamud">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="Newtonsoft.Json">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="ImGui.NET">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="ImGuiScene">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="Serilog">
-			<Private>false</Private>
-		</Reference>
 		<Reference Include="SharpDX">
 			<Private>false</Private>
 		</Reference>
@@ -87,23 +67,15 @@
 		<Reference Include="SharpDX.DXGI">
 			<Private>false</Private>
 		</Reference>
-		<Reference Include="FFXIVClientStructs">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="Lumina">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="Lumina.Excel">
-			<Private>false</Private>
-		</Reference>
 	</ItemGroup>
 
-	<!-- NuGet Packages -->
 	<ItemGroup>
-		<PackageReference Include="DalamudPackager" Version="2.1.4"/>
-		<PackageReference Include="Fleck" Version="1.2.0"/>
+		<PackageReference Include="CefSharp.OffScreen" Version="94.4.50" />
+		<PackageReference Include="SharedMemory" Version="2.2.3" />
 	</ItemGroup>
+
 	<ItemGroup>
-		<Folder Include="obj"/>
+	  <Folder Include="Overlay" />
 	</ItemGroup>
+
 </Project>
