@@ -58,6 +58,9 @@
 
 	<!-- Library References -->
 	<ItemGroup>
+		<Reference Include="Newtonsoft.Json">
+			<Private>false</Private>
+		</Reference>
 		<Reference Include="SharpDX">
 			<Private>false</Private>
 		</Reference>

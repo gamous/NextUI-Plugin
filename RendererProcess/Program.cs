@@ -8,6 +8,8 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using RendererProcess.Ipc;
 using RendererProcess.RenderHandlers;
+using SharedMemory;
+using Newtonsoft.Json;
 
 namespace RendererProcess {
 	class Program {
@@ -18,21 +20,16 @@ namespace RendererProcess {
 		protected static EventWaitHandle waitHandle;
 		protected static Overlay? overlay;
 
-		protected static IpcBuffer<DownstreamIpcRequest, UpstreamIpcRequest> ipcBuffer;
+		// protected static IpcBuffer<DownstreamIpcRequest, UpstreamIpcRequest> ipcBuffer;
+		protected static RpcBuffer rpcBuffer = null!;
 
 		protected static void Main(string[] rawArgs) {
 			Console.WriteLine("Render process running.");
-			// var args = RenderProcessArguments.Deserialise(rawArgs[0]);
-
-			// Need to pull these out before Run() so the resolver can access.
-			// cefAssemblyDir = args.CefAssemblyDir;
-			// dalamudAssemblyDir = args.DalamudAssemblyDir;
-
-			// AppDomain.CurrentDomain.AssemblyResolve += CustomAssemblyResolver;
+			AppDomain.CurrentDomain.AssemblyResolve += CustomAssemblyResolver;
 
 			Run(
 				int.Parse(rawArgs[0]),
-				int.Parse(rawArgs[1]),
+				long.Parse(rawArgs[1]),
 				rawArgs[2],
 				rawArgs[3]
 			);
@@ -42,7 +39,7 @@ namespace RendererProcess {
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		protected static void Run(
 			int parentPid,
-			int adapterLuid,
+			long adapterLuid,
 			string ipcChannelName,
 			string keepAliveHandleName
 		) {
@@ -62,28 +59,47 @@ namespace RendererProcess {
 			bool dxRunning = DxHandler.Initialize(adapterLuid);
 			CefHandler.Initialize(cacheDir);
 
-			ipcBuffer = new IpcBuffer<DownstreamIpcRequest, UpstreamIpcRequest>(ipcChannelName, HandleIpcRequest);
+			// ipcBuffer = new IpcBuffer<DownstreamIpcRequest, UpstreamIpcRequest>(ipcChannelName, HandleIpcRequest);
+			rpcBuffer = new RpcBuffer(ipcChannelName + "z", (msgId, data) => {
+				var str = System.Text.Encoding.UTF8.GetString(data);
+				var decoded = DownstreamIpcRequest.FromJson(str);
+				if (decoded == null) {
+					return Array.Empty<byte>();
+				}
 
+				Console.WriteLine("SUB received" + str);
+				return HandleIpcRequest(decoded);
+			});
+
+			Console.WriteLine($"Render starting PPID: {parentPid}, LUID: {adapterLuid}, IPCC: {ipcChannelName} KAHN: {keepAliveHandleName}");
 			Console.WriteLine("Notifying on ready state.");
 
 			// Send info that renderer is ready
-			ipcBuffer.RemoteRequest<object>(new UpstreamIpcRequest {
-				type = "ready"
-			});
-
+			// ipcBuffer.RemoteRequest<object>(new ReadyNotificationRequest());
+			var response = rpcBuffer.RemoteRequest(
+				System.Text.Encoding.UTF8.GetBytes(
+					JsonConvert.SerializeObject(new ReadyNotificationRequest())
+				)
+			);
+			Console.WriteLine("RPC REQ SENT." ); // + System.Text.Encoding.UTF8.GetString(response.Data)
+			
 			Console.WriteLine("Waiting...");
 
 			waitHandle.WaitOne();
+			Console.WriteLine("Waiting2");
 			waitHandle.Dispose();
+			Console.WriteLine("Waiting3");
 
 			Console.WriteLine("Render process shutting down.");
 
-			ipcBuffer.Dispose();
+			// ipcBuffer.Dispose();
+			rpcBuffer.Dispose();
 
 			DxHandler.Shutdown();
 			CefHandler.Shutdown();
 
-			parentWatchThread.Abort();
+			// TODO: what?
+			// parentWatchThread.Abort();
 		}
 
 		protected static void WatchParentStatus(object? pid) {
@@ -105,10 +121,13 @@ namespace RendererProcess {
 			}
 		}
 
-		protected static object? HandleIpcRequest(DownstreamIpcRequest request) {
-			switch (request.type) {
-				case "newInlayRequest":
-					return OnNewInlayRequest();
+		protected static byte[] HandleIpcRequest(DownstreamIpcRequest request) {
+			Console.WriteLine($"Got request {request.GetType()}.");
+			switch (request.reqType) {
+				case "new":
+					var resp = OnNewInlayRequest();
+					var serialized = JsonConvert.SerializeObject(resp);
+					return System.Text.Encoding.UTF8.GetBytes(serialized);
 
 				// don't need this
 				// case "resizeInlayRequest": 
@@ -131,7 +150,7 @@ namespace RendererProcess {
 
 				case "debug":
 					overlay?.Debug();
-					return null;
+					return Array.Empty<byte>();
 
 
 				// case RemoveInlayRequest removeInlayRequest: {
@@ -141,70 +160,87 @@ namespace RendererProcess {
 				// 	return null;
 				// }
 
-				case "mouseMove":
+				case "mouseEvent": // MouseEventRequest mouseEventRequest
 					overlay?.HandleMouseEvent((MouseEventRequest)request);
-					return null;
+					return Array.Empty<byte>();
 
-
-				case "keyEvent":
+				case "keyEvent": // KeyEventRequest keyEventRequest
 					overlay?.HandleKeyEvent((KeyEventRequest)request);
-					return null;
-
+					return Array.Empty<byte>();
 
 				default:
-					throw new Exception($"Unknown IPC request type {request?.type} received.");
+					throw new Exception($"Unknown IPC request type {request.reqType} received.");
 			}
 		}
 
-		protected static object OnNewInlayRequest() {
+		protected static TextureHandleResponse OnNewInlayRequest() {
 			// TODO: Fix this?
 			Size size = new(1920, 1080);
 			TextureRenderHandler renderHandler = new(size);
 
+			string url = "http://localhost:4200?OVERLAY_WS=ws://127.0.0.1:10501/ws";
+			// string url = "https://www.google.com/";
 			overlay = new(
-				"http://localhost:4200?OVERLAY_WS=ws://127.0.0.1:10501/ws",
+				url,
 				renderHandler
 			);
+			Console.WriteLine("SET URL TO " + url);
 			overlay.Initialize();
+			Console.WriteLine("Overlay initialized ");
 			//inlays.Add(request.Guid, inlay);
-
+			
 			renderHandler.CursorChanged += (sender, cursor) => {
-				ipcBuffer.RemoteRequest<object>(new UpstreamIpcRequest {
-					type = "setCursor",
-					cursor = cursor
-				});
+				var req = new SetCursorRequest { cursor = cursor };
+				var des = JsonConvert.SerializeObject(req);
+				var rr = System.Text.Encoding.UTF8.GetBytes(des);
+				rpcBuffer.RemoteRequest(rr);
+				// ipcBuffer.RemoteRequest<object>(new SetCursorRequest {
+				// 	cursor = cursor
+				// });
 			};
 
 			return BuildRenderHandlerResponse(renderHandler);
 		}
 
-		protected static object BuildRenderHandlerResponse(TextureRenderHandler renderHandler) {
+		protected static TextureHandleResponse BuildRenderHandlerResponse(TextureRenderHandler renderHandler) {
 			return new TextureHandleResponse {
 				TextureHandle = renderHandler.SharedTextureHandle
 			};
 		}
 
-		// protected static Assembly CustomAssemblyResolver(object sender, ResolveEventArgs args) {
-		// 	string? assemblyName = args.Name.Split(new[] { ',' }, 2)[0] + ".dll";
-		//
-		// 	string assemblyPath = null;
-		// 	if (assemblyName.StartsWith("CefSharp")) {
-		// 		assemblyPath = Path.Combine(cefAssemblyDir, assemblyName);
-		// 	}
-		// 	else if (assemblyName.StartsWith("SharpDX")) {
-		// 		assemblyPath = Path.Combine(dalamudAssemblyDir, assemblyName);
-		// 	}
-		//
-		// 	if (assemblyPath == null) {
-		// 		return null;
-		// 	}
-		//
-		// 	if (!File.Exists(assemblyPath)) {
-		// 		Console.Error.WriteLine($"Could not find assembly `{assemblyName}` at search path `{assemblyPath}`");
-		// 		return null;
-		// 	}
-		//
-		// 	return Assembly.LoadFile(assemblyPath);
-		// }
+		protected static Assembly CustomAssemblyResolver(object sender, ResolveEventArgs args) {
+			string? assemblyName = args.Name.Split(new[] { ',' }, 2)[0] + ".dll";
+
+			string assemblyPath = null;
+			// if (assemblyName.StartsWith("CefSharp")) {
+			// 	assemblyPath = Path.Combine(cefAssemblyDir, assemblyName);
+			// }
+			// else 
+			if (
+				assemblyName.StartsWith("SharpDX") ||
+				assemblyName.StartsWith("Newtonsoft")
+			) {
+				string dalamudAssemblyDir = Path.Combine(
+					Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+					"XIVLauncher",
+					"addon",
+					"Hooks",
+					"dev"
+				);
+
+				assemblyPath = Path.Combine(dalamudAssemblyDir, assemblyName);
+			}
+
+			if (assemblyPath == null) {
+				return null;
+			}
+
+			if (!File.Exists(assemblyPath)) {
+				Console.Error.WriteLine($"Could not find assembly `{assemblyName}` at search path `{assemblyPath}`");
+				return null;
+			}
+
+			return Assembly.LoadFile(assemblyPath);
+		}
 	}
 }

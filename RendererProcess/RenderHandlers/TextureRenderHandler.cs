@@ -147,7 +147,7 @@ namespace RendererProcess.RenderHandlers {
 			// Build the destination region for the dirty rect that we'll draw to
 			D3D11.Texture2DDescription texDesc = targetTexture.Description;
 			IntPtr sourceRegionPtr = buffer + (dirtyRect.X * bytesPerPixel) + (dirtyRect.Y * rowPitch);
-			D3D11.ResourceRegion destinationRegion = new D3D11.ResourceRegion() {
+			D3D11.ResourceRegion destinationRegion = new() {
 				Top = Math.Min(dirtyRect.Y, texDesc.Height),
 				Bottom = Math.Min(dirtyRect.Y + dirtyRect.Height, texDesc.Height),
 				Left = Math.Min(dirtyRect.X, texDesc.Width),

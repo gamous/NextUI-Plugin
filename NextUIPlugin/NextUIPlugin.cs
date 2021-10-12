@@ -10,6 +10,7 @@ using Dalamud.Plugin;
 using Newtonsoft.Json;
 using NextUIPlugin.Configuration;
 using NextUIPlugin.Data;
+using NextUIPlugin.Overlay;
 using NextUIPlugin.Service;
 using NextUIPlugin.Socket;
 
@@ -37,6 +38,7 @@ namespace NextUIPlugin {
 		public NextUISocket socketServer;
 
 		protected DataHandler dataHandler;
+		protected OverlayManager? overlayManager;
 
 		public NextUIPlugin(
 			CommandManager commandManager,
@@ -72,6 +74,9 @@ namespace NextUIPlugin {
 			dataHandler.onTargetChanged += OnTargetChanged;
 			dataHandler.CastStart += CastStart;
 			// dataHandler.onPartyChanged += PartyChanged;
+
+			overlayManager = new OverlayManager();
+			overlayManager.Initialize(pluginInterface);
 
 			commandManager.AddHandler("/nu", new CommandInfo(OnCommandDebugCombo) {
 				HelpMessage = "Open NextUI Plugin configuration",
@@ -138,6 +143,8 @@ namespace NextUIPlugin {
 		}
 
 		public void UiBuilder_OnBuildUi() {
+			overlayManager?.Render();
+
 			if (!isNextUISetupOpen) {
 				return;
 			}
@@ -174,6 +181,7 @@ namespace NextUIPlugin {
 			pluginInterface.Dispose();
 			dataHandler.Dispose();
 			socketServer.Dispose();
+			overlayManager?.Dispose();
 		}
 
 		protected void OnCommandDebugCombo(string command, string arguments) {

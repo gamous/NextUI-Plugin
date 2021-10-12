@@ -17,6 +17,7 @@ namespace RendererProcess {
 		// Handle conversion between wire's byte[] and nicer clr types
 		protected static Func<ulong, byte[], byte[]> CallbackFactory(Func<TIncoming, object> callback) {
 			return (messageId, rawRequest) => {
+				Console.WriteLine("Received " + messageId);
 				TIncoming? request = Decode<TIncoming>(rawRequest);
 				object? response = callback(request);
 

@@ -9,5 +9,9 @@ namespace RendererProcess.Ipc {
 		public int userKeyCode;
 		public int nativeKeyCode;
 		public InputModifier modifier;
+		
+		public KeyEventRequest() {
+			reqType = "keyEvent";
+		}
 	}
 }

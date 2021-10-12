@@ -17,5 +17,10 @@ namespace RendererProcess.Ipc {
 		public float wheelX;
 		public float wheelY;
 		public InputModifier modifier;
+		
+		
+		public MouseEventRequest() {
+			reqType = "mouseEvent";
+		}
 	}
 }
