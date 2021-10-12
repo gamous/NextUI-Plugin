@@ -12,51 +12,34 @@ using SharedMemory;
 
 namespace NextUIPlugin.Overlay {
 	public class Overlay : IDisposable {
-		private bool resizing = false;
-		private Vector2 size;
+		protected bool resizing = false;
+		protected Vector2 size;
 
-		private RenderProcess renderProcess;
-		private SharedTextureHandler textureHandler;
-		private Exception textureRenderException;
+		protected readonly RenderProcess? renderProcess;
+		protected SharedTextureHandler? textureHandler;
+		protected Exception? textureRenderException;
 
-		private bool mouseInWindow;
-		private bool windowFocused;
-		private InputModifier modifier;
-		private ImGuiMouseCursor cursor;
-		private bool captureCursor;
+		protected bool mouseInWindow;
+		protected bool windowFocused;
+		protected InputModifier modifier;
+		protected ImGuiMouseCursor cursor;
+		protected bool captureCursor;
 
-		public Overlay(RenderProcess renderProcess) {
+		public Overlay(RenderProcess? renderProcess) {
 			this.renderProcess = renderProcess;
 		}
 
 		public void Dispose() {
 			textureHandler?.Dispose();
-			renderProcess.Send(new RemoveInlayRequest());
+			renderProcess?.Send(new RemoveInlayRequest());
 		}
 
 		public void Navigate(string newUrl) {
-			renderProcess.Send(new NavigateInlayRequest() { Url = newUrl });
+			renderProcess?.Send(new NavigateInlayRequest() { Url = newUrl });
 		}
 
 		public void Debug() {
-			renderProcess.Send(new DebugInlayRequest());
-		}
-
-		public void InvalidateTransport() {
-			// Get old refs so we can clean up later
-			SharedTextureHandler? oldTextureHandler = textureHandler;
-			// var oldRenderGuid = RenderGuid;
-
-			// Invalidate the handler, and reset the size to trigger a rebuild
-			// Also need to generate a new renderer guid so we don't have a collision during the hand over
-			// TODO: Might be able to tweak the logic in resize alongside this to shore up (re)builds
-			textureHandler = null;
-			size = Vector2.Zero;
-			// RenderGuid = Guid.NewGuid();
-
-			// Clean up
-			oldTextureHandler.Dispose();
-			// renderProcess.Send(new RemoveInlayRequest() { Guid = oldRenderGuid });
+			renderProcess?.Send(new DebugInlayRequest());
 		}
 
 		public void SetCursor(Cursor cursor) {
@@ -163,7 +146,7 @@ namespace NextUIPlugin.Overlay {
 			ImGui.End();
 		}
 
-		private ImGuiWindowFlags GetWindowFlags() {
+		protected ImGuiWindowFlags GetWindowFlags() {
 			ImGuiWindowFlags flags =
 				ImGuiWindowFlags.None
 				| ImGuiWindowFlags.NoTitleBar
@@ -323,7 +306,7 @@ namespace NextUIPlugin.Overlay {
 
 		#region serde
 
-		private MouseButton EncodeMouseButtons(RangeAccessor<bool> buttons) {
+		protected MouseButton EncodeMouseButtons(RangeAccessor<bool> buttons) {
 			MouseButton result = MouseButton.None;
 			if (buttons[0]) {
 				result |= MouseButton.Primary;
@@ -348,7 +331,7 @@ namespace NextUIPlugin.Overlay {
 			return result;
 		}
 
-		private ImGuiMouseCursor DecodeCursor(Cursor cursor) {
+		public ImGuiMouseCursor DecodeCursor(Cursor cursor) {
 			// ngl kinda disappointed at the lack of options here
 			switch (cursor) {
 				case Cursor.Default: return ImGuiMouseCursor.Arrow;
