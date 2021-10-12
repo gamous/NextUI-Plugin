@@ -74,7 +74,8 @@ namespace NextUIPlugin.Overlay {
 
 			// Bail if we're not focused or we're typethrough
 			// TODO: Revisit the focus check for UI stuff, might not hold
-			if (!windowFocused) { //  || inlayConfig.TypeThrough
+			if (!windowFocused) {
+				//  || inlayConfig.TypeThrough
 				return (false, 0);
 			}
 
@@ -140,10 +141,8 @@ namespace NextUIPlugin.Overlay {
 			// 	mouseInWindow = false;
 			// 	return;
 			// }
-
-			
 			ImGui.SetNextWindowPos(new Vector2(0, 0), ImGuiCond.Always);
-			ImGui.SetNextWindowSize(ImGui.GetMainViewport().Size, ImGuiCond.Always);
+			ImGui.SetNextWindowSize(size, ImGuiCond.Always);
 			ImGui.Begin("NUOverlay", GetWindowFlags());
 
 			HandleWindowSize();
@@ -186,9 +185,9 @@ namespace NextUIPlugin.Overlay {
 					| ImGuiWindowFlags.NoBackground; //TODO: Change it
 			}
 
-			// if (inlayConfig.ClickThrough || (!captureCursor && locked)) {
-			// 	flags |= ImGuiWindowFlags.NoMouseInputs | ImGuiWindowFlags.NoNav;
-			// }
+			if ((!captureCursor && locked)) { // inlayConfig.ClickThrough || 
+				flags |= ImGuiWindowFlags.NoMouseInputs | ImGuiWindowFlags.NoNav;
+			}
 
 			return flags;
 		}
@@ -272,28 +271,17 @@ namespace NextUIPlugin.Overlay {
 			});
 		}
 
-		private async void HandleWindowSize() {
-			Vector2 currentSize = ImGui.GetWindowContentRegionMax() - ImGui.GetWindowContentRegionMin();
-			if (currentSize == size || resizing) {
+		protected async void HandleWindowSize() {
+			// Vector2 currentSize = ImGui.GetWindowContentRegionMax() - ImGui.GetWindowContentRegionMin();
+			if (size != Vector2.Zero || resizing) {
 				return;
 			}
 
-			// If there isn't a size yet, we haven't rendered at all - boot up an inlay in the render process
-			// TODO: Edge case - if a user _somehow_ makes the size zero, this will freak out and generate a new render inlay
-			// TODO: Maybe consolidate the request types? dunno.
-			var request = size == Vector2.Zero
-				? new NewInlayRequest() {
-					// Guid = RenderGuid,
-					// FrameTransportMode = config.FrameTransportMode,
-					Url = "",
-					Width = (int)currentSize.X,
-					Height = (int)currentSize.Y,
-				}
-				: new ResizeInlayRequest() {
-					// Guid = RenderGuid,
-					Width = (int)currentSize.X,
-					Height = (int)currentSize.Y,
-				} as DownstreamIpcRequest;
+			var request = new NewInlayRequest() {
+				Url = "",
+				Width = (int)size.X,
+				Height = (int)size.Y,
+			};
 
 			resizing = true;
 
@@ -304,7 +292,10 @@ namespace NextUIPlugin.Overlay {
 				return;
 			}
 
-			size = currentSize;
+			if (size == Vector2.Zero) {
+				Vector2 vpSize = ImGui.GetMainViewport().Size;
+				size = new Vector2(vpSize.X, vpSize.Y);
+			}
 			resizing = false;
 
 			PluginLog.Log("Setting textureHandler ");
