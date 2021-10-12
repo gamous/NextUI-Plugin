@@ -3,7 +3,6 @@ using ImGuiNET;
 using System;
 using System.Numerics;
 using Newtonsoft.Json;
-using RendererProcess;
 using RendererProcess.Data;
 using RendererProcess.Ipc;
 using RendererProcess.RenderHandlers;
@@ -12,7 +11,7 @@ using SharedMemory;
 
 namespace NextUIPlugin.Overlay {
 	public class Overlay : IDisposable {
-		protected bool resizing = false;
+		protected bool resizing;
 		protected Vector2 size;
 
 		protected readonly RenderProcess? renderProcess;
@@ -42,9 +41,9 @@ namespace NextUIPlugin.Overlay {
 			renderProcess?.Send(new DebugInlayRequest());
 		}
 
-		public void SetCursor(Cursor cursor) {
-			captureCursor = cursor != Cursor.BrowserHostNoCapture;
-			this.cursor = DecodeCursor(cursor);
+		public void SetCursor(Cursor newCursor) {
+			captureCursor = newCursor != Cursor.BrowserHostNoCapture;
+			cursor = DecodeCursor(newCursor);
 		}
 
 		public (bool, long) WndProcMessage(WindowsMessage msg, ulong wParam, long lParam) {
@@ -69,7 +68,7 @@ namespace NextUIPlugin.Overlay {
 				WindowsMessage.WM_SYSKEYUP => KeyEventType.KeyUp,
 				WindowsMessage.WM_CHAR => KeyEventType.Character,
 				WindowsMessage.WM_SYSCHAR => KeyEventType.Character,
-				_ => (KeyEventType?)null,
+				_ => null,
 			};
 
 			// If the event isn't something we're tracking, bail early with no capture
@@ -78,8 +77,7 @@ namespace NextUIPlugin.Overlay {
 			}
 
 			bool isSystemKey =
-				false
-				|| msg == WindowsMessage.WM_SYSKEYDOWN
+				msg == WindowsMessage.WM_SYSKEYDOWN
 				|| msg == WindowsMessage.WM_SYSKEYUP
 				|| msg == WindowsMessage.WM_SYSCHAR;
 
@@ -106,7 +104,7 @@ namespace NextUIPlugin.Overlay {
 				modifier &= ~modifierAdjust;
 			}
 
-			renderProcess.Send(new KeyEventRequest() {
+			renderProcess?.Send(new KeyEventRequest() {
 				// Guid = RenderGuid,
 				keyEventType = eventType.Value,
 				systemKey = isSystemKey,
@@ -168,7 +166,8 @@ namespace NextUIPlugin.Overlay {
 					| ImGuiWindowFlags.NoBackground; //TODO: Change it
 			}
 
-			if ((!captureCursor && locked)) { // inlayConfig.ClickThrough || 
+			if ((!captureCursor && locked)) {
+				// inlayConfig.ClickThrough || 
 				flags |= ImGuiWindowFlags.NoMouseInputs | ImGuiWindowFlags.NoNav;
 			}
 
@@ -215,29 +214,35 @@ namespace NextUIPlugin.Overlay {
 
 			ImGui.SetMouseCursor(cursor);
 
-			MouseButton down = EncodeMouseButtons(io.MouseClicked);
-			MouseButton double_ = EncodeMouseButtons(io.MouseDoubleClicked);
-			MouseButton up = EncodeMouseButtons(io.MouseReleased);
+			MouseButton mouseDown = EncodeMouseButtons(io.MouseClicked);
+			MouseButton mouseDouble = EncodeMouseButtons(io.MouseDoubleClicked);
+			MouseButton mouseUp = EncodeMouseButtons(io.MouseReleased);
 			float wheelX = io.MouseWheelH;
 			float wheelY = io.MouseWheel;
 
 			// If the event boils down to no change, bail before sending
-			if (io.MouseDelta == Vector2.Zero && down == MouseButton.None && double_ == MouseButton.None &&
-			    up == MouseButton.None && wheelX == 0 && wheelY == 0) {
+			if (
+				io.MouseDelta == Vector2.Zero &&
+				mouseDown == MouseButton.None &&
+				mouseDouble == MouseButton.None &&
+				mouseUp == MouseButton.None &&
+				wheelX == 0 &&
+				wheelY == 0
+			) {
 				return;
 			}
 
-			InputModifier modifier = InputModifier.None;
+			InputModifier inputModifier = InputModifier.None;
 			if (io.KeyShift) {
-				modifier |= InputModifier.Shift;
+				inputModifier |= InputModifier.Shift;
 			}
 
 			if (io.KeyCtrl) {
-				modifier |= InputModifier.Control;
+				inputModifier |= InputModifier.Control;
 			}
 
 			if (io.KeyAlt) {
-				modifier |= InputModifier.Alt;
+				inputModifier |= InputModifier.Alt;
 			}
 
 			// TODO: Either this or the entire handler function should be asynchronous so we're not blocking the entire draw thread
@@ -245,18 +250,18 @@ namespace NextUIPlugin.Overlay {
 				// Guid = RenderGuid,
 				x = mousePos.X,
 				y = mousePos.Y,
-				mouseDown = down,
-				mouseDouble = double_,
-				mouseUp = up,
+				mouseDown = mouseDown,
+				mouseDouble = mouseDouble,
+				mouseUp = mouseUp,
 				wheelX = wheelX,
 				wheelY = wheelY,
-				modifier = modifier,
+				modifier = inputModifier,
 			});
 		}
 
 		protected async void HandleWindowSize() {
 			// Vector2 currentSize = ImGui.GetWindowContentRegionMax() - ImGui.GetWindowContentRegionMin();
-			if (size != Vector2.Zero || resizing) {
+			if (renderProcess == null || size != Vector2.Zero || resizing) {
 				return;
 			}
 
@@ -279,13 +284,13 @@ namespace NextUIPlugin.Overlay {
 				Vector2 vpSize = ImGui.GetMainViewport().Size;
 				size = new Vector2(vpSize.X, vpSize.Y);
 			}
+
 			resizing = false;
 
 			PluginLog.Log("Setting textureHandler ");
-			var oldTextureHandler = textureHandler;
+			SharedTextureHandler? oldTextureHandler = textureHandler;
 			try {
 				string data = System.Text.Encoding.UTF8.GetString(response.Data);
-				PluginLog.Log("th " + data);
 				TextureHandleResponse? obj = JsonConvert.DeserializeObject<TextureHandleResponse>(data);
 				if (obj == null) {
 					PluginLog.Log("Setting textureHandler FAILED " + data);
@@ -299,9 +304,7 @@ namespace NextUIPlugin.Overlay {
 				textureRenderException = e;
 			}
 
-			if (oldTextureHandler != null) {
-				oldTextureHandler.Dispose();
-			}
+			oldTextureHandler?.Dispose();
 		}
 
 		#region serde
@@ -331,9 +334,9 @@ namespace NextUIPlugin.Overlay {
 			return result;
 		}
 
-		public ImGuiMouseCursor DecodeCursor(Cursor cursor) {
+		public ImGuiMouseCursor DecodeCursor(Cursor newCursor) {
 			// ngl kinda disappointed at the lack of options here
-			switch (cursor) {
+			switch (newCursor) {
 				case Cursor.Default: return ImGuiMouseCursor.Arrow;
 				case Cursor.None: return ImGuiMouseCursor.None;
 				case Cursor.Pointer: return ImGuiMouseCursor.Hand;
