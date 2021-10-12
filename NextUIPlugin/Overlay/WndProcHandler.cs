@@ -20,16 +20,16 @@ namespace NextUIPlugin.Overlay {
 
 			wndProcDelegate = WndProcDetour;
 			detourPtr = Marshal.GetFunctionPointerForDelegate(wndProcDelegate);
-			oldWndProcPtr = NativeMethods.SetWindowLongPtr(hWnd, WindowLongType.GWL_WNDPROC, detourPtr);
+			oldWndProcPtr = NativeMethods.SetWindowLongPtr(hWnd, WindowLongType.GwlWndProc, detourPtr);
 		}
 
 		public static void Shutdown() {
 			// If the current pointer doesn't match our detour, something swapped the pointer out from under us -
 			// likely the InterfaceManager doing its own cleanup. Don't reset in that case, we'll trust the cleanup
 			// is accurate.
-			var curWndProcPtr = NativeMethods.GetWindowLongPtr(hWnd, WindowLongType.GWL_WNDPROC);
+			var curWndProcPtr = NativeMethods.GetWindowLongPtr(hWnd, WindowLongType.GwlWndProc);
 			if (oldWndProcPtr != IntPtr.Zero && curWndProcPtr == detourPtr) {
-				NativeMethods.SetWindowLongPtr(hWnd, WindowLongType.GWL_WNDPROC, oldWndProcPtr);
+				NativeMethods.SetWindowLongPtr(hWnd, WindowLongType.GwlWndProc, oldWndProcPtr);
 				oldWndProcPtr = IntPtr.Zero;
 			}
 		}

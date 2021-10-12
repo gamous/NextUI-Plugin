@@ -7,7 +7,7 @@ using RendererProcess.Ipc;
 
 namespace NextUIPlugin.Overlay {
 	public class OverlayManager : IDisposable {
-		protected RenderProcess renderProcess;
+		protected RenderProcess? renderProcess;
 		protected Overlay? overlay;
 
 		public void Initialize(DalamudPluginInterface pluginInterface) {
@@ -22,12 +22,13 @@ namespace NextUIPlugin.Overlay {
 			// race conditionson inlays recieving a null reference.
 			// var pid = Process.GetCurrentProcess().Id;
 			int pid = Environment.ProcessId;
-			string dir = pluginInterface.AssemblyLocation.DirectoryName;
-			PluginLog.Log("TOCOP " + dir);
-			renderProcess = new RenderProcess(
-				pid,
-				dir
-			);
+			string? dir = pluginInterface.AssemblyLocation.DirectoryName;
+			if (dir == null) {
+				PluginLog.Log("AssemblyLocation not available!");
+				return;
+			}
+
+			renderProcess = new RenderProcess(pid, dir);
 			renderProcess.Receive += HandleIpcRequest;
 			renderProcess.Start();
 		}

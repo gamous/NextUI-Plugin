@@ -3,27 +3,27 @@ using System.Runtime.InteropServices;
 
 namespace NextUIPlugin.Overlay {
 	// Enums are not comprehensive for the sake of omitting stuff I won't use.
-	public enum WindowLongType : int {
-		GWL_WNDPROC = -4,
+	public enum WindowLongType {
+		GwlWndProc = -4,
 	}
 
 	public enum WindowsMessage {
-		WM_KEYDOWN = 0x0100,
-		WM_KEYUP = 0x0101,
-		WM_CHAR = 0x0102,
-		WM_SYSKEYDOWN = 0x0104,
-		WM_SYSKEYUP = 0x0105,
-		WM_SYSCHAR = 0x0106,
+		WmKeyDown = 0x0100,
+		WmKeyUp = 0x0101,
+		WmChar = 0x0102,
+		WmSysKeyDown = 0x0104,
+		WmSysKeyUp = 0x0105,
+		WmSysChar = 0x0106,
 
-		WM_LBUTTONDOWN = 0x0201,
+		WmLButtonDown = 0x0201,
 	}
 
-	enum VirtualKey : int {
+	enum VirtualKey {
 		Shift = 0x10,
 		Control = 0x11,
 	}
 
-	class NativeMethods {
+	internal static class NativeMethods {
 		public static bool IsKeyActive(VirtualKey key) {
 			return (GetKeyState((int)key) & 1) == 1;
 		}

@@ -50,7 +50,7 @@ namespace NextUIPlugin.Overlay {
 			// Check if there was a click, and use it to set the window focused state
 			// We're avoiding ImGui for this, as we want to check for clicks entirely outside
 			// ImGui's pervue to defocus inlays
-			if (msg == WindowsMessage.WM_LBUTTONDOWN) {
+			if (msg == WindowsMessage.WmLButtonDown) {
 				windowFocused = mouseInWindow && captureCursor;
 			}
 
@@ -62,12 +62,12 @@ namespace NextUIPlugin.Overlay {
 			}
 
 			KeyEventType? eventType = msg switch {
-				WindowsMessage.WM_KEYDOWN => KeyEventType.KeyDown,
-				WindowsMessage.WM_SYSKEYDOWN => KeyEventType.KeyDown,
-				WindowsMessage.WM_KEYUP => KeyEventType.KeyUp,
-				WindowsMessage.WM_SYSKEYUP => KeyEventType.KeyUp,
-				WindowsMessage.WM_CHAR => KeyEventType.Character,
-				WindowsMessage.WM_SYSCHAR => KeyEventType.Character,
+				WindowsMessage.WmKeyDown => KeyEventType.KeyDown,
+				WindowsMessage.WmSysKeyDown => KeyEventType.KeyDown,
+				WindowsMessage.WmKeyUp => KeyEventType.KeyUp,
+				WindowsMessage.WmSysKeyUp => KeyEventType.KeyUp,
+				WindowsMessage.WmChar => KeyEventType.Character,
+				WindowsMessage.WmSysChar => KeyEventType.Character,
 				_ => null,
 			};
 
@@ -77,9 +77,9 @@ namespace NextUIPlugin.Overlay {
 			}
 
 			bool isSystemKey =
-				msg == WindowsMessage.WM_SYSKEYDOWN
-				|| msg == WindowsMessage.WM_SYSKEYUP
-				|| msg == WindowsMessage.WM_SYSCHAR;
+				msg == WindowsMessage.WmSysKeyDown
+				|| msg == WindowsMessage.WmSysKeyUp
+				|| msg == WindowsMessage.WmSysChar;
 
 			// TODO: Technically this is only firing once, because we're checking focused before this point,
 			// but having this logic essentially duped per-inlay is a bit eh. Dedupe at higher point?
