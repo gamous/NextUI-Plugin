@@ -19,7 +19,7 @@ namespace NextUIPlugin.Overlay {
 			WndProcHandler.WndProcMessage += OnWndProc;
 
 			// Boot the render process. This has to be done before initialising settings to prevent a
-			// race conditionson inlays recieving a null reference.
+			// race conditions on inlays receiving a null reference.
 			// var pid = Process.GetCurrentProcess().Id;
 			int pid = Environment.ProcessId;
 			string? dir = pluginInterface.AssemblyLocation.DirectoryName;

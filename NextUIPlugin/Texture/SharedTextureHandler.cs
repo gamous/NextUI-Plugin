@@ -8,21 +8,29 @@ using RendererProcess.RenderHandlers;
 
 namespace RendererProcess.Texture {
 	public class SharedTextureHandler {
-		protected TextureWrap textureWrap;
+		protected readonly TextureWrap? textureWrap;
 
 		public SharedTextureHandler(TextureHandleResponse response) {
 			D3D11.Texture2D? texture = DxHandler.Device?.OpenSharedResource<D3D11.Texture2D>(response.TextureHandle);
-			var view = new D3D11.ShaderResourceView(DxHandler.Device, texture, new D3D11.ShaderResourceViewDescription() {
-				Format = texture.Description.Format,
-				Dimension = D3D.ShaderResourceViewDimension.Texture2D,
-				Texture2D = { MipLevels = texture.Description.MipLevels },
-			});
+			if (texture == null) {
+				return;
+			}
+
+			D3D11.ShaderResourceView? view = new(
+				DxHandler.Device,
+				texture,
+				new D3D11.ShaderResourceViewDescription {
+					Format = texture.Description.Format,
+					Dimension = D3D.ShaderResourceViewDimension.Texture2D,
+					Texture2D = { MipLevels = texture.Description.MipLevels },
+				}
+			);
 
 			textureWrap = new D3DTextureWrap(view, texture.Description.Width, texture.Description.Height);
 		}
 
 		public void Dispose() {
-			textureWrap.Dispose();
+			textureWrap?.Dispose();
 		}
 
 		public void Render() {

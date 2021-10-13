@@ -16,8 +16,8 @@ namespace RendererProcess {
 		// protected static string cefAssemblyDir;
 		// protected static string dalamudAssemblyDir;
 
-		protected static Thread parentWatchThread;
-		protected static EventWaitHandle waitHandle;
+		protected static Thread? parentWatchThread;
+		protected static EventWaitHandle? waitHandle;
 		protected static Overlay? overlay;
 
 		// protected static IpcBuffer<DownstreamIpcRequest, UpstreamIpcRequest> ipcBuffer;
@@ -60,14 +60,13 @@ namespace RendererProcess {
 			CefHandler.Initialize(cacheDir);
 
 			// ipcBuffer = new IpcBuffer<DownstreamIpcRequest, UpstreamIpcRequest>(ipcChannelName, HandleIpcRequest);
-			rpcBuffer = new RpcBuffer(ipcChannelName + "z", (msgId, data) => {
-				var str = System.Text.Encoding.UTF8.GetString(data);
-				var decoded = DownstreamIpcRequest.FromJson(str);
+			rpcBuffer = new RpcBuffer(ipcChannelName + "z", (_, data) => {
+				string str = System.Text.Encoding.UTF8.GetString(data);
+				DownstreamIpcRequest decoded = DownstreamIpcRequest.FromJson(str);
 				if (decoded == null) {
 					return Array.Empty<byte>();
 				}
 
-				Console.WriteLine("SUB received" + str);
 				return HandleIpcRequest(decoded);
 			});
 
@@ -76,7 +75,7 @@ namespace RendererProcess {
 
 			// Send info that renderer is ready
 			// ipcBuffer.RemoteRequest<object>(new ReadyNotificationRequest());
-			var response = rpcBuffer.RemoteRequest(
+			rpcBuffer.RemoteRequest(
 				System.Text.Encoding.UTF8.GetBytes(
 					JsonConvert.SerializeObject(new ReadyNotificationRequest())
 				)
@@ -86,19 +85,19 @@ namespace RendererProcess {
 			Console.WriteLine("Waiting...");
 
 			waitHandle.WaitOne();
-			Console.WriteLine("Waiting2");
 			waitHandle.Dispose();
-			Console.WriteLine("Waiting3");
 
 			Console.WriteLine("Render process shutting down.");
 
 			// ipcBuffer.Dispose();
 			rpcBuffer.Dispose();
+			overlay?.Dispose();
 
 			DxHandler.Shutdown();
 			CefHandler.Shutdown();
 
 			// TODO: what?
+			// parentWatchThread.Join();
 			// parentWatchThread.Abort();
 		}
 
@@ -110,7 +109,7 @@ namespace RendererProcess {
 			Console.WriteLine($"Watching parent PID {pid}");
 			Process process = Process.GetProcessById((int)pid);
 			process.WaitForExit();
-			waitHandle.Set();
+			waitHandle?.Set();
 
 			Process self = Process.GetCurrentProcess();
 			self.WaitForExit(1000);
@@ -129,17 +128,6 @@ namespace RendererProcess {
 					var serialized = JsonConvert.SerializeObject(resp);
 					return System.Text.Encoding.UTF8.GetBytes(serialized);
 
-				// don't need this
-				// case "resizeInlayRequest": 
-				// 	var inlay = inlays[resizeInlayRequest.Guid];
-				// 	if (inlay == null) {
-				// 		return null;
-				// 	}
-				//
-				// 	inlay.Resize(new Size(resizeInlayRequest.Width, resizeInlayRequest.Height));
-				//
-				// 	return BuildRenderHandlerResponse(inlay.RenderHandler);
-				//
 
 				// dont need this
 				// case NavigateInlayRequest navigateInlayRequest: {
@@ -159,6 +147,8 @@ namespace RendererProcess {
 				// 	inlay.Dispose();
 				// 	return null;
 				// }
+				case "remove":
+					return Array.Empty<byte>();
 
 				case "mouseEvent": // MouseEventRequest mouseEventRequest
 					overlay?.HandleMouseEvent((MouseEventRequest)request);
@@ -180,18 +170,15 @@ namespace RendererProcess {
 
 			string url = "http://localhost:4200?OVERLAY_WS=ws://127.0.0.1:10501/ws";
 			// string url = "https://www.google.com/";
-			overlay = new(
-				url,
-				renderHandler
-			);
+			overlay = new Overlay(url, renderHandler);
 			Console.WriteLine("SET URL TO " + url);
 			overlay.Initialize();
 			Console.WriteLine("Overlay initialized ");
 			//inlays.Add(request.Guid, inlay);
 			
-			renderHandler.CursorChanged += (sender, cursor) => {
-				var req = new SetCursorRequest { cursor = cursor };
-				var des = JsonConvert.SerializeObject(req);
+			renderHandler.CursorChanged += (_, cursor) => {
+				SetCursorRequest req = new (){ cursor = cursor };
+				string des = JsonConvert.SerializeObject(req);
 				var rr = System.Text.Encoding.UTF8.GetBytes(des);
 				rpcBuffer.RemoteRequest(rr);
 				// ipcBuffer.RemoteRequest<object>(new SetCursorRequest {
@@ -208,10 +195,10 @@ namespace RendererProcess {
 			};
 		}
 
-		protected static Assembly CustomAssemblyResolver(object sender, ResolveEventArgs args) {
-			string? assemblyName = args.Name.Split(new[] { ',' }, 2)[0] + ".dll";
+		protected static Assembly? CustomAssemblyResolver(object? sender, ResolveEventArgs args) {
+			string assemblyName = args.Name.Split(new[] { ',' }, 2)[0] + ".dll";
 
-			string assemblyPath = null;
+			string? assemblyPath = null;
 			// if (assemblyName.StartsWith("CefSharp")) {
 			// 	assemblyPath = Path.Combine(cefAssemblyDir, assemblyName);
 			// }

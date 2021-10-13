@@ -15,13 +15,11 @@ namespace NextUIPlugin.Overlay {
 		public event ReceiveEventHandler Receive;
 
 		protected Process process;
-		// protected IpcBuffer<UpstreamIpcRequest, DownstreamIpcRequest> ipc;
 		protected RpcBuffer rpc;
 		protected bool running;
 
 		protected string keepAliveHandleName;
 		protected string ipcChannelName;
-		protected ThreadStart ths;
 
 		public RenderProcess(
 			int pid,
@@ -30,42 +28,18 @@ namespace NextUIPlugin.Overlay {
 			keepAliveHandleName = $"NURendererKeepAlive{pid}";
 			ipcChannelName = $"NURendererIpcChannel{pid}";
 
-			// ipc = new IpcBuffer<UpstreamIpcRequest, DownstreamIpcRequest>(
-			// 	ipcChannelName,
-			// 	request => Receive?.Invoke(this, request)
-			// );
-			rpc = new RpcBuffer(ipcChannelName + "z", (msgId, data) => {
-				var str = System.Text.Encoding.UTF8.GetString(data);
-				var decoded = UpstreamIpcRequest.FromJson(str);
+			rpc = new RpcBuffer(ipcChannelName + "z", (_, data) => {
+				string str = System.Text.Encoding.UTF8.GetString(data);
+				UpstreamIpcRequest? decoded = UpstreamIpcRequest.FromJson(str);
 				if (decoded == null) {
 					return Array.Empty<byte>();
 				}
 
-				PluginLog.Log("MAIN received" + str + " " + decoded.reqType + " " + decoded.GetType());
-				var resp = Receive?.Invoke(decoded);
-				PluginLog.Log("MAIN did" + resp);
-
-				return resp;
+				byte[]? resp = Receive?.Invoke(decoded);
+				return resp ?? Array.Empty<byte>();
 			});
-			
 
-			// var cefAssemblyDir = dependencyManager.GetDependencyPathFor("cef");
-			// var processArgs = new RenderProcessArguments() {
-			// 	ParentPid = pid,
-			// 	DalamudAssemblyDir = Path.GetDirectoryName(typeof(PluginLog).Assembly.Location),
-			// 	CefAssemblyDir = cefAssemblyDir,
-			// 	CefCacheDir = Path.Combine(configDir, "cef-cache"),
-			// 	DxgiAdapterLuid = DxHandler.AdapterLuid,
-			// 	KeepAliveHandleName = keepAliveHandleName,
-			// 	IpcChannelName = ipcChannelName,
-			// };
-
-			// int parentPid,
-			// long adapterLuid,
-			// string ipcChannelName,
-			// string keepAliveHandleName
-			
-			string[] renderArgs = new[] {
+			string[] renderArgs = {
 				pid.ToString(),
 				DxHandler.AdapterLuid.ToString(),
 				ipcChannelName,
@@ -84,16 +58,9 @@ namespace NextUIPlugin.Overlay {
 				RedirectStandardError = true,
 			};
 
-			process.OutputDataReceived += (sender, args) => PluginLog.Log($"[NuRender]: {args.Data}");
-			process.ErrorDataReceived += (sender, args) => PluginLog.LogError($"[NuRender]: {args.Data}");
-			
+			process.OutputDataReceived += (_, args) => PluginLog.Log($"[NuRender]: {args.Data}");
+			process.ErrorDataReceived += (_, args) => PluginLog.LogError($"[NuRender]: {args.Data}");
 		}
-		//
-		// protected byte[] HandleRpcRequest(ulong msgId, byte[] data) {
-		// 	Console.WriteLine("REC MASTER: " + msgId + " " + System.Text.Encoding.UTF8.GetString(data));
-		// 	// rpc.RemoteRequest(System.Text.Encoding.UTF8.GetBytes("valuex"));
-		// 	return System.Text.Encoding.UTF8.GetBytes("valuex master");
-		// }
 
 		public void Start() {
 			if (running) {
@@ -114,8 +81,8 @@ namespace NextUIPlugin.Overlay {
 
 		// TODO: Option to wrap this func in an async version?
 		public Task<RpcResponse> SendAsync(DownstreamIpcRequest request) {
-			var serialized = JsonConvert.SerializeObject(request);
-			var data = System.Text.Encoding.UTF8.GetBytes(serialized);
+			string serialized = JsonConvert.SerializeObject(request);
+			byte[] data = System.Text.Encoding.UTF8.GetBytes(serialized);
 			return rpc.RemoteRequestAsync(data);
 		}
 
@@ -144,7 +111,6 @@ namespace NextUIPlugin.Overlay {
 			Stop();
 
 			process.Dispose();
-			// ipc.Dispose();
 			rpc.Dispose();
 		}
 	}
