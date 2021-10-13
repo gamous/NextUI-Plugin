@@ -29,7 +29,7 @@ namespace RendererProcess.Ipc {
 
 	[Serializable]
 	public class NavigateInlayRequest : DownstreamIpcRequest {
-		public string Url;
+		public string url = "";
 
 		public NavigateInlayRequest() {
 			reqType = "navigate";
@@ -53,9 +53,9 @@ namespace RendererProcess.Ipc {
 
 	[Serializable]
 	public class NewInlayRequest : DownstreamIpcRequest {
-		public string Url;
-		public int Width;
-		public int Height;
+		public string url = "";
+		public int width;
+		public int height;
 
 		public NewInlayRequest() {
 			reqType = "new";
@@ -64,8 +64,8 @@ namespace RendererProcess.Ipc {
 
 	[Serializable]
 	public class ResizeInlayRequest : DownstreamIpcRequest {
-		public int Width;
-		public int Height;
+		public int width;
+		public int height;
 
 		public ResizeInlayRequest() {
 			reqType = "resize";

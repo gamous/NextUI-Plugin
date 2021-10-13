@@ -76,6 +76,9 @@ namespace NextUIPlugin.Overlay {
 		}
 
 		public void Send(DownstreamIpcRequest request) {
+			if (!running) {
+				PluginLog.Log("Tried to send request too fast");
+			}
 			SendAsync(request);
 		}
 

@@ -34,7 +34,7 @@ namespace NextUIPlugin.Overlay {
 		}
 
 		public void Navigate(string newUrl) {
-			renderProcess?.Send(new NavigateInlayRequest() { Url = newUrl });
+			renderProcess?.Send(new NavigateInlayRequest() { url = newUrl });
 		}
 
 		public void Debug() {
@@ -266,9 +266,9 @@ namespace NextUIPlugin.Overlay {
 			}
 
 			var request = new NewInlayRequest() {
-				Url = "",
-				Width = (int)size.X,
-				Height = (int)size.Y,
+				url = "",
+				width = (int)size.X,
+				height = (int)size.Y,
 			};
 
 			resizing = true;

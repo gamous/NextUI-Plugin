@@ -73,7 +73,7 @@ namespace RendererProcess {
 
 		public void HandleMouseEvent(MouseEventRequest request) {
 			// If the browser isn't ready yet, noop
-			if (browser == null || !browser.IsBrowserInitialized) {
+			if (browser == null || !browser.IsBrowserInitialized || browser.IsLoading) {
 				return;
 			}
 
@@ -104,6 +104,10 @@ namespace RendererProcess {
 		}
 
 		public void HandleKeyEvent(KeyEventRequest request) {
+			if (browser == null || !browser.IsBrowserInitialized || browser.IsLoading) {
+				return;
+			}
+
 			CefSharp.KeyEventType type = request.keyEventType switch {
 				Data.KeyEventType.KeyDown => CefSharp.KeyEventType.RawKeyDown,
 				Data.KeyEventType.KeyUp => CefSharp.KeyEventType.KeyUp,

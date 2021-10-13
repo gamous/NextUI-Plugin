@@ -10,16 +10,16 @@ using System.Runtime.InteropServices;
 namespace RendererProcess.RenderHandlers {
 	class TextureRenderHandler : BaseRenderHandler {
 		// CEF buffers are 32-bit BGRA
-		private const byte bytesPerPixel = 4;
+		protected const byte bytesPerPixel = 4;
 
-		private D3D11.Texture2D texture;
-		private D3D11.Texture2D popupTexture;
-		private ConcurrentBag<D3D11.Texture2D> obsoleteTextures = new();
+		protected D3D11.Texture2D texture;
+		protected D3D11.Texture2D? popupTexture;
+		protected ConcurrentBag<D3D11.Texture2D> obsoleteTextures = new();
 
-		private bool popupVisible;
-		private Rect popupRect;
+		protected bool popupVisible;
+		protected Rect popupRect;
 
-		private IntPtr sharedTextureHandle = IntPtr.Zero;
+		protected IntPtr sharedTextureHandle = IntPtr.Zero;
 
 		public IntPtr SharedTextureHandle {
 			get {
@@ -34,9 +34,9 @@ namespace RendererProcess.RenderHandlers {
 		}
 
 		// Transparent background click-through state
-		private IntPtr bufferPtr;
-		private int bufferWidth;
-		private int bufferHeight;
+		protected IntPtr bufferPtr;
+		protected int bufferWidth;
+		protected int bufferHeight;
 
 		public TextureRenderHandler(System.Drawing.Size size) {
 			texture = BuildViewTexture(size);
@@ -44,12 +44,10 @@ namespace RendererProcess.RenderHandlers {
 
 		public override void Dispose() {
 			texture.Dispose();
-			if (popupTexture != null) {
-				popupTexture.Dispose();
-			}
+			popupTexture?.Dispose();
 
-			foreach (var texture in obsoleteTextures) {
-				texture.Dispose();
+			foreach (var tex in obsoleteTextures) {
+				tex.Dispose();
 			}
 		}
 
@@ -127,7 +125,7 @@ namespace RendererProcess.RenderHandlers {
 		}
 
 		public override void OnPaint(PaintElementType type, Rect dirtyRect, IntPtr buffer, int width, int height) {
-			D3D11.Texture2D targetTexture = type switch {
+			D3D11.Texture2D? targetTexture = type switch {
 				PaintElementType.View => texture,
 				PaintElementType.Popup => popupTexture,
 				_ => throw new Exception($"Unknown paint type {type}"),
@@ -175,8 +173,8 @@ namespace RendererProcess.RenderHandlers {
 			// Rendering is complete, clean up any obsolete textures
 			var textures = obsoleteTextures;
 			obsoleteTextures = new ConcurrentBag<D3D11.Texture2D>();
-			foreach (var texture in textures) {
-				texture.Dispose();
+			foreach (var tex in textures) {
+				tex.Dispose();
 			}
 		}
 

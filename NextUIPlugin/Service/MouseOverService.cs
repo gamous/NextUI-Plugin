@@ -30,17 +30,19 @@ using Dalamud.Logging;
 using Action = Lumina.Excel.GeneratedSheets.Action;
 
 namespace NextUIPlugin.Service {
+#if DEBUG
 	public delegate void OnSetMouseoverActorId(long arg1, long arg2);
+#endif
 
 	public delegate ulong OnRequestAction(long arg1, uint arg2, ulong arg3, long arg4, uint arg5, uint arg6, int arg7);
 
 	public class MouseOverService {
 		protected SigScanner sigScanner;
 		protected DataManager dataManager;
-
+#if DEBUG
 		protected IntPtr setMouseOverActorId;
 		protected Hook<OnSetMouseoverActorId> mouseOverActorIdHook;
-
+#endif
 		protected IntPtr requestAction;
 		protected Hook<OnRequestAction> requsetActionHook;
 
@@ -69,12 +71,12 @@ namespace NextUIPlugin.Service {
 
 			sheet = dataManager.GetExcelSheet<Action>();
 		}
-
+#if DEBUG
 		protected void HandleMouseOverActorId(long arg1, long arg2) {
 			PluginLog.Log("MO: {0} - {1}", arg1, arg2);
 			mouseOverActorIdHook.Original(arg1, arg2);
 		}
-
+#endif
 		protected ulong HandleRequestAction(
 			long arg1, uint arg2, ulong arg3, long arg4, uint arg5, uint arg6, int arg7
 		) {

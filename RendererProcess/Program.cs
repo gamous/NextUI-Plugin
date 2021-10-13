@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -56,7 +55,7 @@ namespace RendererProcess {
 				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
 				"NUCefSharp\\Cache"
 			);
-			bool dxRunning = DxHandler.Initialize(adapterLuid);
+			DxHandler.Initialize(adapterLuid);
 			CefHandler.Initialize(cacheDir);
 
 			// ipcBuffer = new IpcBuffer<DownstreamIpcRequest, UpstreamIpcRequest>(ipcChannelName, HandleIpcRequest);
