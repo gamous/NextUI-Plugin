@@ -64,6 +64,10 @@ namespace NextUIPlugin.Overlay {
 			ImGui.PopStyleVar();
 		}
 
+		public void Debug() {
+			overlay?.Debug();
+		}
+
 		public void Dispose() {
 			overlay?.Dispose();
 			renderProcess?.Dispose();

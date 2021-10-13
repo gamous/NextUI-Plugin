@@ -59,7 +59,7 @@ namespace RendererProcess {
 			CefHandler.Initialize(cacheDir);
 
 			// ipcBuffer = new IpcBuffer<DownstreamIpcRequest, UpstreamIpcRequest>(ipcChannelName, HandleIpcRequest);
-			rpcBuffer = new RpcBuffer(ipcChannelName + "z", (_, data) => {
+			rpcBuffer = new RpcBuffer(ipcChannelName, (_, data) => {
 				string str = System.Text.Encoding.UTF8.GetString(data);
 				DownstreamIpcRequest decoded = DownstreamIpcRequest.FromJson(str);
 				if (decoded == null) {

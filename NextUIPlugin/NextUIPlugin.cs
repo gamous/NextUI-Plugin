@@ -85,10 +85,10 @@ namespace NextUIPlugin {
 		}
 
 		protected void CastStart(
-			string target, 
-			uint actionId, 
-			string name, 
-			float currentTime, 
+			string target,
+			uint actionId,
+			string name,
+			float currentTime,
 			float totalTime,
 			uint targetId
 		) {
@@ -160,6 +160,22 @@ namespace NextUIPlugin {
 			ImGui.Separator();
 
 			ImGui.InputInt("Socket Port", ref configuration.socketPort);
+
+			ImGui.Text("Overlay Options");
+			ImGui.Separator();
+
+			ImGui.InputText("URL", ref configuration.overlayUrl, 255);
+			if (ImGui.Button("Reload")) {
+				PluginLog.Log("Reloading overlay");
+			}
+
+			ImGui.SameLine();
+			if (ImGui.Button("Debug")) {
+				PluginLog.Log("Debugging overlay");
+				overlayManager?.Debug();
+			}
+
+			ImGui.Separator();
 
 			if (ImGui.Button("Save")) {
 				pluginInterface.SavePluginConfig(configuration);

@@ -23,6 +23,7 @@ namespace NextUIPlugin.Overlay {
 		protected InputModifier modifier;
 		protected ImGuiMouseCursor cursor;
 		protected bool captureCursor;
+		protected bool captureEvents;
 
 		public Overlay(RenderProcess? renderProcess) {
 			this.renderProcess = renderProcess;
@@ -114,7 +115,7 @@ namespace NextUIPlugin.Overlay {
 			});
 
 			// We've handled the input, signal. For these message types, `0` signals a capture.
-			return (true, 0);
+			return (!captureEvents, 0);
 		}
 
 		public void Render() {

@@ -28,7 +28,7 @@ namespace NextUIPlugin.Overlay {
 			keepAliveHandleName = $"NURendererKeepAlive{pid}";
 			ipcChannelName = $"NURendererIpcChannel{pid}";
 
-			rpc = new RpcBuffer(ipcChannelName + "z", (_, data) => {
+			rpc = new RpcBuffer(ipcChannelName, (_, data) => {
 				string str = System.Text.Encoding.UTF8.GetString(data);
 				UpstreamIpcRequest? decoded = UpstreamIpcRequest.FromJson(str);
 				if (decoded == null) {
