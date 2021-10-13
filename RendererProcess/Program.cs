@@ -120,10 +120,9 @@ namespace RendererProcess {
 		}
 
 		protected static byte[] HandleIpcRequest(DownstreamIpcRequest request) {
-			Console.WriteLine($"Got request {request.GetType()}.");
 			switch (request.reqType) {
 				case "new":
-					var resp = OnNewInlayRequest();
+					var resp = OnNewInlayRequest((NewInlayRequest)request);
 					var serialized = JsonConvert.SerializeObject(resp);
 					return System.Text.Encoding.UTF8.GetBytes(serialized);
 
@@ -162,27 +161,24 @@ namespace RendererProcess {
 			}
 		}
 
-		protected static TextureHandleResponse OnNewInlayRequest() {
+		protected static TextureHandleResponse OnNewInlayRequest(NewInlayRequest request) {
 			// TODO: Fix this?
-			Size size = new(1920, 1080);
+			Console.WriteLine("SIZE: " + request.width + " " + request.height);
+			Console.WriteLine("url: " + request.url);
+			Size size = new(request.width, request.height);
 			TextureRenderHandler renderHandler = new(size);
 
-			string url = "http://localhost:4200?OVERLAY_WS=ws://127.0.0.1:10501/ws";
-			// string url = "https://www.google.com/";
+			string url = request.url;
+
 			overlay = new Overlay(url, renderHandler);
 			Console.WriteLine("SET URL TO " + url);
 			overlay.Initialize();
-			Console.WriteLine("Overlay initialized ");
-			//inlays.Add(request.Guid, inlay);
 			
 			renderHandler.CursorChanged += (_, cursor) => {
 				SetCursorRequest req = new (){ cursor = cursor };
 				string des = JsonConvert.SerializeObject(req);
 				var rr = System.Text.Encoding.UTF8.GetBytes(des);
 				rpcBuffer.RemoteRequest(rr);
-				// ipcBuffer.RemoteRequest<object>(new SetCursorRequest {
-				// 	cursor = cursor
-				// });
 			};
 
 			return BuildRenderHandlerResponse(renderHandler);

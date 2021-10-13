@@ -68,6 +68,16 @@ namespace NextUIPlugin.Overlay {
 			overlay?.Debug();
 		}
 
+		public void Navigate(string url) {
+			overlay?.Navigate(url);
+		}
+
+		public void SetAcceptFocus(bool accept) {
+			if (overlay != null) {
+				overlay.acceptFocus = accept;
+			}
+		}
+
 		public void Dispose() {
 			overlay?.Dispose();
 			renderProcess?.Dispose();

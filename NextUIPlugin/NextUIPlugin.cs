@@ -19,7 +19,7 @@ namespace NextUIPlugin {
 	public class NextUIPlugin : IDalamudPlugin {
 		public string Name => "NextUIPlugin";
 
-		public NextUIConfiguration configuration;
+		public static NextUIConfiguration configuration = null!;
 
 		/** Dalamud injected services */
 		public readonly CommandManager commandManager;
@@ -35,10 +35,10 @@ namespace NextUIPlugin {
 
 		// ReSharper disable once InconsistentNaming
 		protected bool isNextUISetupOpen;
-		public NextUISocket socketServer;
+		public static NextUISocket socketServer = null!;
 
 		protected DataHandler dataHandler;
-		protected OverlayManager? overlayManager;
+		public static OverlayManager? overlayManager;
 
 		public NextUIPlugin(
 			CommandManager commandManager,
@@ -133,6 +133,11 @@ namespace NextUIPlugin {
 				PluginLog.Log("Resetting port to 32805");
 				nextUiConfiguration.socketPort = 32805;
 			}
+
+			if (nextUiConfiguration.overlayUrl == "") {
+				// FOR LOCAL V
+				nextUiConfiguration.overlayUrl = "http://localhost:4200?OVERLAY_WS=ws://127.0.0.1:10501/ws";
+			}
 		}
 
 		protected void UpdateConfig() {
@@ -149,7 +154,7 @@ namespace NextUIPlugin {
 				return;
 			}
 
-			ImGui.SetNextWindowSize(new Vector2(740, 490));
+			ImGui.SetNextWindowSize(new Vector2(640, 480));
 			ImGui.Begin(
 				"NextUI Configuration",
 				ref isNextUISetupOpen,
@@ -167,6 +172,7 @@ namespace NextUIPlugin {
 			ImGui.InputText("URL", ref configuration.overlayUrl, 255);
 			if (ImGui.Button("Reload")) {
 				PluginLog.Log("Reloading overlay");
+				overlayManager?.Navigate(configuration.overlayUrl);
 			}
 
 			ImGui.SameLine();

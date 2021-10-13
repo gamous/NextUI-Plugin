@@ -11,7 +11,6 @@ using SharedMemory;
 
 namespace NextUIPlugin.Overlay {
 	public class Overlay : IDisposable {
-		protected bool resizing;
 		protected Vector2 size;
 
 		protected readonly RenderProcess? renderProcess;
@@ -23,7 +22,7 @@ namespace NextUIPlugin.Overlay {
 		protected InputModifier modifier;
 		protected ImGuiMouseCursor cursor;
 		protected bool captureCursor;
-		protected bool captureEvents;
+		public bool acceptFocus;
 
 		public Overlay(RenderProcess? renderProcess) {
 			this.renderProcess = renderProcess;
@@ -115,7 +114,7 @@ namespace NextUIPlugin.Overlay {
 			});
 
 			// We've handled the input, signal. For these message types, `0` signals a capture.
-			return (!captureEvents, 0);
+			return (acceptFocus, 0);
 		}
 
 		public void Render() {
@@ -261,23 +260,7 @@ namespace NextUIPlugin.Overlay {
 		}
 
 		protected async void HandleWindowSize() {
-			// Vector2 currentSize = ImGui.GetWindowContentRegionMax() - ImGui.GetWindowContentRegionMin();
-			if (renderProcess == null || size != Vector2.Zero || resizing) {
-				return;
-			}
-
-			var request = new NewInlayRequest() {
-				url = "",
-				width = (int)size.X,
-				height = (int)size.Y,
-			};
-
-			resizing = true;
-
-			RpcResponse response = await renderProcess.SendAsync(request);
-			if (!response.Success) {
-				PluginLog.LogError("Texture build failure, retrying...");
-				resizing = false;
+			if (renderProcess == null || size != Vector2.Zero) {
 				return;
 			}
 
@@ -286,7 +269,18 @@ namespace NextUIPlugin.Overlay {
 				size = new Vector2(vpSize.X, vpSize.Y);
 			}
 
-			resizing = false;
+			NewInlayRequest request = new() {
+				// "http://localhost:4200?OVERLAY_WS=ws://127.0.0.1:10501/ws"
+				url = NextUIPlugin.configuration.overlayUrl,
+				width = (int)size.X,
+				height = (int)size.Y,
+			};
+
+			RpcResponse response = await renderProcess.SendAsync(request);
+			if (!response.Success) {
+				PluginLog.LogError("Texture build failure, retrying...");
+				return;
+			}
 
 			PluginLog.Log("Setting textureHandler ");
 			SharedTextureHandler? oldTextureHandler = textureHandler;

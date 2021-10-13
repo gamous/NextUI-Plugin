@@ -62,6 +62,9 @@ namespace NextUIPlugin.Socket {
 					case "clearMouseOverEx":
 						XivSetMouseOver(socket, ev, false);
 						break;
+					case "setAcceptFocus":
+						XivSetAcceptFocus(socket, ev);
+						break;
 					default:
 						socket.Send(JsonResponse(false, "", "Unrecognized command: " + ev.type));
 						break;
@@ -70,6 +73,13 @@ namespace NextUIPlugin.Socket {
 			catch (Exception err) {
 				socket.Send(JsonResponse(false, "", "Unrecognized data: " + data + " " + err));
 			}
+		}
+
+		protected void XivSetAcceptFocus(IWebSocketConnection socket, SocketEvent ev) {
+			NextUIPlugin.overlayManager?.SetAcceptFocus(ev.accept);
+			string msg = "AcceptFocus Changed " + ev.accept;
+			socket.Send(JsonResponse(true, ev.guid, msg, ""));
+			PluginLog.Log(msg);
 		}
 
 		protected void XivSetTarget(IWebSocketConnection socket, SocketEvent ev, string type) {

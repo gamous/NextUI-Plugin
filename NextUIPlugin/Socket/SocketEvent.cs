@@ -4,6 +4,7 @@
 		public string type = "";
 		public string target = "";
 		public string message = "";
+		public bool accept = false;
 	}
 
 	public class SocketEventPartyChanged: SocketEvent {
