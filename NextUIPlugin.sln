@@ -3,6 +3,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextUIPlugin", "NextUIPlugi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RendererProcess", "RendererProcess\RendererProcess.csproj", "{29456560-A586-4C23-92BB-F68C8FF129E0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextUIBrowser", "NextUIBrowser\NextUIBrowser.csproj", "{057F2713-68B7-479F-8140-CC2649DC17B7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -17,5 +19,9 @@ Global
 		{29456560-A586-4C23-92BB-F68C8FF129E0}.Debug|x64.Build.0 = Debug|x64
 		{29456560-A586-4C23-92BB-F68C8FF129E0}.Release|x64.ActiveCfg = Release|x64
 		{29456560-A586-4C23-92BB-F68C8FF129E0}.Release|x64.Build.0 = Release|x64
+		{057F2713-68B7-479F-8140-CC2649DC17B7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{057F2713-68B7-479F-8140-CC2649DC17B7}.Debug|x64.Build.0 = Debug|Any CPU
+		{057F2713-68B7-479F-8140-CC2649DC17B7}.Release|x64.ActiveCfg = Release|Any CPU
+		{057F2713-68B7-479F-8140-CC2649DC17B7}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

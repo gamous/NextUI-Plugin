@@ -9,7 +9,7 @@
 
 	<!-- Assembly Configuration -->
 	<PropertyGroup>
-		<AssemblyName>NextUIPlugin</AssemblyName>
+		<AssemblyName>NextUIBrowser</AssemblyName>
 		<AssemblyVersion>0.1.0.0</AssemblyVersion>
 		<FileVersion>0.1.0.0</FileVersion>
 		<InformationalVersion>0.1.0.0</InformationalVersion>
@@ -56,44 +56,10 @@
 		</AssemblySearchPaths>
 	</PropertyGroup>
 
-	<!-- Included Content -->
-	<ItemGroup>
-		<Content Include="NextUIPlugin.json" CopyToOutputDirectory="Always" />
-	</ItemGroup>
 
 	<!-- Library References -->
 	<ItemGroup>
 		<Reference Include="Dalamud">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="Newtonsoft.Json">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="ImGui.NET">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="ImGuiScene">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="Serilog">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="SharpDX">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="SharpDX.Direct3D11">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="SharpDX.DXGI">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="FFXIVClientStructs">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="Lumina">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="Lumina.Excel">
 			<Private>false</Private>
 		</Reference>
 	</ItemGroup>
@@ -101,17 +67,11 @@
 	<!-- NuGet Packages -->
 	<ItemGroup>
 		<PackageReference Include="CefSharp.OffScreen.NETCore" Version="94.4.50" />
-		<PackageReference Include="DalamudPackager" Version="2.1.4" />
-		<PackageReference Include="Fleck" Version="1.2.0" />
 		<PackageReference Include="McMaster.NETCore.Plugins" Version="1.4.0" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<Folder Include="obj" />
-	</ItemGroup>
-	
-	<ItemGroup>
-		<ProjectReference Include="..\RendererProcess\RendererProcess.csproj" />
-		<ProjectReference Include="..\NextUIBrowser\NextUIBrowser.csproj" />
-	</ItemGroup>
+
+<!--	<ItemGroup>-->
+<!--		<ProjectReference Include="..\RendererProcess\RendererProcess.csproj" />-->
+<!--	</ItemGroup>-->
 </Project>

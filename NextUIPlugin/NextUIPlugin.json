@@ -8,5 +8,7 @@
     ],
     "AssemblyVersion": "0.1.0.10",
     "ApplicableVersion": "any",
-    "DalamudApiLevel": 4
+    "DalamudApiLevel": 4,
+	"IsUnloadable": false,
+	"LoadInMemory": false
 }
