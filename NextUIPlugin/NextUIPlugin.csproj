@@ -112,6 +112,5 @@
 	
 	<ItemGroup>
 		<ProjectReference Include="..\RendererProcess\RendererProcess.csproj" />
-		<ProjectReference Include="..\NextUIBrowser\NextUIBrowser.csproj" />
 	</ItemGroup>
 </Project>

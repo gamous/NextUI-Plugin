@@ -2,9 +2,10 @@
 using CefSharp;
 using CefSharp.OffScreen;
 using Dalamud.Logging;
+using NextUIPlugin;
 
 namespace NextUIBrowser {
-	public class BrowserPlugin : NuPlugin {
+	public class BrowserPlugin : INuPlugin {
 		public string GetName() => "NextUIBrowser";
 
 		public void Initialize(string dir) {

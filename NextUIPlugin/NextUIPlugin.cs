@@ -18,7 +18,6 @@ using Dalamud.Logging;
 using Dalamud.Plugin;
 using McMaster.NETCore.Plugins;
 using Newtonsoft.Json;
-using NextUIBrowser;
 using NextUIPlugin.Configuration;
 using NextUIPlugin.Data;
 using NextUIPlugin.Overlay;
@@ -105,16 +104,18 @@ namespace NextUIPlugin {
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		public void TestCefPlugin() {
-			string? dir = pluginInterface.AssemblyLocation.DirectoryName;
+			// string? dir = pluginInterface.AssemblyLocation.DirectoryName;
+			string dir = @"A:\Projects\Kaminaris\ffxiv\NextUIPlug\NextUIPlugin\NextUIBrowser\bin\Release\win-x64";
 			PluginLog.Log("Trying to load");
 			
 			var plug = PluginLoader.CreateFromAssemblyFile(
 				assemblyFile: Path.Combine(dir, "NextUIBrowser.dll"),
-				sharedTypes: new[] { typeof(NuPlugin) },
+				sharedTypes: new[] { typeof(INuPlugin) },
 				isUnloadable: false,
 				configure: config => {
 					config.IsUnloadable = false;
 					config.LoadInMemory = false;
+					// config.DefaultContext.
 				} 
 			);
 			
