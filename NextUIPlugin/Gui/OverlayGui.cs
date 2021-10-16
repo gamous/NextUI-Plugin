@@ -27,9 +27,12 @@ namespace NextUIPlugin.Gui {
 		) {
 			this.overlay = overlay;
 			BuildTextureWrap();
-			overlay.TexturePointerChange += _ => {
-				BuildTextureWrap();
-			};
+			overlay.TexturePointerChange += TexturePointerChange;
+			overlay.CursorChange += SetCursor;
+		}
+
+		protected void TexturePointerChange(IntPtr obj) {
+			BuildTextureWrap();
 		}
 
 		public void BuildTextureWrap() {
@@ -56,6 +59,8 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void Dispose() {
+			overlay.TexturePointerChange -= TexturePointerChange;
+			overlay.CursorChange -= SetCursor;
 			overlay.Dispose();
 			textureWrap?.Dispose();
 		}
@@ -71,6 +76,7 @@ namespace NextUIPlugin.Gui {
 		public void SetCursor(Cursor newCursor) {
 			captureCursor = newCursor != Cursor.BrowserHostNoCapture;
 			cursor = DecodeCursor(newCursor);
+			// overlay.SetCursor();
 		}
 
 		public (bool, long) WndProcMessage(WindowsMessage msg, ulong wParam, long lParam) {
@@ -161,18 +167,6 @@ namespace NextUIPlugin.Gui {
 			ImGui.Image(textureWrap.ImGuiHandle, new Vector2(textureWrap.Width, textureWrap.Height));
 			
 			HandleMouseEvent();
-			// TODO: Renderer can take some time to spin up properly, should add a loading state.
-			// if (textureHandler != null) {
-			// 	HandleMouseEvent();
-			//
-			// 	textureHandler.Render();
-			// }
-			// else if (textureRenderException != null) {
-			// 	ImGui.PushStyleColor(ImGuiCol.Text, 0xFF0000FF);
-			// 	ImGui.Text("An error occured while building the browser inlay texture:");
-			// 	ImGui.Text(textureRenderException.ToString());
-			// 	ImGui.PopStyleColor();
-			// }
 
 			ImGui.End();
 		}

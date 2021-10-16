@@ -3,7 +3,6 @@ using CefSharp.OffScreen;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Numerics;
 using NextUIBrowser.RenderHandlers;
 using NextUIShared.Data;
 using NextUIShared.Overlay;
@@ -11,10 +10,10 @@ using NextUIShared.Request;
 
 namespace NextUIBrowser.OverlayWindow {
 	public class OverlayWindow : IDisposable {
-		protected Overlay overlay;
+		protected readonly Overlay overlay;
+		protected readonly BaseRenderHandler renderHandler;
 
 		protected ChromiumWebBrowser? browser;
-		public readonly BaseRenderHandler renderHandler;
 
 		public OverlayWindow(Overlay overlay, BaseRenderHandler renderHandler) {
 			this.renderHandler = renderHandler;
@@ -34,7 +33,7 @@ namespace NextUIBrowser.OverlayWindow {
 			windowInfo.SetAsWindowless(IntPtr.Zero);
 
 			// WindowInfo gets ignored sometimes, be super sure:
-			browser.BrowserInitialized += (sender, args) => { browser.Size = new Size(size.Width, size.Height); };
+			browser.BrowserInitialized += (_, _) => { browser.Size = new Size(size.Width, size.Height); };
 
 			BrowserSettings browserSettings = new() {
 				WindowlessFrameRate = 60,
@@ -48,6 +47,7 @@ namespace NextUIBrowser.OverlayWindow {
 
 			// Handle any changes done on overlay data
 			overlay.DebugRequest += Debug;
+			overlay.ReloadRequest += Reload;
 			overlay.UrlChange += Navigate;
 			overlay.SizeChange += Resize;
 			overlay.MouseEvent += HandleMouseEvent;
@@ -60,6 +60,7 @@ namespace NextUIBrowser.OverlayWindow {
 			}
 
 			overlay.DebugRequest -= Debug;
+			overlay.ReloadRequest -= Reload;
 			overlay.UrlChange -= Navigate;
 			overlay.SizeChange -= Resize;
 			overlay.MouseEvent -= HandleMouseEvent;
@@ -79,6 +80,10 @@ namespace NextUIBrowser.OverlayWindow {
 
 			// Otherwise load regularly
 			browser?.Load(newUrl);
+		}
+
+		protected void Reload() {
+			browser.Reload(true);
 		}
 
 		protected void Debug() {

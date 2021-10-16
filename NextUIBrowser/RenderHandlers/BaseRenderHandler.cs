@@ -7,7 +7,7 @@ using NextUIShared.Data;
 
 namespace NextUIBrowser.RenderHandlers {
 	public abstract class BaseRenderHandler : IRenderHandler {
-		public event EventHandler<Cursor> CursorChanged;
+		public event EventHandler<Cursor>? CursorChanged;
 
 		// Transparent background click-through state
 		protected bool cursorOnBackground;

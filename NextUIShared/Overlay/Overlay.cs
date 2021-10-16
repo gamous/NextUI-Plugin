@@ -12,7 +12,7 @@ namespace NextUIShared.Overlay {
 	public class Overlay : IDisposable {
 		public Guid Guid { get; set; }
 
-		protected string name;
+		protected string name = "New Overlay";
 		protected string url;
 		protected IntPtr texturePointer;
 		protected Size size;
@@ -78,30 +78,40 @@ namespace NextUIShared.Overlay {
 				CursorChange?.Invoke(cursor);
 			} 
 		}
+		
+		public bool ClickThrough { get; set; }
+		public bool TypeThrough { get; set; }
+		public bool Locked { get; set; } = true;
+		public bool Hidden { get; set; }
 
-		public Action<IntPtr> TexturePointerChange;
-		public Action<string> NameChange;
-		public Action<string> UrlChange;
-		public Action<Size> SizeChange;
-		public Action<Cursor> CursorChange;
-		public Action<MouseEventRequest> MouseEvent;
-		public Action<KeyEventRequest> KeyEvent;
+		public event Action<IntPtr> TexturePointerChange;
+		public event Action<string> NameChange;
+		public event Action<string> UrlChange;
+		public event Action<Size> SizeChange;
+		public event Action<Cursor> CursorChange;
+		public event Action<MouseEventRequest> MouseEvent;
+		public event Action<KeyEventRequest> KeyEvent;
 
-		public Action DebugRequest;
-		public Action DisposeRequest;
+		public event Action DebugRequest;
+		public event Action ReloadRequest;
+		public event Action DisposeRequest;
 
-		protected bool mouseInWindow;
-		protected bool windowFocused;
-		public bool acceptFocus;
-		protected bool captureCursor;
-
-		public Overlay(string url) {
+		public Overlay(string url, Size newSize) {
 			Guid = new Guid();
 			Url = url;
+			size = newSize;
+			if (size.Width == 0 || size.Height == 0) {
+				size.Width = 800;
+				size.Height = 600;
+			}
 		}
 
 		public void Navigate(string newUrl) {
 			Url = newUrl;
+		}
+
+		public void Reload() {
+			ReloadRequest?.Invoke();
 		}
 
 		public void Debug() {

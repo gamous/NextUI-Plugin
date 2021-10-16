@@ -17,7 +17,7 @@ namespace NextUIPlugin.Overlay {
 			WindowHandle = pluginInterface.UiBuilder.WindowHandlePtr;
 
 			// Get the game's device adapter, we'll need that as a reference for the render process.
-			DXGI.Device? dxgiDevice = Device.QueryInterface<DXGI.Device>();
+			var dxgiDevice = Device.QueryInterface<DXGI.Device>();
 			AdapterLuid = dxgiDevice.Adapter.Description.Luid;
 		}
 

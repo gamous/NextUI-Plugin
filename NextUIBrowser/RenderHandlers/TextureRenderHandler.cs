@@ -6,6 +6,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using Dalamud.Logging;
 using Size = System.Drawing.Size;
 
 namespace NextUIBrowser.RenderHandlers {
@@ -22,7 +23,8 @@ namespace NextUIBrowser.RenderHandlers {
 		protected Rect popupRect;
 
 		protected IntPtr sharedTextureHandle = IntPtr.Zero;
-		public Action<IntPtr>? TexturePointerChange;
+		public event Action<IntPtr> TexturePointerChange;
+
 		public IntPtr SharedTextureHandle {
 			get {
 				return sharedTextureHandle;
@@ -88,7 +90,7 @@ namespace NextUIBrowser.RenderHandlers {
 			return alpha;
 		}
 
-		private D3D11.Texture2D? BuildViewTexture(Size size) {
+		private D3D11.Texture2D BuildViewTexture(Size size) {
 			// Build texture. Most of these properties are defined to match how CEF exposes the render buffer.
 			var newTexture = new D3D11.Texture2D(device, new D3D11.Texture2DDescription() {
 				Width = size.Width,

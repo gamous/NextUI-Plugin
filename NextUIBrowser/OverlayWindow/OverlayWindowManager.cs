@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Dalamud.Logging;
 using NextUIBrowser.RenderHandlers;
 using NextUIShared;
 using NextUIShared.Overlay;
@@ -9,9 +10,9 @@ using DXGI = SharpDX.DXGI;
 
 namespace NextUIBrowser.OverlayWindow {
 	public class OverlayWindowManager : IDisposable {
-		protected Dictionary<Guid, OverlayWindow> overlayWindows = new();
+		protected readonly List<OverlayWindow> overlayWindows = new();
 
-		public static D3D11.Device Device { get; private set; }
+		protected static D3D11.Device? device;
 		protected IGuiManager guiManager = null!;
 
 		public void Initialize(
@@ -25,12 +26,17 @@ namespace NextUIBrowser.OverlayWindow {
 		protected void LoadDxDevice() {
 			// Find the adapter matching the luid from the parent process
 			var factory = new DXGI.Factory1();
-			DXGI.Adapter? gameAdapter = factory.Adapters
+			DXGI.Adapter? gameAdapter = factory
+				.Adapters
 				.FirstOrDefault(adapter => adapter.Description.Luid == guiManager.AdapterLuid);
 
 			if (gameAdapter == null) {
-				// var foundLuids = string.Join(",", factory.Adapters.Select(adapter => adapter.Description.Luid));
+				var foundLuids = string.Join(",", factory.Adapters.Select(adapter => adapter.Description.Luid));
 				// Console.Error.WriteLine($"FATAL: Could not find adapter matching game adapter LUID {adapterLuid}. Found: {foundLuids}.");
+				PluginLog.Error(
+					$"FATAL: Could not find adapter matching game adapter LUID {guiManager.AdapterLuid}. " +
+					$"Found: {foundLuids}."
+				);
 				return;
 			}
 
@@ -40,24 +46,33 @@ namespace NextUIBrowser.OverlayWindow {
 			flags |= D3D11.DeviceCreationFlags.Debug;
 #endif
 
-			Device = new D3D11.Device(gameAdapter, flags);
+			device = new D3D11.Device(gameAdapter, flags);
 		}
 
 		// Requested creation of new overlay
 		protected void CreateOverlayWindow(Guid guid, Overlay overlay) {
-			var textureHandler = new TextureRenderHandler(Device, overlay.Size);
+			if (device == null) {
+				PluginLog.Warning("Cannot create overlay window, device was not initialized");
+				return;
+			}
+
+			var textureHandler = new TextureRenderHandler(device, overlay.Size);
+
 			// Populate texture pointer in overlay data structure and notify if it changes
 			overlay.TexturePointer = textureHandler.SharedTextureHandle;
 			textureHandler.TexturePointerChange += ptr => { overlay.TexturePointer = ptr; };
+			// Also request cursor if it changes
+			textureHandler.CursorChanged += (_, cursor) => { overlay.SetCursor(cursor); };
+
 			var overlayWindow = new OverlayWindow(overlay, textureHandler);
-			overlayWindows.Add(guid, overlayWindow);
+			overlayWindows.Add(overlayWindow);
 
 			overlayWindow.Initialize();
 		}
 
 		public void Dispose() {
 			foreach (var overlay in overlayWindows) {
-				overlay.Value.Dispose();
+				overlay.Dispose();
 			}
 		}
 	}

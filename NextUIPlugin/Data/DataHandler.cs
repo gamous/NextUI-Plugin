@@ -16,11 +16,11 @@ using BattleChara = FFXIVClientStructs.FFXIV.Client.Game.Character.BattleChara;
 
 namespace NextUIPlugin.Data {
 	public class DataHandler : IDisposable {
-		public Action<string>? onPlayerNameChanged;
-		public Action<string, uint?, string?>? onTargetChanged;
-		public Action<uint, string>? onHoverChanged;
-		public Action<List<uint>>? onPartyChanged;
-		public Action<string, uint, string, float, float, uint>? CastStart;
+		public event Action<string> PlayerNameChanged;
+		public event Action<string, uint?, string?> TargetChanged;
+		public event Action<uint, string> HoverChanged;
+		public event Action<List<uint>> PartyChanged;
+		public event Action<string, uint, string, float, float, uint> CastStart;
 
 		protected readonly Dictionary<string, uint?> targets = new();
 		protected readonly Dictionary<string, bool> casts = new();
@@ -85,13 +85,13 @@ namespace NextUIPlugin.Data {
 				if (value != null) {
 					if (targets[key] != value.ObjectId) {
 						targets[key] = value.ObjectId;
-						onTargetChanged?.Invoke(key, value.ObjectId, value.Name.TextValue);
+						TargetChanged?.Invoke(key, value.ObjectId, value.Name.TextValue);
 					}
 				}
 				else {
 					if (targets[key] != null) {
 						targets[key] = null;
-						onTargetChanged?.Invoke(key, null, null);
+						TargetChanged?.Invoke(key, null, null);
 					}
 				}
 			}

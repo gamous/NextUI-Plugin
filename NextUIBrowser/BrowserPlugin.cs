@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 using Dalamud.Logging;
 using NextUIBrowser.Cef;
 using NextUIBrowser.OverlayWindow;
@@ -17,10 +18,8 @@ namespace NextUIBrowser {
 			string dir,
 			IGuiManager guiManager
 		) {
-			AppDomain currentDomain = AppDomain.CurrentDomain;
-			currentDomain.AssemblyResolve += CurrentDomainOnAssemblyResolve;
 			PluginLog.Log("Initializing Browser");
-			
+
 			GuiManager = guiManager;
 
 			string cacheDir = Path.Combine(
@@ -31,21 +30,16 @@ namespace NextUIBrowser {
 
 			windowManager = new OverlayWindowManager();
 			windowManager.Initialize(guiManager);
-		}
+			PluginLog.Log("Initialized Browser");
 
-		protected Assembly? CurrentDomainOnAssemblyResolve(object? sender, ResolveEventArgs args) {
-			
-			string folderPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-			string assemblyPath = Path.Combine(folderPath, new AssemblyName(args.Name).Name + ".dll");
-			if (!File.Exists(assemblyPath)) return null;
-			Assembly assembly = Assembly.LoadFrom(assemblyPath);
-			return assembly;
+			// Notify gui manager that micro plugin is ready to go
+			guiManager.MicroPluginLoaded();
 		}
-
 
 		public void Shutdown() {
-			// Cef.Shutdown();
+			windowManager.Dispose();
 			CefHandler.Shutdown();
+			// TODO: FIX THIS
 		}
 	}
 }

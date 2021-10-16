@@ -32,7 +32,7 @@
 		<CefSharpPlatformTarget>x64</CefSharpPlatformTarget>
 		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 
-		<!--		<SelfContained>false</SelfContained>-->
+<!--		<SelfContained>true</SelfContained>-->
 	</PropertyGroup>
 
 	<!-- Release Configuration -->
@@ -78,8 +78,15 @@
 		<PackageReference Include="CefSharp.OffScreen.NETCore" Version="94.4.50" />
 	</ItemGroup>
 
-
 	<ItemGroup>
 		<ProjectReference Include="..\NextUIShared\NextUIShared.csproj" />
 	</ItemGroup>
+
+	<Target Name="CopyMicroPlugin" AfterTargets="Build">
+		<Copy
+				SourceFiles="$(TargetDir)**\*.*"
+				DestinationFolder="$(SolutionDir)NextUIPlugin\bin\x64\$(Configuration)\win-x64\microplugin" />
+
+		<Message Text="Copied microplugin files" Importance="High" />
+	</Target>
 </Project>

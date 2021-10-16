@@ -27,7 +27,7 @@ namespace NextUIPlugin.Overlay {
 			// If the current pointer doesn't match our detour, something swapped the pointer out from under us -
 			// likely the InterfaceManager doing its own cleanup. Don't reset in that case, we'll trust the cleanup
 			// is accurate.
-			IntPtr curWndProcPtr = NativeMethods.GetWindowLongPtr(hWnd, WindowLongType.GwlWndProc);
+			var curWndProcPtr = NativeMethods.GetWindowLongPtr(hWnd, WindowLongType.GwlWndProc);
 			if (oldWndProcPtr == IntPtr.Zero || curWndProcPtr != detourPtr) {
 				return;
 			}
@@ -39,7 +39,7 @@ namespace NextUIPlugin.Overlay {
 		static long WndProcDetour(IntPtr nhWnd, uint msg, ulong wParam, long lParam) {
 			// Ignore things not targeting the current window handle
 			if (nhWnd == hWnd) {
-				(bool, long)? resp = WndProcMessage?.Invoke((WindowsMessage)msg, wParam, lParam);
+				var resp = WndProcMessage?.Invoke((WindowsMessage)msg, wParam, lParam);
 
 				// Item1 is a bool, where true == capture event. If false, we're falling through default handling.
 				if (resp.HasValue && resp.Value.Item1) {
