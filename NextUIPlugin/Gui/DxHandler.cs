@@ -3,7 +3,7 @@ using D3D11 = SharpDX.Direct3D11;
 using DXGI = SharpDX.DXGI;
 using System;
 
-namespace NextUIPlugin.Overlay {
+namespace NextUIPlugin.Gui {
 	public static class DxHandler {
 		public static D3D11.Device? Device { get; set; }
 		public static IntPtr WindowHandle { get; set; }

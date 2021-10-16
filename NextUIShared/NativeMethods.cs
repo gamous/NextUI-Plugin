@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 namespace NextUIShared {
 	// Enums are not comprehensive for the sake of omitting stuff I won't use.
 	public enum WindowLongType {
-		GwlWndProc = -4,
+		GwlWndProc = -4
 	}
 
 	public enum WindowsMessage {
@@ -15,19 +15,15 @@ namespace NextUIShared {
 		WmSysKeyUp = 0x0105,
 		WmSysChar = 0x0106,
 
-		WmLButtonDown = 0x0201,
+		WmLButtonDown = 0x0201
 	}
 
 	public enum VirtualKey {
 		Shift = 0x10,
-		Control = 0x11,
+		Control = 0x11
 	}
 
 	public static class NativeMethods {
-		public static bool IsKeyActive(VirtualKey key) {
-			return (GetKeyState((int)key) & 1) == 1;
-		}
-
 		[DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
 		public static extern IntPtr GetWindowLongPtr(IntPtr hWnd, WindowLongType nIndex);
 
@@ -41,8 +37,5 @@ namespace NextUIShared {
 			ulong wParam,
 			long lParam
 		);
-
-		[DllImport("user32.dll")]
-		private static extern short GetKeyState(int nVirtKey);
 	}
 }

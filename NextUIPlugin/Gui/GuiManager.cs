@@ -6,8 +6,8 @@ using System.Numerics;
 using Dalamud.Logging;
 using Dalamud.Plugin;
 using ImGuiNET;
-using NextUIPlugin.Overlay;
 using NextUIShared;
+using NextUIShared.Model;
 using D3D11 = SharpDX.Direct3D11;
 
 namespace NextUIPlugin.Gui {
@@ -17,7 +17,7 @@ namespace NextUIPlugin.Gui {
 		public long AdapterLuid { get; set; }
 		public bool MicroPluginFullyLoaded { get; set; }
 
-		public event Action<Guid, NextUIShared.Overlay.Overlay>? RequestNewOverlay;
+		public event Action<Overlay>? RequestNewOverlay;
 
 		public void Initialize(DalamudPluginInterface pluginInterface) {
 			// Spin up DX handling from the plugin interface
@@ -51,9 +51,9 @@ namespace NextUIPlugin.Gui {
 				return null;
 			}
 
-			var overlay = new NextUIShared.Overlay.Overlay(url, size);
+			var overlay = new Overlay(url, size);
 			// Data should be populated here ie texture pointer
-			RequestNewOverlay?.Invoke(overlay.Guid, overlay);
+			RequestNewOverlay?.Invoke(overlay);
 
 			var overlayGui = new OverlayGui(overlay);
 			overlays.Add(overlayGui);

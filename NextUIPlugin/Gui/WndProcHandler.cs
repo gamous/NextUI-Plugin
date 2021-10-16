@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using NextUIShared;
 
-namespace NextUIPlugin.Overlay {
+namespace NextUIPlugin.Gui {
 	public static class WndProcHandler {
 		public delegate (bool, long) WndProcMessageDelegate(WindowsMessage msg, ulong wParam, long lParam);
 		public static event WndProcMessageDelegate? WndProcMessage;

@@ -3,16 +3,16 @@ using System;
 using System.Numerics;
 using Dalamud.Logging;
 using ImGuiScene;
-using NextUIPlugin.Overlay;
 using NextUIShared;
 using NextUIShared.Data;
+using NextUIShared.Model;
 using NextUIShared.Request;
 using D3D11 = SharpDX.Direct3D11;
 using D3D = SharpDX.Direct3D;
 
 namespace NextUIPlugin.Gui {
 	public class OverlayGui : IDisposable {
-		public NextUIShared.Overlay.Overlay overlay;
+		public NextUIShared.Model.Overlay overlay;
 
 		protected bool mouseInWindow;
 		protected bool windowFocused;
@@ -23,7 +23,7 @@ namespace NextUIPlugin.Gui {
 		protected TextureWrap? textureWrap;
 
 		public OverlayGui(
-			NextUIShared.Overlay.Overlay overlay
+			Overlay overlay
 		) {
 			this.overlay = overlay;
 			BuildTextureWrap();
@@ -40,6 +40,7 @@ namespace NextUIPlugin.Gui {
 			if (overlay.TexturePointer == IntPtr.Zero) {
 				return;
 			}
+
 			D3D11.Texture2D? texture = DxHandler.Device?.OpenSharedResource<D3D11.Texture2D>(overlay.TexturePointer);
 			if (texture == null) {
 				return;
@@ -165,7 +166,7 @@ namespace NextUIPlugin.Gui {
 			ImGui.Begin($"NUOverlay-{overlay.Guid}", GetWindowFlags());
 
 			ImGui.Image(textureWrap.ImGuiHandle, new Vector2(textureWrap.Width, textureWrap.Height));
-			
+
 			HandleMouseEvent();
 
 			ImGui.End();
@@ -181,9 +182,8 @@ namespace NextUIPlugin.Gui {
 				| ImGuiWindowFlags.NoBringToFrontOnFocus
 				| ImGuiWindowFlags.NoFocusOnAppearing;
 
-			// ClickThrough is implicitly locked
-			// var locked = inlayConfig.Locked || inlayConfig.ClickThrough;
-			var locked = true;
+			// ClickThrough is implicitly locked\
+			var locked = overlay.Locked || overlay.ClickThrough;
 
 			if (locked) {
 				flags |=
@@ -193,8 +193,7 @@ namespace NextUIPlugin.Gui {
 					| ImGuiWindowFlags.NoBackground; //TODO: Change it
 			}
 
-			if ((!captureCursor && locked)) {
-				// inlayConfig.ClickThrough || 
+			if (overlay.ClickThrough || (!captureCursor && locked)) {
 				flags |= ImGuiWindowFlags.NoMouseInputs | ImGuiWindowFlags.NoNav;
 			}
 

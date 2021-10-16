@@ -2,6 +2,6 @@
 	public enum KeyEventType {
 		KeyDown,
 		KeyUp,
-		Character,
+		Character
 	}
 }

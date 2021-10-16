@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Drawing;
-using System.Numerics;
 using NextUIShared.Data;
 using NextUIShared.Request;
 
-namespace NextUIShared.Overlay {
+namespace NextUIShared.Model {
 	/**
 	 * Pure overlay data
 	 */
@@ -54,8 +53,8 @@ namespace NextUIShared.Overlay {
 				TexturePointerChange?.Invoke(texturePointer);
 			}
 		}
-		
-		public Size Size { 
+
+		public Size Size {
 			get { return size; }
 			set {
 				if (size == value) {
@@ -64,10 +63,10 @@ namespace NextUIShared.Overlay {
 
 				size = value;
 				SizeChange?.Invoke(size);
-			} 
+			}
 		}
-		
-		public Cursor Cursor { 
+
+		public Cursor Cursor {
 			get { return cursor; }
 			set {
 				if (cursor == value) {
@@ -76,9 +75,9 @@ namespace NextUIShared.Overlay {
 
 				cursor = value;
 				CursorChange?.Invoke(cursor);
-			} 
+			}
 		}
-		
+
 		public bool ClickThrough { get; set; }
 		public bool TypeThrough { get; set; }
 		public bool Locked { get; set; } = true;
@@ -100,10 +99,12 @@ namespace NextUIShared.Overlay {
 			Guid = new Guid();
 			Url = url;
 			size = newSize;
-			if (size.Width == 0 || size.Height == 0) {
-				size.Width = 800;
-				size.Height = 600;
+			if (size.Width != 0 && size.Height != 0) {
+				return;
 			}
+
+			size.Width = 800;
+			size.Height = 600;
 		}
 
 		public void Navigate(string newUrl) {

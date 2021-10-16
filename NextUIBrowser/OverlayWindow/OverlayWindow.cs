@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using NextUIBrowser.RenderHandlers;
 using NextUIShared.Data;
-using NextUIShared.Overlay;
+using NextUIShared.Model;
 using NextUIShared.Request;
 
 namespace NextUIBrowser.OverlayWindow {

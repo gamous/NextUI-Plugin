@@ -4,7 +4,7 @@ using System.Linq;
 using Dalamud.Logging;
 using NextUIBrowser.RenderHandlers;
 using NextUIShared;
-using NextUIShared.Overlay;
+using NextUIShared.Model;
 using D3D11 = SharpDX.Direct3D11;
 using DXGI = SharpDX.DXGI;
 
@@ -50,7 +50,7 @@ namespace NextUIBrowser.OverlayWindow {
 		}
 
 		// Requested creation of new overlay
-		protected void CreateOverlayWindow(Guid guid, Overlay overlay) {
+		protected void CreateOverlayWindow(Overlay overlay) {
 			if (device == null) {
 				PluginLog.Warning("Cannot create overlay window, device was not initialized");
 				return;
