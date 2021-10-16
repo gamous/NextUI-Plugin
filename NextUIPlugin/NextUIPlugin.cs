@@ -102,12 +102,14 @@ namespace NextUIPlugin {
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		public void LoadMicroPlugin() {
-			string? dir = Path.Combine(
-				pluginInterface.AssemblyLocation.DirectoryName,
-				"microplugin"
-			);
+			var pluginDir = pluginInterface.AssemblyLocation?.DirectoryName;
+			if (pluginDir == null) {
+				PluginLog.Warning("Unable to load MicroPlugin, plugin directory was not passed");
+				return;
+			}
+
+			var dir = Path.Combine(pluginDir, "microplugin");
 			// string dir = @"A:\Projects\Kaminaris\ffxiv\NextUIPlug\NextUIPlugin\NextUIBrowser\bin\Release\win-x64";
-			PluginLog.Log("Trying to load");
 
 			micropluginLoader = PluginLoader.CreateFromAssemblyFile(
 				assemblyFile: Path.Combine(dir, "NextUIBrowser.dll"),

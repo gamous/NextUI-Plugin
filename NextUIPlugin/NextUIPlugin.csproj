@@ -112,4 +112,15 @@
 	<ItemGroup>
 		<ProjectReference Include="..\NextUIShared\NextUIShared.csproj" />
 	</ItemGroup>
+
+	<Target Name="PackagePlugin" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+		<DalamudPackager
+				ProjectDir="$(ProjectDir)"
+				OutputPath="$(OutputPath)"
+				AssemblyName="$(AssemblyName)"
+				MakeZip="true"
+				Exclude="NextUIShared.pdb"
+				VersionComponents="4"
+		/>
+	</Target>
 </Project>

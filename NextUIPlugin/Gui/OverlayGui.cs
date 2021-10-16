@@ -90,8 +90,7 @@ namespace NextUIPlugin.Gui {
 
 			// Bail if we're not focused or we're typethrough
 			// TODO: Revisit the focus check for UI stuff, might not hold
-			if (!windowFocused) {
-				//  || inlayConfig.TypeThrough
+			if (!windowFocused || overlay.TypeThrough) {
 				return (false, 0);
 			}
 
@@ -110,10 +109,8 @@ namespace NextUIPlugin.Gui {
 				return (false, 0);
 			}
 
-			var isSystemKey =
-				msg == WindowsMessage.WmSysKeyDown
-				|| msg == WindowsMessage.WmSysKeyUp
-				|| msg == WindowsMessage.WmSysChar;
+			var isSystemKey = 
+				msg is WindowsMessage.WmSysKeyDown or WindowsMessage.WmSysKeyUp or WindowsMessage.WmSysChar;
 
 			// TODO: Technically this is only firing once, because we're checking focused before this point,
 			// but having this logic essentially duped per-inlay is a bit eh. Dedupe at higher point?
