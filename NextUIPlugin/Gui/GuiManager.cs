@@ -13,16 +13,14 @@ namespace NextUIPlugin.Gui {
 	public class GuiManager : IDisposable, IGuiManager {
 		protected Dictionary<Guid, OverlayGui> overlays = new();
 
-		public D3D11.Device Device { get; set; } = null!;
-		public IntPtr WindowHandlePtr { get; set; }
-		public static long AdapterLuid { get; set; }
+		public long AdapterLuid { get; set; }
 
 		public Action<Guid, NextUIShared.Overlay.Overlay> RequestNewOverlay { get; set; }
 
 		public void Initialize(DalamudPluginInterface pluginInterface) {
 			// Spin up DX handling from the plugin interface
 			DxHandler.Initialize(pluginInterface);
-			Device = DxHandler.Device;
+			AdapterLuid = DxHandler.AdapterLuid;
 
 			// Spin up WndProc hook
 			WndProcHandler.Initialize(DxHandler.WindowHandle);

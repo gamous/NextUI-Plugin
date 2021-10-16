@@ -2,33 +2,4 @@
 	<PropertyGroup>
 		<TargetFramework>net5.0-windows</TargetFramework>
 	</PropertyGroup>
-
-	<!-- Dalamud Configuration -->
-	<PropertyGroup>
-		<DalamudVersion>dev</DalamudVersion>
-		<DalamudLocal>../dalamud/</DalamudLocal>
-		<DalamudXIVLauncher>$(APPDATA)\XIVLauncher\addon\Hooks\$(DalamudVersion)</DalamudXIVLauncher>
-	</PropertyGroup>
-
-	<!-- Assembly Reference Locations -->
-	<PropertyGroup>
-		<AssemblySearchPaths>
-			$(AssemblySearchPaths);
-			$(DalamudLocal);
-			$(DalamudXIVLauncher);
-		</AssemblySearchPaths>
-	</PropertyGroup>
-
-	<!-- Library References -->
-	<ItemGroup>
-		<Reference Include="SharpDX">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="SharpDX.Direct3D11">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="SharpDX.DXGI">
-			<Private>false</Private>
-		</Reference>
-	</ItemGroup>
 </Project>
