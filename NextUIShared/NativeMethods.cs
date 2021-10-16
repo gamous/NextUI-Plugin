@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace NextUIPlugin.Overlay {
+namespace NextUIShared {
 	// Enums are not comprehensive for the sake of omitting stuff I won't use.
 	public enum WindowLongType {
 		GwlWndProc = -4,
@@ -18,12 +18,12 @@ namespace NextUIPlugin.Overlay {
 		WmLButtonDown = 0x0201,
 	}
 
-	enum VirtualKey {
+	public enum VirtualKey {
 		Shift = 0x10,
 		Control = 0x11,
 	}
 
-	internal static class NativeMethods {
+	public static class NativeMethods {
 		public static bool IsKeyActive(VirtualKey key) {
 			return (GetKeyState((int)key) & 1) == 1;
 		}

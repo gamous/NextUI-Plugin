@@ -1,4 +1,4 @@
-﻿namespace RendererProcess.Data {
+﻿namespace NextUIShared.Data {
 	public enum Cursor {
 		Default,
 		None,

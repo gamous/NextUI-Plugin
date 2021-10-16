@@ -1,12 +1,11 @@
-﻿using CefSharp;
+﻿using System;
+using CefSharp;
 using CefSharp.Enums;
 using CefSharp.OffScreen;
 using CefSharp.Structs;
-using System;
-using RendererProcess.Data;
-using Range = CefSharp.Structs.Range;
+using NextUIShared.Data;
 
-namespace RendererProcess.RenderHandlers {
+namespace NextUIBrowser.RenderHandlers {
 	public abstract class BaseRenderHandler : IRenderHandler {
 		public event EventHandler<Cursor> CursorChanged;
 
@@ -27,13 +26,15 @@ namespace RendererProcess.RenderHandlers {
 
 			// We treat 0 alpha as click through - if changed, fire off the event
 			var currentlyOnBackground = alpha == 0;
-			if (currentlyOnBackground != cursorOnBackground) {
-				cursorOnBackground = currentlyOnBackground;
-
-				// EDGE CASE: if cursor transitions onto alpha:0 _and_ between two native cursor types, I guess this will be a race cond.
-				// Not sure if should have two seperate upstreams for them, or try and prevent the race. consider.
-				CursorChanged?.Invoke(this, currentlyOnBackground ? Cursor.BrowserHostNoCapture : cursor);
+			if (currentlyOnBackground == cursorOnBackground) {
+				return;
 			}
+
+			cursorOnBackground = currentlyOnBackground;
+
+			// EDGE CASE: if cursor transitions onto alpha:0 _and_ between two native cursor types, I guess this will be a race cond.
+			// Not sure if should have two seperate upstreams for them, or try and prevent the race. consider.
+			CursorChanged?.Invoke(this, currentlyOnBackground ? Cursor.BrowserHostNoCapture : cursor);
 		}
 
 		protected abstract byte GetAlphaAt(int x, int y);
@@ -66,7 +67,7 @@ namespace RendererProcess.RenderHandlers {
 
 		// public void OnImeCompositionRangeChanged(Range selectedRange, Rect[] characterBounds) {
 		// }
-		public void OnImeCompositionRangeChanged(Range selectedRange, Rect[] characterBounds) {
+		public void OnImeCompositionRangeChanged(CefSharp.Structs.Range selectedRange, Rect[] characterBounds) {
 		}
 
 		public void OnCursorChange(IntPtr cursorPtr, CursorType type, CursorInfo customCursorInfo) {
@@ -91,6 +92,7 @@ namespace RendererProcess.RenderHandlers {
 		#region Cursor encoding
 
 		protected Cursor EncodeCursor(CursorType cursor) {
+			// ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
 			switch (cursor) {
 				// CEF calls default "pointer", and pointer "hand". Derp.
 				case CursorType.Pointer: return Cursor.Default;

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace RendererProcess.Data {
+namespace NextUIShared.Data {
 	[Flags]
 	public enum InputModifier {
 		None = 0,

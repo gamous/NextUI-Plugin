@@ -1,32 +1,36 @@
-﻿using System.IO;
-using CefSharp;
+﻿using System;
+using System.IO;
 using CefSharp.OffScreen;
-using Dalamud.Logging;
-using NextUIPlugin;
+using NextUIBrowser.Cef;
+using NextUIBrowser.OverlayWindow;
+using NextUIShared;
 
 namespace NextUIBrowser {
 	public class BrowserPlugin : INuPlugin {
 		public string GetName() => "NextUIBrowser";
 
-		public void Initialize(string dir) {
-			var settings = new CefSettings();
+		public static IGuiManager GuiManager = null!;
+		public static OverlayWindowManager windowManager = null!;
 
-			var browser = Path.Combine(dir, @"CefSharp.BrowserSubprocess.exe");
-			var locales = Path.Combine(dir, @"locales\");
-			var res = Path.Combine(dir);
+		public void Initialize(
+			string dir,
+			IGuiManager guiManager
+		) {
+			GuiManager = guiManager;
 
-			settings.BrowserSubprocessPath = browser;
-			settings.LocalesDirPath = locales;
-			settings.ResourcesDirPath = res;
+			string cacheDir = Path.Combine(
+				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+				"NUCefSharp\\Cache"
+			);
+			CefHandler.Initialize(cacheDir);
 
-			// Make sure you set performDependencyCheck false
-			settings.CefCommandLineArgs["autoplay-policy"] = "no-user-gesture-required";
-			PluginLog.Log("CEF 4?");
-			settings.EnableAudio();
-			settings.SetOffScreenRenderingBestPerformanceArgs();
-			Cef.Initialize(settings, performDependencyCheck: true, browserProcessHandler: null);
-			
-			PluginLog.Log("CEF WORKING?");
+			windowManager = new OverlayWindowManager();
+			windowManager.Initialize(guiManager);
+		}
+
+		public void Shutdown() {
+			// Cef.Shutdown();
+			CefHandler.Shutdown();
 		}
 	}
 }

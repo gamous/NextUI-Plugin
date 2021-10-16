@@ -1,13 +1,9 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using ImGuiNET;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using CefSharp;
-using CefSharp.OffScreen;
 using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.ClientState;
@@ -20,12 +16,14 @@ using McMaster.NETCore.Plugins;
 using Newtonsoft.Json;
 using NextUIPlugin.Configuration;
 using NextUIPlugin.Data;
-using NextUIPlugin.Overlay;
+using NextUIPlugin.Gui;
 using NextUIPlugin.Service;
 using NextUIPlugin.Socket;
+using NextUIShared;
 
 namespace NextUIPlugin {
 	// ReSharper disable once InconsistentNaming
+	// ReSharper disable once ClassNeverInstantiated.Global
 	public class NextUIPlugin : IDalamudPlugin {
 		public string Name => "NextUIPlugin";
 
@@ -49,7 +47,13 @@ namespace NextUIPlugin {
 		public static NextUISocket socketServer = null!;
 
 		protected DataHandler dataHandler;
-		public static OverlayManager? overlayManager;
+		public static GuiManager? guiManager;
+		
+		/**
+		 * DANGER ZONE
+		 */
+		protected PluginLoader? micropluginLoader;
+		protected INuPlugin? microplugin;
 
 		public NextUIPlugin(
 			CommandManager commandManager,
@@ -89,12 +93,15 @@ namespace NextUIPlugin {
 			dataHandler.CastStart += CastStart;
 			// dataHandler.onPartyChanged += PartyChanged;
 
+			guiManager = new GuiManager();
+			guiManager.Initialize(pluginInterface);
 
 			// TestCef();
 			TestCefPlugin();
 
-			overlayManager = new OverlayManager();
-			overlayManager.Initialize(pluginInterface);
+			// overlayManager = new OverlayManager();
+			// overlayManager.Initialize(pluginInterface);
+
 
 			commandManager.AddHandler("/nu", new CommandInfo(OnCommandDebugCombo) {
 				HelpMessage = "Open NextUI Plugin configuration",
@@ -108,137 +115,25 @@ namespace NextUIPlugin {
 			string dir = @"A:\Projects\Kaminaris\ffxiv\NextUIPlug\NextUIPlugin\NextUIBrowser\bin\Release\win-x64";
 			PluginLog.Log("Trying to load");
 			
-			var plug = PluginLoader.CreateFromAssemblyFile(
+			micropluginLoader = PluginLoader.CreateFromAssemblyFile(
 				assemblyFile: Path.Combine(dir, "NextUIBrowser.dll"),
-				sharedTypes: new[] { typeof(INuPlugin) },
+				sharedTypes: new[] { typeof(INuPlugin), typeof(GuiManager) },
 				isUnloadable: false,
 				configure: config => {
 					config.IsUnloadable = false;
 					config.LoadInMemory = false;
-					// config.DefaultContext.
 				} 
 			);
 			
-			PluginLog.Log("CEFDLL 1?");
-			var assembly = plug.LoadDefaultAssembly();
-			PluginLog.Log("CEFDLL 2?");
-			var pluginInst = assembly.CreateInstance("NextUIBrowser.BrowserPlugin");
-			PluginLog.Log("CEFDLL 3?");
-			var plugType = pluginInst.GetType();
-			PluginLog.Log("CEFDLL 4?");
-			plugType.GetMethod("Initialize", BindingFlags.Public | BindingFlags.Instance).Invoke(
-				pluginInst,
-				new[] { dir }
-			);
-		}
-
-		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void TestCef() {
-			string? dir = pluginInterface.AssemblyLocation.DirectoryName;
-			// PluginLog.Log("DIR LOC " + dir);
-
-			var plug = PluginLoader.CreateFromAssemblyFile(
-				assemblyFile: Path.Combine(dir, "CefSharp.OffScreen.dll"),
-				sharedTypes: Array.Empty<Type>(),
-				isUnloadable: false
-			);
-			PluginLog.Log("CEF 1?");
-			var assembly = plug.LoadDefaultAssembly();
-
-			var plug2 = PluginLoader.CreateFromAssemblyFile(
-				assemblyFile: Path.Combine(dir, "CefSharp.dll"),
-				sharedTypes: Array.Empty<Type>(),
-				isUnloadable: false
-			);
-			PluginLog.Log("CEF 1x?");
-			// foreach (var VARIABLE in plug2.EnterContextualReflection()) {
-			// 	
-			// }
-			var assemblyCef = plug2.LoadAssembly("CefSharp");
-
-
-			// var assembly = Assembly.LoadFile(Path.Combine(dir, "CefSharp.OffScreen.dll"));
-			// var cefAss = Assembly.LoadFile(Path.Combine(dir, "CefSharp.dll"));
-			PluginLog.Log("CEF 2?");
-
-			foreach (var VARIABLE in assembly.GetTypes()) {
-				PluginLog.Log("FOUND? " + VARIABLE.Name);
+			var assembly = micropluginLoader.LoadDefaultAssembly();
+			microplugin = (INuPlugin?)assembly.CreateInstance("NextUIBrowser.BrowserPlugin");
+			if (microplugin == null) {
+				PluginLog.Warning("Unable to load BrowserPlugin");
+				return;
 			}
 
-			var settings = assembly.CreateInstance("CefSharp.OffScreen.CefSettings");
-			var settingsType = settings.GetType();
-
-			PluginLog.Log("CEF 3?" + settings?.GetType().ToString());
-			var browser = Path.Combine(dir, @"CefSharp.BrowserSubprocess.exe");
-			var locales = Path.Combine(dir, @"locales\");
-			var res = Path.Combine(dir);
-
-			// settings.GetType().GetMethod("EnableAudio").Invoke(settings, Array.Empty<object>());
-
-			// CefSettings
-			// settings.BrowserSubprocessPath = browser;
-			// settings.LocalesDirPath = locales;
-			// settings.ResourcesDirPath = res;
-
-			settingsType.GetProperty("BrowserSubprocessPath").SetValue(settings, browser);
-			settingsType.GetProperty("LocalesDirPath").SetValue(settings, locales);
-			settingsType.GetProperty("ResourcesDirPath").SetValue(settings, res);
-
-			// Set BrowserSubProcessPath when cefsharp moved to the subfolder
-			// if (resolved) {
-
-
-			// new CefLibraryHandle()
-			// }
-
-			// Make sure you set performDependencyCheck false
-			// settings.CefCommandLineArgs["autoplay-policy"] = "no-user-gesture-required";
-			PluginLog.Log("CEF 4?");
-			// settings.EnableAudio();
-			foreach (var VARIABLE in settingsType.GetMethods(BindingFlags.Public | BindingFlags.Instance)) {
-				PluginLog.Log("Method " + VARIABLE.Name);
-			}
-
-			settingsType.GetMethod("EnableAudio").Invoke(settings, Array.Empty<object>());
-			PluginLog.Log("CEF 5?");
-			// settings.SetOffScreenRenderingBestPerformanceArgs();
-			settingsType.GetMethod("SetOffScreenRenderingBestPerformanceArgs").Invoke(settings, Array.Empty<object>());
-			PluginLog.Log("CEF WORKINGXXXX?");
-
-			foreach (var VARIABLE in assemblyCef.GetTypes()) {
-				PluginLog.Warning("TYPE " + VARIABLE.Name);
-			}
-
-			var cefType = assemblyCef.GetType("CefSharp.Cef");
-			cefType.GetMethod("Initialize", BindingFlags.Static | BindingFlags.Public).Invoke(null, new[] {
-				settings, true, null
-			});
-			// Cef.Initialize(settings, true, null);
-			// Cef.IsInitialized
-			PluginLog.Log("CEF WORKING?");
-			PluginLog.Log("CEF WORKING? " + cefType
-				.GetProperty("IsInitialized", BindingFlags.Static | BindingFlags.Public)
-				.GetValue(null).ToString()
-			);
-		}
-
-		protected static Assembly? CurrentDomain_AssemblyResolve(object? sender, ResolveEventArgs args) {
-			PluginLog.Log("ATTX " + args.Name);
-			if (args.Name.StartsWith("CefSharp")) {
-				// Set to true, so BrowserSubprocessPath will be set
-				string? dir = pluginInterface.AssemblyLocation.DirectoryName;
-				PluginLog.Log("ATT" + args.Name);
-				string assemblyName = args.Name.Split(new[] { ',' }, 2)[0]; //  + ".dll"
-
-				PluginLog.Log("ATTN " + assemblyName);
-				string subfolderPath = Path.Combine(
-					dir, assemblyName
-				).Replace(".dll.dll", ".dll").Replace(".dll.dll", ".dll");
-				PluginLog.Log("ATT2 " + subfolderPath);
-				return File.Exists(subfolderPath) ? Assembly.LoadFile(subfolderPath) : null;
-			}
-
-			return null;
+			microplugin.Initialize(dir, guiManager);
+			PluginLog.Log("Successfully loaded BrowserPlugin");
 		}
 
 		protected void CastStart(
@@ -305,7 +200,7 @@ namespace NextUIPlugin {
 		}
 
 		public void UiBuilder_OnBuildUi() {
-			overlayManager?.Render();
+			guiManager?.Render();
 
 			if (!isNextUISetupOpen) {
 				return;
@@ -329,13 +224,13 @@ namespace NextUIPlugin {
 			ImGui.InputText("URL", ref configuration.overlayUrl, 255);
 			if (ImGui.Button("Reload")) {
 				PluginLog.Log("Reloading overlay");
-				overlayManager?.Navigate(configuration.overlayUrl);
+				//guiManager?.Navigate(configuration.overlayUrl);
 			}
 
 			ImGui.SameLine();
 			if (ImGui.Button("Debug")) {
 				PluginLog.Log("Debugging overlay");
-				overlayManager?.Debug();
+				//guiManager?.Debug();
 			}
 
 			ImGui.Separator();
@@ -360,7 +255,11 @@ namespace NextUIPlugin {
 			pluginInterface.Dispose();
 			dataHandler.Dispose();
 			socketServer.Dispose();
-			overlayManager?.Dispose();
+			guiManager?.Dispose();
+			
+
+			microplugin.Shutdown();
+			micropluginLoader?.Dispose();
 		}
 
 		protected void OnCommandDebugCombo(string command, string arguments) {

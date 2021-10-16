@@ -3,29 +3,31 @@ using CefSharp.OffScreen;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using RendererProcess.Data;
-using RendererProcess.Ipc;
-using RendererProcess.RenderHandlers;
+using System.Numerics;
+using NextUIBrowser.RenderHandlers;
+using NextUIShared.Data;
+using NextUIShared.Overlay;
+using NextUIShared.Request;
 
-namespace RendererProcess {
-	public class Overlay : IDisposable {
-		protected string url;
+namespace NextUIBrowser.OverlayWindow {
+	public class OverlayWindow : IDisposable {
+		protected Overlay overlay;
 
 		protected ChromiumWebBrowser? browser;
-		public BaseRenderHandler RenderHandler;
+		public readonly BaseRenderHandler renderHandler;
 
-		public Overlay(string url, BaseRenderHandler renderHandler) {
-			this.url = url;
-			RenderHandler = renderHandler;
+		public OverlayWindow(Overlay overlay, BaseRenderHandler renderHandler) {
+			this.renderHandler = renderHandler;
+			this.overlay = overlay;
 		}
 
 		public void Initialize() {
-			browser = new ChromiumWebBrowser(url, automaticallyCreateBrowser: false);
-			browser.RenderHandler = RenderHandler;
-			CefSharp.Structs.Rect size = RenderHandler.GetViewRect();
+			browser = new ChromiumWebBrowser(overlay.Url, automaticallyCreateBrowser: false);
+			browser.RenderHandler = renderHandler;
+			var size = renderHandler.GetViewRect();
 
 			// General browser config
-			WindowInfo windowInfo = new() {
+			var windowInfo = new WindowInfo() {
 				Width = size.Width,
 				Height = size.Height,
 			};
@@ -43,6 +45,13 @@ namespace RendererProcess {
 
 			browserSettings.Dispose();
 			windowInfo.Dispose();
+
+			// Handle any changes done on overlay data
+			overlay.DebugRequest += Debug;
+			overlay.UrlChange += Navigate;
+			overlay.SizeChange += Resize;
+			overlay.MouseEvent += HandleMouseEvent;
+			overlay.KeyEvent += HandleKeyEvent;
 		}
 
 		public void Dispose() {
@@ -50,8 +59,14 @@ namespace RendererProcess {
 				return;
 			}
 
+			overlay.DebugRequest -= Debug;
+			overlay.UrlChange -= Navigate;
+			overlay.SizeChange -= Resize;
+			overlay.MouseEvent -= HandleMouseEvent;
+			overlay.KeyEvent -= HandleKeyEvent;
+
 			browser.RenderHandler = null;
-			RenderHandler.Dispose();
+			renderHandler.Dispose();
 			browser.Dispose();
 		}
 
@@ -63,29 +78,36 @@ namespace RendererProcess {
 			}
 
 			// Otherwise load regularly
-			url = newUrl;
 			browser?.Load(newUrl);
 		}
 
-		public void Debug() {
+		protected void Debug() {
 			browser.ShowDevTools();
 		}
 
-		public void HandleMouseEvent(MouseEventRequest request) {
+		public void Resize(Size size) {
+			// Need to resize renderer first, the browser will check it (and hence the texture) when browser.Size is set.
+			renderHandler.Resize(size);
+			if (browser != null) {
+				browser.Size = size;
+			}
+		}
+
+		protected void HandleMouseEvent(MouseEventRequest request) {
 			// If the browser isn't ready yet, noop
 			if (browser == null || !browser.IsBrowserInitialized || browser.IsLoading) {
 				return;
 			}
 
-			int cursorX = (int)request.x;
-			int cursorY = (int)request.y;
+			var cursorX = (int)request.x;
+			var cursorY = (int)request.y;
 
 			// Update the renderer's concept of the mouse cursor
-			RenderHandler.SetMousePosition(cursorX, cursorY);
+			renderHandler.SetMousePosition(cursorX, cursorY);
 
 			MouseEvent evt = new(cursorX, cursorY, DecodeInputModifier(request.modifier));
 
-			IBrowserHost? host = browser.GetBrowserHost();
+			var host = browser.GetBrowserHost();
 
 			// Ensure the mouse position is up to date
 			host.SendMouseMoveEvent(evt, request.leaving);
@@ -99,7 +121,7 @@ namespace RendererProcess {
 			DecodeMouseButtons(request.mouseUp).ForEach(button => host.SendMouseClickEvent(evt, button, true, 1));
 
 			// CEF treats the wheel delta as mode 0, pixels. Bump up the numbers to match typical in-browser experience.
-			int deltaMult = 100;
+			var deltaMult = 100;
 			host.SendMouseWheelEvent(evt, (int)request.wheelX * deltaMult, (int)request.wheelY * deltaMult);
 		}
 
@@ -108,10 +130,10 @@ namespace RendererProcess {
 				return;
 			}
 
-			CefSharp.KeyEventType type = request.keyEventType switch {
-				Data.KeyEventType.KeyDown => CefSharp.KeyEventType.RawKeyDown,
-				Data.KeyEventType.KeyUp => CefSharp.KeyEventType.KeyUp,
-				Data.KeyEventType.Character => CefSharp.KeyEventType.Char,
+			var type = request.keyEventType switch {
+				NextUIShared.Data.KeyEventType.KeyDown => CefSharp.KeyEventType.RawKeyDown,
+				NextUIShared.Data.KeyEventType.KeyUp => CefSharp.KeyEventType.KeyUp,
+				NextUIShared.Data.KeyEventType.Character => CefSharp.KeyEventType.Char,
 				_ => throw new ArgumentException($"Invalid KeyEventType {request.keyEventType}")
 			};
 
@@ -122,14 +144,6 @@ namespace RendererProcess {
 				NativeKeyCode = request.nativeKeyCode,
 				IsSystemKey = request.systemKey,
 			});
-		}
-
-		public void Resize(Size size) {
-			// Need to resize renderer first, the browser will check it (and hence the texture) when browser.Size is set.
-			RenderHandler.Resize(size);
-			if (browser != null) {
-				browser.Size = size;
-			}
 		}
 
 		protected List<MouseButtonType> DecodeMouseButtons(MouseButton buttons) {
@@ -150,7 +164,7 @@ namespace RendererProcess {
 		}
 
 		protected CefEventFlags DecodeInputModifier(InputModifier modifier) {
-			CefEventFlags result = CefEventFlags.None;
+			var result = CefEventFlags.None;
 			if ((modifier & InputModifier.Shift) == InputModifier.Shift) {
 				result |= CefEventFlags.ShiftDown;
 			}

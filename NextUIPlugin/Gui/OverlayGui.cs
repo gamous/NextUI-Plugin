@@ -1,21 +1,18 @@
-﻿using Dalamud.Logging;
-using ImGuiNET;
+﻿using ImGuiNET;
 using System;
 using System.Numerics;
-using Newtonsoft.Json;
-using RendererProcess.Data;
-using RendererProcess.Ipc;
-using RendererProcess.RenderHandlers;
-using RendererProcess.Texture;
-using SharedMemory;
+using Dalamud.Logging;
+using ImGuiScene;
+using NextUIPlugin.Overlay;
+using NextUIShared;
+using NextUIShared.Data;
+using NextUIShared.Request;
+using D3D11 = SharpDX.Direct3D11;
+using D3D = SharpDX.Direct3D;
 
-namespace NextUIPlugin.Overlay {
-	public class Overlay : IDisposable {
-		protected Vector2 size;
-
-		protected readonly RenderProcess? renderProcess;
-		protected SharedTextureHandler? textureHandler;
-		protected Exception? textureRenderException;
+namespace NextUIPlugin.Gui {
+	public class OverlayGui : IDisposable {
+		public NextUIShared.Overlay.Overlay overlay;
 
 		protected bool mouseInWindow;
 		protected bool windowFocused;
@@ -23,22 +20,52 @@ namespace NextUIPlugin.Overlay {
 		protected ImGuiMouseCursor cursor;
 		protected bool captureCursor;
 		public bool acceptFocus;
+		protected TextureWrap? textureWrap;
 
-		public Overlay(RenderProcess? renderProcess) {
-			this.renderProcess = renderProcess;
+		public OverlayGui(
+			NextUIShared.Overlay.Overlay overlay
+		) {
+			this.overlay = overlay;
+			BuildTextureWrap();
+			overlay.TexturePointerChange += _ => {
+				BuildTextureWrap();
+			};
+		}
+
+		public void BuildTextureWrap() {
+			PluginLog.Log("BuildTextureWrap " + overlay.TexturePointer.ToString());
+			if (overlay.TexturePointer == IntPtr.Zero) {
+				return;
+			}
+			D3D11.Texture2D? texture = DxHandler.Device?.OpenSharedResource<D3D11.Texture2D>(overlay.TexturePointer);
+			if (texture == null) {
+				return;
+			}
+
+			D3D11.ShaderResourceView? view = new(
+				DxHandler.Device,
+				texture,
+				new D3D11.ShaderResourceViewDescription {
+					Format = texture.Description.Format,
+					Dimension = D3D.ShaderResourceViewDimension.Texture2D,
+					Texture2D = { MipLevels = texture.Description.MipLevels },
+				}
+			);
+
+			textureWrap = new D3DTextureWrap(view, texture.Description.Width, texture.Description.Height);
 		}
 
 		public void Dispose() {
-			textureHandler?.Dispose();
-			renderProcess?.Send(new RemoveInlayRequest());
+			overlay.Dispose();
+			textureWrap?.Dispose();
 		}
 
 		public void Navigate(string newUrl) {
-			renderProcess?.Send(new NavigateInlayRequest() { url = newUrl });
+			overlay.Navigate(newUrl);
 		}
 
 		public void Debug() {
-			renderProcess?.Send(new DebugInlayRequest());
+			overlay.Debug();
 		}
 
 		public void SetCursor(Cursor newCursor) {
@@ -76,14 +103,14 @@ namespace NextUIPlugin.Overlay {
 				return (false, 0);
 			}
 
-			bool isSystemKey =
+			var isSystemKey =
 				msg == WindowsMessage.WmSysKeyDown
 				|| msg == WindowsMessage.WmSysKeyUp
 				|| msg == WindowsMessage.WmSysChar;
 
 			// TODO: Technically this is only firing once, because we're checking focused before this point,
 			// but having this logic essentially duped per-inlay is a bit eh. Dedupe at higher point?
-			InputModifier modifierAdjust = InputModifier.None;
+			var modifierAdjust = InputModifier.None;
 			if (wParam == (int)VirtualKey.Shift) {
 				modifierAdjust |= InputModifier.Shift;
 			}
@@ -104,7 +131,7 @@ namespace NextUIPlugin.Overlay {
 				modifier &= ~modifierAdjust;
 			}
 
-			renderProcess?.Send(new KeyEventRequest() {
+			overlay.RequestKeyEvent(new KeyEventRequest() {
 				// Guid = RenderGuid,
 				keyEventType = eventType.Value,
 				systemKey = isSystemKey,
@@ -122,30 +149,36 @@ namespace NextUIPlugin.Overlay {
 			// 	mouseInWindow = false;
 			// 	return;
 			// }
+
+			if (textureWrap == null) {
+				return;
+			}
+
 			ImGui.SetNextWindowPos(new Vector2(0, 0), ImGuiCond.Always);
-			ImGui.SetNextWindowSize(size, ImGuiCond.Always);
-			ImGui.Begin("NUOverlay", GetWindowFlags());
+			ImGui.SetNextWindowSize(new Vector2(overlay.Size.Width, overlay.Size.Height), ImGuiCond.Always);
+			ImGui.Begin($"NUOverlay-{overlay.Guid}", GetWindowFlags());
 
-			HandleWindowSize();
-
+			ImGui.Image(textureWrap.ImGuiHandle, new Vector2(textureWrap.Width, textureWrap.Height));
+			
+			HandleMouseEvent();
 			// TODO: Renderer can take some time to spin up properly, should add a loading state.
-			if (textureHandler != null) {
-				HandleMouseEvent();
-
-				textureHandler.Render();
-			}
-			else if (textureRenderException != null) {
-				ImGui.PushStyleColor(ImGuiCol.Text, 0xFF0000FF);
-				ImGui.Text("An error occured while building the browser inlay texture:");
-				ImGui.Text(textureRenderException.ToString());
-				ImGui.PopStyleColor();
-			}
+			// if (textureHandler != null) {
+			// 	HandleMouseEvent();
+			//
+			// 	textureHandler.Render();
+			// }
+			// else if (textureRenderException != null) {
+			// 	ImGui.PushStyleColor(ImGuiCol.Text, 0xFF0000FF);
+			// 	ImGui.Text("An error occured while building the browser inlay texture:");
+			// 	ImGui.Text(textureRenderException.ToString());
+			// 	ImGui.PopStyleColor();
+			// }
 
 			ImGui.End();
 		}
 
 		protected ImGuiWindowFlags GetWindowFlags() {
-			ImGuiWindowFlags flags =
+			var flags =
 				ImGuiWindowFlags.None
 				| ImGuiWindowFlags.NoTitleBar
 				| ImGuiWindowFlags.NoCollapse
@@ -156,7 +189,7 @@ namespace NextUIPlugin.Overlay {
 
 			// ClickThrough is implicitly locked
 			// var locked = inlayConfig.Locked || inlayConfig.ClickThrough;
-			bool locked = true;
+			var locked = true;
 
 			if (locked) {
 				flags |=
@@ -177,21 +210,21 @@ namespace NextUIPlugin.Overlay {
 		private void HandleMouseEvent() {
 			// Render proc won't be ready on first boot
 			// Totally skip mouse handling for click through inlays, as well
-			if (renderProcess == null) {
-				//  || inlayConfig.ClickThrough
-				return;
-			}
+			// if (renderProcess == null) {
+			// 	//  || inlayConfig.ClickThrough
+			// 	return;
+			// }
 
-			ImGuiIOPtr io = ImGui.GetIO();
-			Vector2 windowPos = ImGui.GetWindowPos();
-			Vector2 mousePos = io.MousePos - windowPos - ImGui.GetWindowContentRegionMin();
+			var io = ImGui.GetIO();
+			var windowPos = ImGui.GetWindowPos();
+			var mousePos = io.MousePos - windowPos - ImGui.GetWindowContentRegionMin();
 
 			// Generally we want to use IsWindowHovered for hit checking, as it takes z-stacking into account -
 			// but when cursor isn't being actively captured, imgui will always return false - so fall back
 			// so a slightly more naive hover check, just to maintain a bit of flood prevention.
 			// TODO: Need to test how this will handle overlaps... fully transparent _shouldn't_ be accepting
 			//       clicks so shouuulllddd beee fineee???
-			bool hovered = captureCursor
+			var hovered = captureCursor
 				? ImGui.IsWindowHovered()
 				: ImGui.IsMouseHoveringRect(windowPos, windowPos + ImGui.GetWindowSize());
 
@@ -199,8 +232,7 @@ namespace NextUIPlugin.Overlay {
 			if (!hovered) {
 				if (mouseInWindow) {
 					mouseInWindow = false;
-					renderProcess.Send(new MouseEventRequest() {
-						// Guid = RenderGuid,
+					overlay.RequestMouseEvent(new MouseEventRequest {
 						x = mousePos.X,
 						y = mousePos.Y,
 						leaving = true,
@@ -214,11 +246,11 @@ namespace NextUIPlugin.Overlay {
 
 			ImGui.SetMouseCursor(cursor);
 
-			MouseButton mouseDown = EncodeMouseButtons(io.MouseClicked);
-			MouseButton mouseDouble = EncodeMouseButtons(io.MouseDoubleClicked);
-			MouseButton mouseUp = EncodeMouseButtons(io.MouseReleased);
-			float wheelX = io.MouseWheelH;
-			float wheelY = io.MouseWheel;
+			var mouseDown = EncodeMouseButtons(io.MouseClicked);
+			var mouseDouble = EncodeMouseButtons(io.MouseDoubleClicked);
+			var mouseUp = EncodeMouseButtons(io.MouseReleased);
+			var wheelX = io.MouseWheelH;
+			var wheelY = io.MouseWheel;
 
 			// If the event boils down to no change, bail before sending
 			if (
@@ -232,7 +264,7 @@ namespace NextUIPlugin.Overlay {
 				return;
 			}
 
-			InputModifier inputModifier = InputModifier.None;
+			var inputModifier = InputModifier.None;
 			if (io.KeyShift) {
 				inputModifier |= InputModifier.Shift;
 			}
@@ -246,8 +278,7 @@ namespace NextUIPlugin.Overlay {
 			}
 
 			// TODO: Either this or the entire handler function should be asynchronous so we're not blocking the entire draw thread
-			renderProcess.Send(new MouseEventRequest() {
-				// Guid = RenderGuid,
+			overlay.RequestMouseEvent(new MouseEventRequest() {
 				x = mousePos.X,
 				y = mousePos.Y,
 				mouseDown = mouseDown,
@@ -259,53 +290,10 @@ namespace NextUIPlugin.Overlay {
 			});
 		}
 
-		protected async void HandleWindowSize() {
-			if (renderProcess == null || size != Vector2.Zero) {
-				return;
-			}
-
-			if (size == Vector2.Zero) {
-				Vector2 vpSize = ImGui.GetMainViewport().Size;
-				size = new Vector2(vpSize.X, vpSize.Y);
-			}
-
-			NewInlayRequest request = new() {
-				// "http://localhost:4200?OVERLAY_WS=ws://127.0.0.1:10501/ws"
-				url = NextUIPlugin.configuration.overlayUrl,
-				width = (int)size.X,
-				height = (int)size.Y,
-			};
-
-			RpcResponse response = await renderProcess.SendAsync(request);
-			if (!response.Success) {
-				PluginLog.LogError("Texture build failure, retrying...");
-				return;
-			}
-
-			PluginLog.Log("Setting textureHandler ");
-			SharedTextureHandler? oldTextureHandler = textureHandler;
-			try {
-				string data = System.Text.Encoding.UTF8.GetString(response.Data);
-				TextureHandleResponse? obj = JsonConvert.DeserializeObject<TextureHandleResponse>(data);
-				if (obj == null) {
-					PluginLog.Log("Setting textureHandler FAILED " + data);
-				}
-				else {
-					textureHandler = new SharedTextureHandler(obj);
-					PluginLog.Log("Setting textureHandler OK");
-				}
-			}
-			catch (Exception e) {
-				textureRenderException = e;
-			}
-
-			oldTextureHandler?.Dispose();
-		}
-
 		#region serde
 
 		protected MouseButton EncodeMouseButtons(RangeAccessor<bool> buttons) {
-			MouseButton result = MouseButton.None;
+			var result = MouseButton.None;
 			if (buttons[0]) {
 				result |= MouseButton.Primary;
 			}

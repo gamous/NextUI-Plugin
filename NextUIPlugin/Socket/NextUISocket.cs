@@ -76,7 +76,7 @@ namespace NextUIPlugin.Socket {
 		}
 
 		protected void XivSetAcceptFocus(IWebSocketConnection socket, SocketEvent ev) {
-			NextUIPlugin.overlayManager?.SetAcceptFocus(ev.accept);
+			//NextUIPlugin.guiManager?.SetAcceptFocus(ev.accept);
 			string msg = "AcceptFocus Changed " + ev.accept;
 			socket.Send(JsonResponse(true, ev.guid, msg, ""));
 			PluginLog.Log(msg);

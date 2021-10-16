@@ -1,7 +1,7 @@
 ﻿using System;
-using RendererProcess.Data;
+using NextUIShared.Data;
 
-namespace RendererProcess.Ipc {
+namespace NextUIShared.Request {
 	[Serializable]
 	public class MouseEventRequest : DownstreamIpcRequest {
 		public float x;

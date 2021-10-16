@@ -1,25 +1,27 @@
 ﻿using CefSharp;
 using CefSharp.OffScreen;
 
-namespace RendererProcess {
+namespace NextUIBrowser.Cef {
 	internal static class CefHandler {
 		public static void Initialize(string cefCacheDir) {
-			CefSettings settings = new() {
+			var settings = new CefSettings() {
 				CachePath = cefCacheDir,
+				CefCommandLineArgs = {
+					["autoplay-policy"] = "no-user-gesture-required"
+				},
 #if !DEBUG
 				LogSeverity = LogSeverity.Fatal,
 #endif
 			};
 
-			settings.CefCommandLineArgs["autoplay-policy"] = "no-user-gesture-required";
 			settings.EnableAudio();
 			settings.SetOffScreenRenderingBestPerformanceArgs();
 
-			Cef.Initialize(settings, performDependencyCheck: false, browserProcessHandler: null);
+			CefSharp.Cef.Initialize(settings, performDependencyCheck: false, browserProcessHandler: null);
 		}
 
 		public static void Shutdown() {
-			Cef.Shutdown();
+			CefSharp.Cef.Shutdown();
 		}
 	}
 }

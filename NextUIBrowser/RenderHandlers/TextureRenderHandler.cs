@@ -6,13 +6,15 @@ using System;
 using System.Collections.Concurrent;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using Size = System.Drawing.Size;
 
-namespace RendererProcess.RenderHandlers {
+namespace NextUIBrowser.RenderHandlers {
 	class TextureRenderHandler : BaseRenderHandler {
 		// CEF buffers are 32-bit BGRA
-		protected const byte bytesPerPixel = 4;
+		protected const byte BytesPerPixel = 4;
 
-		protected D3D11.Texture2D texture;
+		protected readonly D3D11.Device device;
+		protected D3D11.Texture2D? texture;
 		protected D3D11.Texture2D? popupTexture;
 		protected ConcurrentBag<D3D11.Texture2D> obsoleteTextures = new();
 
@@ -20,16 +22,17 @@ namespace RendererProcess.RenderHandlers {
 		protected Rect popupRect;
 
 		protected IntPtr sharedTextureHandle = IntPtr.Zero;
-
+		public Action<IntPtr>? TexturePointerChange;
 		public IntPtr SharedTextureHandle {
 			get {
-				if (sharedTextureHandle == IntPtr.Zero) {
-					using (DXGI.Resource? resource = texture.QueryInterface<DXGI.Resource>()) {
-						sharedTextureHandle = resource.SharedHandle;
-					}
-				}
-
 				return sharedTextureHandle;
+			}
+			protected set {
+				if (value == sharedTextureHandle) {
+					return;
+				}
+				sharedTextureHandle = value;
+				TexturePointerChange?.Invoke(sharedTextureHandle);
 			}
 		}
 
@@ -38,40 +41,38 @@ namespace RendererProcess.RenderHandlers {
 		protected int bufferWidth;
 		protected int bufferHeight;
 
-		public TextureRenderHandler(System.Drawing.Size size) {
+		public TextureRenderHandler(D3D11.Device device, Size size) {
+			this.device = device;
 			texture = BuildViewTexture(size);
 		}
 
 		public override void Dispose() {
-			texture.Dispose();
+			texture?.Dispose();
 			popupTexture?.Dispose();
 
-			foreach (var tex in obsoleteTextures) {
+			foreach (D3D11.Texture2D tex in obsoleteTextures) {
 				tex.Dispose();
 			}
 		}
 
-		public override void Resize(System.Drawing.Size size) {
-			D3D11.Texture2D? oldTexture = texture;
+		public override void Resize(Size size) {
+			var oldTexture = texture;
 			texture = BuildViewTexture(size);
 			if (oldTexture != null) {
 				obsoleteTextures.Add(oldTexture);
 			}
-
-			// Need to clear the cached handle value
-			// TODO: Maybe I should just avoid the lazy cache and do it eagerly on texture build.
-			sharedTextureHandle = IntPtr.Zero;
 		}
 
 		// Nasty shit needs nasty attributes.
 		[HandleProcessCorruptedStateExceptions]
 		protected override byte GetAlphaAt(int x, int y) {
-			int rowPitch = bufferWidth * bytesPerPixel;
+			var rowPitch = bufferWidth * BytesPerPixel;
 
-			// Get the offset for the alpha of the cursor's current position. Bitmap buffer is BGRA, so +3 to get alpha byte
-			int cursorAlphaOffset =
+			// Get the offset for the alpha of the cursor's current position.
+			// Bitmap buffer is BGRA, so +3 to get alpha byte
+			var cursorAlphaOffset =
 				0
-				+ (Math.Min(Math.Max(x, 0), bufferWidth - 1) * bytesPerPixel)
+				+ (Math.Min(Math.Max(x, 0), bufferWidth - 1) * BytesPerPixel)
 				+ (Math.Min(Math.Max(y, 0), bufferHeight - 1) * rowPitch)
 				+ 3;
 
@@ -87,9 +88,9 @@ namespace RendererProcess.RenderHandlers {
 			return alpha;
 		}
 
-		private D3D11.Texture2D BuildViewTexture(System.Drawing.Size size) {
+		private D3D11.Texture2D? BuildViewTexture(Size size) {
 			// Build texture. Most of these properties are defined to match how CEF exposes the render buffer.
-			return new D3D11.Texture2D(DxHandler.Device, new D3D11.Texture2DDescription() {
+			var newTexture = new D3D11.Texture2D(device, new D3D11.Texture2DDescription() {
 				Width = size.Width,
 				Height = size.Height,
 				MipLevels = 1,
@@ -99,16 +100,22 @@ namespace RendererProcess.RenderHandlers {
 				Usage = D3D11.ResourceUsage.Default,
 				BindFlags = D3D11.BindFlags.ShaderResource,
 				CpuAccessFlags = D3D11.CpuAccessFlags.None,
-				// TODO: Look into getting SharedKeyedmutex working without a CTD from the plugin side.
+				// TODO: Look into getting SharedKeyedMutex working without a CTD from the plugin side.
 				OptionFlags = D3D11.ResourceOptionFlags.Shared,
 			});
+			
+			using (var resource = newTexture.QueryInterface<DXGI.Resource>()) {
+				SharedTextureHandle = resource.SharedHandle;
+			}
+
+			return newTexture;
 		}
 
 		public override Rect GetViewRect() {
-			// There's a very small chance that OnPaint's cleanup will delete the current texture midway through this function -
-			// Try a few times just in case before failing out with an obviously-wrong value
+			// There's a very small chance that OnPaint's cleanup will delete the current texture midway through this
+			// function. Try a few times just in case before failing out with an obviously-wrong value
 			// hi adam
-			for (int i = 0; i < 5; i++) {
+			for (var i = 0; i < 5; i++) {
 				try {
 					return GetViewRectInternal();
 				}
@@ -120,12 +127,12 @@ namespace RendererProcess.RenderHandlers {
 		}
 
 		private Rect GetViewRectInternal() {
-			D3D11.Texture2DDescription texDesc = texture.Description;
+			var texDesc = texture.Description;
 			return new Rect(0, 0, texDesc.Width, texDesc.Height);
 		}
 
 		public override void OnPaint(PaintElementType type, Rect dirtyRect, IntPtr buffer, int width, int height) {
-			D3D11.Texture2D? targetTexture = type switch {
+			var targetTexture = type switch {
 				PaintElementType.View => texture,
 				PaintElementType.Popup => popupTexture,
 				_ => throw new Exception($"Unknown paint type {type}"),
@@ -139,12 +146,12 @@ namespace RendererProcess.RenderHandlers {
 			}
 
 			// Calculate offset multipliers for the current buffer
-			int rowPitch = width * bytesPerPixel;
-			int depthPitch = rowPitch * height;
+			var rowPitch = width * BytesPerPixel;
+			var depthPitch = rowPitch * height;
 
 			// Build the destination region for the dirty rect that we'll draw to
-			D3D11.Texture2DDescription texDesc = targetTexture.Description;
-			IntPtr sourceRegionPtr = buffer + (dirtyRect.X * bytesPerPixel) + (dirtyRect.Y * rowPitch);
+			var texDesc = targetTexture.Description;
+			var sourceRegionPtr = buffer + (dirtyRect.X * BytesPerPixel) + (dirtyRect.Y * rowPitch);
 			D3D11.ResourceRegion destinationRegion = new() {
 				Top = Math.Min(dirtyRect.Y, texDesc.Height),
 				Bottom = Math.Min(dirtyRect.Y + dirtyRect.Height, texDesc.Height),
@@ -186,10 +193,11 @@ namespace RendererProcess.RenderHandlers {
 			popupRect = rect;
 
 			// I'm really not sure if this happens. If it does, frequently - will probably need 2x shared textures and some jazz.
-			D3D11.Texture2DDescription texDesc = texture.Description;
+			var texDesc = texture.Description;
 			if (rect.Width > texDesc.Width || rect.Height > texDesc.Height) {
 				Console.Error.WriteLine(
-					$"Trying to build popup layer ({rect.Width}x{rect.Height}) larger than primary surface ({texDesc.Width}x{texDesc.Height}).");
+					$"Trying to build popup layer ({rect.Width}x{rect.Height}) larger than primary surface ({texDesc.Width}x{texDesc.Height})."
+				);
 			}
 
 			// Get a reference to the old texture, we'll make sure to assign a new texture before disposing the old one.
@@ -209,9 +217,7 @@ namespace RendererProcess.RenderHandlers {
 				OptionFlags = D3D11.ResourceOptionFlags.None,
 			});
 
-			if (oldTexture != null) {
-				oldTexture.Dispose();
-			}
+			oldTexture?.Dispose();
 		}
 	}
 }
