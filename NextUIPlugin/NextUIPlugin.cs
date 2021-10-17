@@ -87,7 +87,7 @@ namespace NextUIPlugin {
 			guiManager = new GuiManager();
 			guiManager.Initialize(pluginInterface);
 
-			MicroPluginService.Initialize(pluginInterface.AssemblyLocation?.DirectoryName);
+			MicroPluginService.Initialize();
 
 			commandManager.AddHandler("/nu", new CommandInfo(OnCommandDebugCombo) {
 				HelpMessage = "Open NextUI Plugin configuration",

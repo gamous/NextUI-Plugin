@@ -20,8 +20,9 @@ build:
     artifacts:
         expire_in: never
         paths:
-            - NextUIPlugin/bin/x64/Release/NextUIPlugin/latest.zip
-            - NextUIPlugin/bin/x64/Release/NextUIPlugin/NextUIPlugin.json
+            - NextUIPlugin/bin/Release/NextUIPlugin/latest.zip
+            - NextUIPlugin/bin/Release/NextUIPlugin/NextUIPlugin.json
+            - NextUIBrowser/bin/latest.zip
 
 release:
     stage: release

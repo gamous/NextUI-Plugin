@@ -10,9 +10,9 @@
 	<!-- Assembly Configuration -->
 	<PropertyGroup>
 		<AssemblyName>NextUIBrowser</AssemblyName>
-		<AssemblyVersion>0.1.0.0</AssemblyVersion>
-		<FileVersion>0.1.0.0</FileVersion>
-		<InformationalVersion>0.1.0.0</InformationalVersion>
+		<AssemblyVersion>0.1.0.1</AssemblyVersion>
+		<FileVersion>0.1.0.1</FileVersion>
+		<InformationalVersion>0.1.0.1</InformationalVersion>
 	</PropertyGroup>
 
 	<!-- Build Configuration -->
@@ -32,7 +32,8 @@
 		<CefSharpPlatformTarget>x64</CefSharpPlatformTarget>
 		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 
-<!--		<SelfContained>true</SelfContained>-->
+		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+		<OutputPath>bin\$(Configuration)</OutputPath>
 	</PropertyGroup>
 
 	<!-- Release Configuration -->
@@ -75,21 +76,28 @@
 
 	<!-- NuGet Packages -->
 	<ItemGroup>
-		<PackageReference Include="CefSharp.OffScreen.NETCore" Version="94.4.50" />
+		<PackageReference Include="CefSharp.OffScreen.NETCore" Version="94.4.50"/>
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\NextUIShared\NextUIShared.csproj" />
+		<ProjectReference Include="..\NextUIShared\NextUIShared.csproj"/>
 	</ItemGroup>
 
-	<Target Name="CopyMicroPlugin" AfterTargets="Build">
+	<!-- Hot reload for dev version -->
+	<Target Name="CopyMicroPlugin" AfterTargets="Build" Condition="'$(Configuration)'=='Debug'">
 		<ItemGroup>
-			<MicroPluginFiles Include="$(TargetDir)**\*.*" />
+			<MicroPluginFiles Include="$(TargetDir)**\*.*"/>
 		</ItemGroup>
-		<Copy
-				SourceFiles="@(MicroPluginFiles)"
-				DestinationFolder="$(SolutionDir)NextUIPlugin\bin\x64\$(Configuration)\win-x64\microplugin\%(RecursiveDir)" />
+		<Copy SourceFiles="@(MicroPluginFiles)" DestinationFolder="$(SolutionDir)NextUIPlugin\bin\x64\$(Configuration)\win-x64\MicroPlugin\%(RecursiveDir)"/>
 
-		<Message Text="Copied microplugin files" Importance="High" />
+		<Message Text="Copied microplugin files" Importance="High"/>
+	</Target>
+
+	<!-- Zip for release -->
+	<Target Name="ZipOutputPath" AfterTargets="Build" Condition="'$(Configuration)'=='Release'">
+		<ZipDirectory
+				Overwrite="true"
+				SourceDirectory="$(OutputPath)"
+				DestinationFile="$(MSBuildProjectDirectory)\bin\latest.zip"/>
 	</Target>
 </Project>

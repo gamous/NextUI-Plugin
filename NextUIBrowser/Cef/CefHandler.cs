@@ -1,9 +1,10 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
+﻿using System.IO;
 using System.Threading;
+using CefSharp;
 using CefSharp.OffScreen;
+#if DEBUG
 using Dalamud.Logging;
+#endif
 
 namespace NextUIBrowser.Cef {
 	internal static class CefHandler {
@@ -12,42 +13,40 @@ namespace NextUIBrowser.Cef {
 			string cefDir,
 			string pluginDir
 		) {
-			foreach (var mod in Process.GetCurrentProcess().Modules) {
-				PluginLog.Log("Process Loaded modules " + mod.GetType().Name);
-			}
-
-			
 			var settings = new CefSettings() {
 				CachePath = cacheDir,
-				// LogFile = Path.Combine(pluginDir, "cef-debug.log"),
 				UncaughtExceptionStackSize = 5,
 				WindowlessRenderingEnabled = true,
 				BrowserSubprocessPath = Path.Combine(cefDir, "CefSharp.BrowserSubprocess.exe"),
 				CefCommandLineArgs = {
 					["autoplay-policy"] = "no-user-gesture-required",
 				},
-// #if !DEBUG
-				// LogSeverity = LogSeverity.Fatal,
-// #endif
+#if DEBUG
+				LogFile = Path.Combine(pluginDir, "cef-debug.log"),
+#else
+				// Don't log useless stuff for release
+				LogSeverity = LogSeverity.Fatal,
+#endif
 			};
 			settings.CefCommandLineArgs["allow-no-sandbox-job"] = "1";
 
 			settings.EnableAudio();
 			settings.SetOffScreenRenderingBestPerformanceArgs();
-			PluginLog.Log("Settings OK");
 
 			CefSharp.Cef.Initialize(settings, performDependencyCheck: false, browserProcessHandler: null);
 			// Otherwise it's a rare chance that making new browser window hangs up
-			Thread.Sleep(1000);
+			Thread.Sleep(100);
+#if DEBUG
 			PluginLog.Log("Cef initialized " + CefSharp.Cef.IsInitialized + " " + CefSharp.Cef.CefVersion);
-	
-	
-			foreach (var mod in Process.GetCurrentProcess().Modules) {
-				PluginLog.Log("Process Loaded modules " + mod.GetType().Name);
-			}
+#endif
 		}
 
 		public static void Shutdown() {
+			// There is literally no point in shutting down CEF as it will never boot up again within same process
+			// In order to boot it again, entire cef & plugin needs to be copied somewhere else
+			// Definitely don't want to copy 100MB files each time game is executed
+
+#if DEBUG
 			PluginLog.Log("CEF SHUTTING DOWN");
 
 			/*
@@ -60,6 +59,7 @@ namespace NextUIBrowser.Cef {
 			}
 
 			PluginLog.Log("CEF SHUT? " + CefSharp.Cef.IsShutdown);
+#endif
 		}
 	}
 }
