@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Threading;
+using Dalamud.Interface.Internal.Notifications;
 using Dalamud.Logging;
 using McMaster.NETCore.Plugins;
 using NextUIShared;
@@ -42,8 +43,9 @@ namespace NextUIPlugin.Service {
 		}
 
 		public static void LoadMicroPlugin() {
-			if (pluginDir == null || configDir == null) {
-				PluginLog.Error("Unable to load MicroPlugin, plugin directory was not set");
+			// This shouldn't realistically ever occur
+			if (pluginDir == null || configDir == null || NextUIPlugin.guiManager == null) {
+				PluginLog.Error("Unable to load MicroPlugin, unexpected error");
 				return;
 			}
 
@@ -63,6 +65,7 @@ namespace NextUIPlugin.Service {
 			else {
 				// Get the file version.
 				var microPluginVersion = FileVersionInfo.GetVersionInfo(dllPath);
+				PluginLog.Log("MicroPlugin version " + microPluginVersion.FileVersion);
 				if (microPluginVersion.FileVersion != RequiredVersion) {
 					downloadNeeded = true;
 				}
@@ -74,6 +77,11 @@ namespace NextUIPlugin.Service {
 				}
 				else {
 					// We cannot do anything, bail
+					NextUIPlugin.pluginInterface.UiBuilder.AddNotification(
+						"Unable to update, plugin please restart the game",
+						"NextUI Error",
+						NotificationType.Error
+					);
 					PluginLog.Error("Unable to download micro plugin while not in cold boot");
 					return;
 				}
@@ -155,8 +163,12 @@ namespace NextUIPlugin.Service {
 			}
 
 			// we assume tag is the same as version
+#if RELEASE_TEST
+			var artifactUrl = $"https://localhost:4200/latest.zip";
+#else
 			var artifactUrl = $"https://gitlab.com/kaminariss/nextui-plugin/-/jobs/artifacts/v{RequiredVersion}/raw" +
 			                  "/NextUIBrowser/bin/latest.zip?job=build";
+#endif
 
 			var webClient = new WebClient();
 			// webClient.Headers.Add("Accept: text/html, application/xhtml+xml, */*");
@@ -184,7 +196,7 @@ namespace NextUIPlugin.Service {
 			try {
 				lastPid = int.Parse(pidFileContent);
 			}
-			catch (Exception e) {
+			catch (Exception) {
 				lastPid = 0;
 			}
 		}
@@ -203,6 +215,7 @@ namespace NextUIPlugin.Service {
 			return lastPid != Environment.ProcessId;
 		}
 
+#if DEBUG
 		public static void Copy(string sourceDirectory, string targetDirectory) {
 			var diSource = new DirectoryInfo(sourceDirectory);
 			var diTarget = new DirectoryInfo(targetDirectory);
@@ -224,6 +237,7 @@ namespace NextUIPlugin.Service {
 				CopyAll(diSourceSubDir, nextTargetSubDir);
 			}
 		}
+#endif
 
 		#endregion
 	}

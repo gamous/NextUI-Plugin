@@ -1,12 +1,13 @@
 {
     "Name": "NextUIPlugin",
+    "InternalName": "NextUIPlugin",
     "Author": "Kaminaris",
     "Description": "Provides an targeting plugin for NextUI complete user interface replacement for FFXIV",
-    "RepoUrl": "https://github.com/kaminaris/Next-UI-Plugin",
+    "RepoUrl": "https://gitlab.com/kaminariss/nextui-plugin",
     "Tags": [
         "UI"
     ],
-    "AssemblyVersion": "0.1.0.10",
+    "AssemblyVersion": "0.1.1.0",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 4
 }
