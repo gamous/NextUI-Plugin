@@ -88,7 +88,7 @@
 		<ItemGroup>
 			<MicroPluginFiles Include="$(TargetDir)**\*.*"/>
 		</ItemGroup>
-		<Copy SourceFiles="@(MicroPluginFiles)" DestinationFolder="$(SolutionDir)NextUIPlugin\bin\x64\$(Configuration)\win-x64\MicroPlugin\%(RecursiveDir)"/>
+		<Copy SourceFiles="@(MicroPluginFiles)" DestinationFolder="$(SolutionDir)NextUIPlugin\bin\$(Configuration)\MicroPlugin\%(RecursiveDir)"/>
 
 		<Message Text="Copied microplugin files" Importance="High"/>
 	</Target>

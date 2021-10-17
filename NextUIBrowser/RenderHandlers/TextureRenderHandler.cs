@@ -23,7 +23,7 @@ namespace NextUIBrowser.RenderHandlers {
 		protected Rect popupRect;
 
 		protected IntPtr sharedTextureHandle = IntPtr.Zero;
-		public event Action<IntPtr> TexturePointerChange;
+		public event Action<IntPtr>? TexturePointerChange;
 
 		public IntPtr SharedTextureHandle {
 			get {

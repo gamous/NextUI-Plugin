@@ -4,6 +4,7 @@ using CefSharp;
 using CefSharp.OffScreen;
 #if DEBUG
 using Dalamud.Logging;
+using System.Diagnostics;
 #endif
 
 namespace NextUIBrowser.Cef {
