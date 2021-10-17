@@ -43,11 +43,10 @@ namespace NextUIBrowser.Cef {
 		}
 
 		public static void Shutdown() {
+#if DEBUG
 			// There is literally no point in shutting down CEF as it will never boot up again within same process
 			// In order to boot it again, entire cef & plugin needs to be copied somewhere else
 			// Definitely don't want to copy 100MB files each time game is executed
-
-#if DEBUG
 			PluginLog.Log("CEF SHUTTING DOWN");
 
 			/*
@@ -60,6 +59,9 @@ namespace NextUIBrowser.Cef {
 			}
 
 			PluginLog.Log("CEF SHUT? " + CefSharp.Cef.IsShutdown);
+#else
+			// However in prod we gotta shutdown in order to save user data to cache.
+			CefSharp.Cef.Shutdown();
 #endif
 		}
 	}

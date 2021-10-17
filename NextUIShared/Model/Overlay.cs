@@ -12,9 +12,10 @@ namespace NextUIShared.Model {
 		public Guid Guid { get; set; }
 
 		protected string name = "New Overlay";
-		protected string url;
+		protected string url = "";
 		protected IntPtr texturePointer;
 		protected Size size;
+		protected Point position;
 		protected Cursor cursor;
 
 		public string Name {
@@ -66,6 +67,18 @@ namespace NextUIShared.Model {
 			}
 		}
 
+		public Point Position {
+			get { return position; }
+			set {
+				if (position == value) {
+					return;
+				}
+
+				position = value;
+				PositionChange?.Invoke(position);
+			}
+		}
+
 		public Cursor Cursor {
 			get { return cursor; }
 			set {
@@ -83,17 +96,18 @@ namespace NextUIShared.Model {
 		public bool Locked { get; set; } = true;
 		public bool Hidden { get; set; }
 
-		public event Action<IntPtr> TexturePointerChange;
-		public event Action<string> NameChange;
-		public event Action<string> UrlChange;
-		public event Action<Size> SizeChange;
-		public event Action<Cursor> CursorChange;
-		public event Action<MouseEventRequest> MouseEvent;
-		public event Action<KeyEventRequest> KeyEvent;
+		public event Action<IntPtr>? TexturePointerChange;
+		public event Action<string>? NameChange;
+		public event Action<string>? UrlChange;
+		public event Action<Size>? SizeChange;
+		public event Action<Point>? PositionChange;
+		public event Action<Cursor>? CursorChange;
+		public event Action<MouseEventRequest>? MouseEvent;
+		public event Action<KeyEventRequest>? KeyEvent;
 
-		public event Action DebugRequest;
-		public event Action ReloadRequest;
-		public event Action DisposeRequest;
+		public event Action? DebugRequest;
+		public event Action? ReloadRequest;
+		public event Action? DisposeRequest;
 
 		public Overlay(string url, Size newSize) {
 			Guid = new Guid();

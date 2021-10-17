@@ -46,7 +46,7 @@ namespace NextUIPlugin.Configuration {
 			ImGui.BeginGroup();
 			ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, 0));
 
-			var selectorWidth = 100;
+			var selectorWidth = 200;
 			ImGui.BeginChild("panes", new Vector2(selectorWidth, -ImGui.GetFrameHeightWithSpacing()), true);
 
 			// General settings
@@ -73,7 +73,6 @@ namespace NextUIPlugin.Configuration {
 
 			// Selector controls
 			ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 0);
-			// ImGui.PushFont(UiBuilder.IconFont);
 
 			var buttonWidth = selectorWidth; //  / 2
 			if (ImGui.Button("Add", new Vector2(buttonWidth, 0))) {
@@ -81,7 +80,6 @@ namespace NextUIPlugin.Configuration {
 				selectedOverlay = created;
 			}
 
-			// ImGui.PopFont();
 			ImGui.PopStyleVar(2);
 
 			ImGui.EndGroup();
@@ -90,93 +88,96 @@ namespace NextUIPlugin.Configuration {
 		internal static void RenderOverlayPane() {
 			ImGui.SameLine();
 			ImGui.BeginChild("details");
+
 			RenderOverlayConfig();
 
 			ImGui.EndChild();
 		}
 
 
-		private static bool RenderOverlayConfig() {
+		private static void RenderOverlayConfig() {
 			if (selectedOverlay == null) {
-				return false;
+				return;
 			}
-
-			var dirty = false;
 
 			var overlay = selectedOverlay.overlay;
 			ImGui.PushID(overlay.Guid.ToString());
 
 			var ovName = overlay.Name;
+			if (ImGui.InputText("Name", ref ovName, 150)) {
+				overlay.Name = ovName;
+			}
+			
+			// ImGui.SameLine();
+
 			var ovUrl = overlay.Url;
-
-			dirty |= ImGui.InputText("Name", ref ovName, 100);
-
-			// ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.5f);
-			// var commandName = GetInlayCommandName(inlayConfig);
-			// ImGui.InputText("Command Name", ref commandName, 100);
-			// ImGui.PopStyleVar();
-
-			dirty |= ImGui.InputText("URL", ref ovUrl, 1000);
+			ImGui.InputText("URL", ref ovUrl, 1000);
 			if (ImGui.IsItemDeactivatedAfterEdit()) {
 				selectedOverlay.overlay.Url = ovUrl;
-				// selectedOverlay.Navigate(ovUrl);
+				selectedOverlay.Navigate(ovUrl);
+			}
+			
+			// Position
+			var posX = overlay.Position.X;
+			if (ImGui.DragInt("Position X", ref posX, 0.1f)) {
+				overlay.Position = new Point(posX, overlay.Position.Y);
+			}
+			
+			// ImGui.SameLine();
+			
+			var posY = overlay.Position.Y;
+			if (ImGui.DragInt("Position Y", ref posY, 0.1f)) {
+				overlay.Position = new Point(overlay.Position.X, posY);
+			}
+			
+			// Size
+			var sizeW = overlay.Size.Width;
+			if (ImGui.DragInt("Width", ref sizeW, 0.1f)) {
+				overlay.Size = new Size(sizeW, overlay.Size.Height);
+			}
+			
+			// ImGui.SameLine();
+			
+			var sizeH = overlay.Size.Height;
+			if (ImGui.DragInt("Height", ref sizeH, 0.1f)) {
+				overlay.Size = new Size(overlay.Size.Width, sizeH);
 			}
 
-			// ImGui.SetNextItemWidth(100);
-			// ImGui.Columns(2, "boolInlayOptions", false);
+			var ovLocked = overlay.Locked;
+			if (ImGui.Checkbox("Locked", ref ovLocked)) {
+				overlay.Locked = ovLocked;
+			}
 
-			var true_ = true;
-			// if (inlayConfig.ClickThrough) {
-			// 	ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.5f);
-			// }
+			if (ImGui.IsItemHovered()) {
+				ImGui.SetTooltip("Prevent the overlay from being resized or moved.");
+			}
 
-			// dirty |= ImGui.Checkbox("Locked", ref inlayConfig.ClickThrough ? ref true_ : ref inlayConfig.Locked);
-			// if (inlayConfig.ClickThrough) {
-			// 	ImGui.PopStyleVar();
-			// }
+			var ovHidden = overlay.Hidden;
+			if (ImGui.Checkbox("Hidden", ref ovHidden)) {
+				overlay.Hidden = ovHidden;
+			}
 
-			// if (ImGui.IsItemHovered()) {
-			// 	ImGui.SetTooltip(
-			// 		"Prevent the inlay from being resized or moved. This is implicitly set by Click Through.");
-			// }
+			if (ImGui.IsItemHovered()) {
+				ImGui.SetTooltip("This does not stop the overlay from executing, only from being displayed.");
+			}
 
-			// ImGui.NextColumn();
+			var ovTypeThrough = overlay.TypeThrough;
+			if (ImGui.Checkbox("Type Through", ref ovTypeThrough)) {
+				overlay.TypeThrough = ovTypeThrough;
+			}
 
-			// dirty |= ImGui.Checkbox("Hidden", ref inlayConfig.Hidden);
-			// if (ImGui.IsItemHovered()) {
-			// 	ImGui.SetTooltip(
-			// 		"Hide the inlay. This does not stop the inlay from executing, only from being displayed.");
-			// }
+			if (ImGui.IsItemHovered()) {
+				ImGui.SetTooltip("Prevent the overlay from intercepting any keyboard events.");
+			}
 
-			// ImGui.NextColumn();
+			var ovClickThrough = overlay.ClickThrough;
+			if (ImGui.Checkbox("Click Through", ref ovClickThrough)) {
+				overlay.ClickThrough = ovClickThrough;
+			}
 
-			//
-			// if (inlayConfig.ClickThrough) {
-			// 	ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.5f);
-			// }
-			//
-			// dirty |= ImGui.Checkbox("Type Through",
-			// 	ref inlayConfig.ClickThrough ? ref true_ : ref inlayConfig.TypeThrough);
-			// if (inlayConfig.ClickThrough) {
-			// 	ImGui.PopStyleVar();
-			// }
-
-			// if (ImGui.IsItemHovered()) {
-			// 	ImGui.SetTooltip(
-			// 		"Prevent the inlay from intercepting any keyboard events. Implicitly set by Click Through.");
-			// }
-
-			// ImGui.NextColumn();
-
-			// dirty |= ImGui.Checkbox("Click Through", ref inlayConfig.ClickThrough);
-			// if (ImGui.IsItemHovered()) {
-			// 	ImGui.SetTooltip(
-			// 		"Prevent the inlay from intercepting any mouse events. Implicitly sets Locked and Type Through.");
-			// }
-			//
-			// ImGui.NextColumn();
-			//
-			// ImGui.Columns(1);
+			if (ImGui.IsItemHovered()) {
+				ImGui.SetTooltip("Prevent the inlay from intercepting any mouse events.");
+			}
 
 			if (ImGui.Button("Reload")) {
 				selectedOverlay.overlay.Reload();
@@ -188,8 +189,6 @@ namespace NextUIPlugin.Configuration {
 			}
 
 			ImGui.PopID();
-
-			return dirty;
 		}
 	}
 }

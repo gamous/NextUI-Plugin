@@ -3,6 +3,7 @@ using CefSharp.OffScreen;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Threading;
 using Dalamud.Logging;
 using NextUIBrowser.RenderHandlers;
 using NextUIShared.Data;
@@ -63,7 +64,7 @@ namespace NextUIBrowser.OverlayWindow {
 			overlay.DebugRequest -= Debug;
 			overlay.ReloadRequest -= Reload;
 			overlay.UrlChange -= Navigate;
-			overlay.SizeChange -= Resize;
+			// overlay.SizeChange -= Resize;
 			overlay.MouseEvent -= HandleMouseEvent;
 			overlay.KeyEvent -= HandleKeyEvent;
 
@@ -93,12 +94,19 @@ namespace NextUIBrowser.OverlayWindow {
 			browser.ShowDevTools();
 		}
 
+		protected bool resizing;
 		public void Resize(Size size) {
+			if (resizing) {
+				return;
+			}
+			resizing = true;
 			// Need to resize renderer first, the browser will check it (and hence the texture) when browser.Size is set.
 			renderHandler.Resize(size);
 			if (browser != null) {
 				browser.Size = size;
 			}
+			Thread.Sleep(100);
+			resizing = false;
 		}
 
 		protected void HandleMouseEvent(MouseEventRequest request) {

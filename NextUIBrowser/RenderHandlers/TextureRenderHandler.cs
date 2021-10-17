@@ -105,11 +105,13 @@ namespace NextUIBrowser.RenderHandlers {
 				// TODO: Look into getting SharedKeyedMutex working without a CTD from the plugin side.
 				OptionFlags = D3D11.ResourceOptionFlags.Shared,
 			});
+			IntPtr texHandle;
 			
 			using (var resource = newTexture.QueryInterface<DXGI.Resource>()) {
-				SharedTextureHandle = resource.SharedHandle;
+				texHandle = resource.SharedHandle;
 			}
 
+			SharedTextureHandle = texHandle;
 			return newTexture;
 		}
 

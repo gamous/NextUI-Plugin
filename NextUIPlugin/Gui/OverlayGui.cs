@@ -1,5 +1,6 @@
 ﻿using ImGuiNET;
 using System;
+using System.Drawing;
 using System.Numerics;
 using Dalamud.Logging;
 using ImGuiScene;
@@ -65,6 +66,7 @@ namespace NextUIPlugin.Gui {
 			textureWrap?.Dispose();
 		}
 
+		
 		public void Navigate(string newUrl) {
 			overlay.Navigate(newUrl);
 		}
@@ -148,16 +150,16 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void Render() {
-			// if (inlayConfig.Hidden) {
-			// 	mouseInWindow = false;
-			// 	return;
-			// }
+			if (overlay.Hidden) {
+				mouseInWindow = false;
+				return;
+			}
 
 			if (textureWrap == null) {
 				return;
 			}
 
-			ImGui.SetNextWindowPos(new Vector2(0, 0), ImGuiCond.Always);
+			ImGui.SetNextWindowPos(new Vector2(overlay.Position.X, overlay.Position.Y), ImGuiCond.Always);
 			ImGui.SetNextWindowSize(new Vector2(overlay.Size.Width, overlay.Size.Height), ImGuiCond.Always);
 			ImGui.Begin($"NUOverlay-{overlay.Guid}", GetWindowFlags());
 

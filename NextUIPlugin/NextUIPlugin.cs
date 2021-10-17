@@ -1,8 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using Dalamud.Data;
+﻿using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Objects;
@@ -10,14 +6,12 @@ using Dalamud.Game.Command;
 using Dalamud.Game.Network;
 using Dalamud.Logging;
 using Dalamud.Plugin;
-using McMaster.NETCore.Plugins;
 using Newtonsoft.Json;
 using NextUIPlugin.Configuration;
 using NextUIPlugin.Data;
 using NextUIPlugin.Gui;
 using NextUIPlugin.Service;
 using NextUIPlugin.Socket;
-using NextUIShared;
 
 namespace NextUIPlugin {
 	// ReSharper disable once InconsistentNaming

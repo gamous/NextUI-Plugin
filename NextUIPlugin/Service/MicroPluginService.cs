@@ -1,4 +1,6 @@
-﻿using System;
+﻿#define RELEASE_TEST
+
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -157,29 +159,47 @@ namespace NextUIPlugin.Service {
 				return;
 			}
 
-			var downloadPath = Path.Combine(configDir, "mp.zip");
-			if (File.Exists(downloadPath)) {
-				File.Delete(downloadPath);
-			}
+			try {
+				var downloadPath = Path.Combine(configDir, "mp.zip");
+				if (File.Exists(downloadPath)) {
+					File.Delete(downloadPath);
+				}
 
-			// we assume tag is the same as version
+				// we assume tag is the same as version
 #if RELEASE_TEST
-			var artifactUrl = $"https://localhost:4200/latest.zip";
+				var artifactUrl = @"A:\Projects\Kaminaris\ffxiv\NextUIPlug\NextUIPlugin\NextUIBrowser\bin\latest.zip";
 #else
 			var artifactUrl = $"https://gitlab.com/kaminariss/nextui-plugin/-/jobs/artifacts/v{RequiredVersion}/raw" +
 			                  "/NextUIBrowser/bin/latest.zip?job=build";
 #endif
 
-			var webClient = new WebClient();
-			// webClient.Headers.Add("Accept: text/html, application/xhtml+xml, */*");
-			// webClient.Headers.Add("User-Agent: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)");
-			webClient.DownloadFile(
-				new Uri(artifactUrl),
-				downloadPath
-			);
+				using (var webClient = new WebClient()) {
+					// webClient.Headers.Add("Accept: text/html, application/xhtml+xml, */*");
+					// webClient.Headers.Add("User-Agent: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)");
+					webClient.DownloadFile(
+						new Uri(artifactUrl),
+						downloadPath
+					);
+				}
 
-			Directory.Delete(microPluginDir, true);
-			ZipFile.ExtractToDirectory(downloadPath, microPluginDir);
+				PluginLog.Log("Downloaded latest MicroPlugin");
+
+				if (Directory.Exists(microPluginDir)) {
+					Directory.Delete(microPluginDir, true);
+				}
+
+				Directory.CreateDirectory(microPluginDir);
+
+				ZipFile.ExtractToDirectory(downloadPath, microPluginDir);
+				PluginLog.Log("Extracted MicroPlugin");
+
+				if (File.Exists(downloadPath)) {
+					File.Delete(downloadPath);
+				}
+			}
+			catch (Exception) {
+				PluginLog.Warning("Unable to download MicroPlugin");
+			}
 		}
 
 		internal static void ReadLastPid() {
