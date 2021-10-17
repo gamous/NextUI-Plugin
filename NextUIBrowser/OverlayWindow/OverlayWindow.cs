@@ -3,6 +3,7 @@ using CefSharp.OffScreen;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using Dalamud.Logging;
 using NextUIBrowser.RenderHandlers;
 using NextUIShared.Data;
 using NextUIShared.Model;
@@ -69,6 +70,8 @@ namespace NextUIBrowser.OverlayWindow {
 			browser.RenderHandler = null;
 			renderHandler.Dispose();
 			browser.Dispose();
+			browser = null;
+			PluginLog.Log("Browser was disposed");
 		}
 
 		public void Navigate(string newUrl) {

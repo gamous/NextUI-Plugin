@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Reflection;
 using System.Threading;
 using Dalamud.Logging;
 using NextUIBrowser.Cef;
@@ -8,26 +7,28 @@ using NextUIBrowser.OverlayWindow;
 using NextUIShared;
 
 namespace NextUIBrowser {
+	// ReSharper disable once UnusedType.Global
 	public class BrowserPlugin : INuPlugin {
 		public string GetName() => "NextUIBrowser";
 
-		public static IGuiManager GuiManager = null!;
-		public static OverlayWindowManager windowManager = null!;
+		public static IGuiManager? guiManager;
+		public static OverlayWindowManager? windowManager;
 
 		public void Initialize(
-			string dir,
-			IGuiManager guiManager
+			string pluginDir, 
+			string cefDir, 
+			IGuiManager manager
 		) {
 			PluginLog.Log("Initializing Browser");
-
-			GuiManager = guiManager;
+			guiManager = manager;
 
 			string cacheDir = Path.Combine(
 				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
 				"NUCefSharp\\Cache"
 			);
-			CefHandler.Initialize(cacheDir);
+			CefHandler.Initialize(cacheDir, cefDir, pluginDir);
 
+			PluginLog.Log("Initialized Cef");
 			windowManager = new OverlayWindowManager();
 			windowManager.Initialize(guiManager);
 			PluginLog.Log("Initialized Browser");
@@ -37,8 +38,11 @@ namespace NextUIBrowser {
 		}
 
 		public void Shutdown() {
-			windowManager.Dispose();
+			windowManager?.Dispose();
 			CefHandler.Shutdown();
+			PluginLog.Log("Cef was shut down");
+			guiManager = null;
+			windowManager = null;
 			// TODO: FIX THIS
 		}
 	}

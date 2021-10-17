@@ -36,7 +36,6 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void BuildTextureWrap() {
-			PluginLog.Log("BuildTextureWrap " + overlay.TexturePointer.ToString());
 			if (overlay.TexturePointer == IntPtr.Zero) {
 				return;
 			}

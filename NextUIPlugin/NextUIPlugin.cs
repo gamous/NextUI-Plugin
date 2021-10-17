@@ -1,5 +1,7 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.ClientState;
@@ -44,13 +46,6 @@ namespace NextUIPlugin {
 		protected DataHandler dataHandler;
 		public static GuiManager? guiManager;
 
-		/**
-		 * DANGER ZONE
-		 */
-		protected PluginLoader? micropluginLoader;
-
-		protected INuPlugin? microplugin;
-
 		public NextUIPlugin(
 			CommandManager commandManager,
 			DalamudPluginInterface pluginInterface,
@@ -92,45 +87,12 @@ namespace NextUIPlugin {
 			guiManager = new GuiManager();
 			guiManager.Initialize(pluginInterface);
 
-			LoadMicroPlugin();
+			MicroPluginService.Initialize(pluginInterface.AssemblyLocation?.DirectoryName);
 
 			commandManager.AddHandler("/nu", new CommandInfo(OnCommandDebugCombo) {
 				HelpMessage = "Open NextUI Plugin configuration",
 				ShowInHelp = true
 			});
-		}
-
-		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void LoadMicroPlugin() {
-			var pluginDir = pluginInterface.AssemblyLocation?.DirectoryName;
-			if (pluginDir == null) {
-				PluginLog.Warning("Unable to load MicroPlugin, plugin directory was not passed");
-				return;
-			}
-
-			var dir = Path.Combine(pluginDir, "microplugin");
-			// string dir = @"A:\Projects\Kaminaris\ffxiv\NextUIPlug\NextUIPlugin\NextUIBrowser\bin\Release\win-x64";
-
-			micropluginLoader = PluginLoader.CreateFromAssemblyFile(
-				assemblyFile: Path.Combine(dir, "NextUIBrowser.dll"),
-				sharedTypes: new[] { typeof(INuPlugin), typeof(IGuiManager) },
-				isUnloadable: false,
-				configure: config => {
-					config.IsUnloadable = false;
-					config.LoadInMemory = false;
-				}
-			);
-			PluginLog.Log("Loaded MicroPlugin");
-
-			var assembly = micropluginLoader.LoadDefaultAssembly();
-			microplugin = (INuPlugin?)assembly.CreateInstance("NextUIBrowser.BrowserPlugin");
-			if (microplugin == null) {
-				PluginLog.Warning("Unable to load BrowserPlugin");
-				return;
-			}
-
-			microplugin.Initialize(dir, guiManager);
-			PluginLog.Log("Successfully loaded BrowserPlugin");
 		}
 
 		protected void CastStart(
@@ -198,8 +160,7 @@ namespace NextUIPlugin {
 			socketServer.Dispose();
 			guiManager?.Dispose();
 
-			microplugin?.Shutdown();
-			micropluginLoader?.Dispose();
+			MicroPluginService.Shutdown();
 		}
 
 		protected void OnCommandDebugCombo(string command, string arguments) {
