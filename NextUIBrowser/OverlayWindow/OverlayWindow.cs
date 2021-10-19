@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Reactive.Linq;
 using Dalamud.Logging;
+using NextUIBrowser.Cef;
 using NextUIBrowser.RenderHandlers;
 using NextUIShared.Data;
 using NextUIShared.Model;
@@ -30,6 +31,7 @@ namespace NextUIBrowser.OverlayWindow {
 		public void Initialize() {
 			browser = new ChromiumWebBrowser(overlay.Url, automaticallyCreateBrowser: false);
 			browser.RenderHandler = renderHandler;
+			browser.MenuHandler = new CustomMenuHandler();
 			var size = renderHandler.GetViewRect();
 
 			// General browser config
