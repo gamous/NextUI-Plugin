@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using System.Numerics;
+using Dalamud.Logging;
 using ImGuiNET;
 using NextUIPlugin.Gui;
 
@@ -25,13 +26,17 @@ namespace NextUIPlugin.Configuration {
 
 			RenderPaneSelector();
 			RenderOverlayPane();
+			
+			ImGui.SetCursorPos(new Vector2(8, 460));
 
 			if (ImGui.Button("Save")) {
+				NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager.SaveOverlays();
 				NextUIPlugin.pluginInterface.SavePluginConfig(NextUIPlugin.configuration);
 			}
 
 			ImGui.SameLine();
 			if (ImGui.Button("Save and Close")) {
+				NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager.SaveOverlays();
 				NextUIPlugin.pluginInterface.SavePluginConfig(NextUIPlugin.configuration);
 				isConfigOpen = false;
 			}
@@ -47,22 +52,12 @@ namespace NextUIPlugin.Configuration {
 			ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, 0));
 
 			var selectorWidth = 200;
-			ImGui.BeginChild("panes", new Vector2(selectorWidth, -ImGui.GetFrameHeightWithSpacing()), true);
-
-			// General settings
-			// if (ImGui.Selectable($"General", selectedOverlay == null)) {
-			// 	selectedOverlay = null;
-			// }
+			ImGui.BeginChild("panes", new Vector2(selectorWidth, 300), true);
 
 			// Inlay selector list
-			ImGui.Dummy(new Vector2(0, 5));
-			ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.5f);
-			ImGui.Text("- Overlays -");
-			ImGui.PopStyleVar();
-
 			foreach (var overlay in NextUIPlugin.guiManager.overlays) {
 				if (ImGui.Selectable(
-					$"{overlay.overlay.Name}##{overlay.overlay.Guid}",
+					$"{overlay.overlay.Name}##{overlay.overlay.Guid.ToString()}",
 					selectedOverlay == overlay
 				)) {
 					selectedOverlay = overlay;
@@ -74,8 +69,7 @@ namespace NextUIPlugin.Configuration {
 			// Selector controls
 			ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 0);
 
-			var buttonWidth = selectorWidth; //  / 2
-			if (ImGui.Button("Add", new Vector2(buttonWidth, 0))) {
+			if (ImGui.Button("Add", new Vector2(selectorWidth, 0))) {
 				var created = NextUIPlugin.guiManager.CreateOverlay("https://google.com", new Size(800, 600));
 				selectedOverlay = created;
 			}
@@ -117,31 +111,35 @@ namespace NextUIPlugin.Configuration {
 				selectedOverlay.Navigate(ovUrl);
 			}
 			
+			
+			ImGui.SetNextItemWidth(140);
+			ImGui.Columns(2, "overlayOptions", false);
+			
 			// Position
 			var posX = overlay.Position.X;
 			if (ImGui.DragInt("Position X", ref posX, 0.1f)) {
 				overlay.Position = new Point(posX, overlay.Position.Y);
 			}
-			
-			// ImGui.SameLine();
+			ImGui.NextColumn();
 			
 			var posY = overlay.Position.Y;
 			if (ImGui.DragInt("Position Y", ref posY, 0.1f)) {
 				overlay.Position = new Point(overlay.Position.X, posY);
 			}
+			ImGui.NextColumn();
 			
 			// Size
 			var sizeW = overlay.Size.Width;
 			if (ImGui.DragInt("Width", ref sizeW, 0.1f)) {
 				overlay.Size = new Size(sizeW, overlay.Size.Height);
 			}
-			
-			// ImGui.SameLine();
+			ImGui.NextColumn();
 			
 			var sizeH = overlay.Size.Height;
 			if (ImGui.DragInt("Height", ref sizeH, 0.1f)) {
 				overlay.Size = new Size(overlay.Size.Width, sizeH);
 			}
+			ImGui.NextColumn();
 
 			var ovLocked = overlay.Locked;
 			if (ImGui.Checkbox("Locked", ref ovLocked)) {
@@ -151,6 +149,7 @@ namespace NextUIPlugin.Configuration {
 			if (ImGui.IsItemHovered()) {
 				ImGui.SetTooltip("Prevent the overlay from being resized or moved.");
 			}
+			ImGui.NextColumn();
 
 			var ovHidden = overlay.Hidden;
 			if (ImGui.Checkbox("Hidden", ref ovHidden)) {
@@ -160,6 +159,7 @@ namespace NextUIPlugin.Configuration {
 			if (ImGui.IsItemHovered()) {
 				ImGui.SetTooltip("This does not stop the overlay from executing, only from being displayed.");
 			}
+			ImGui.NextColumn();
 
 			var ovTypeThrough = overlay.TypeThrough;
 			if (ImGui.Checkbox("Type Through", ref ovTypeThrough)) {
@@ -169,6 +169,7 @@ namespace NextUIPlugin.Configuration {
 			if (ImGui.IsItemHovered()) {
 				ImGui.SetTooltip("Prevent the overlay from intercepting any keyboard events.");
 			}
+			ImGui.NextColumn();
 
 			var ovClickThrough = overlay.ClickThrough;
 			if (ImGui.Checkbox("Click Through", ref ovClickThrough)) {
@@ -178,6 +179,28 @@ namespace NextUIPlugin.Configuration {
 			if (ImGui.IsItemHovered()) {
 				ImGui.SetTooltip("Prevent the inlay from intercepting any mouse events.");
 			}
+			ImGui.NextColumn();
+
+			var ovFullScreen = overlay.FullScreen;
+			if (ImGui.Checkbox("Fullscreen", ref ovFullScreen)) {
+				overlay.FullScreen = ovFullScreen;
+			}
+
+			if (ImGui.IsItemHovered()) {
+				ImGui.SetTooltip("Makes overlay over entire screen");
+			}
+			ImGui.NextColumn();
+
+			var ovVisibleDuringCutscene = overlay.VisibleDuringCutscene;
+			if (ImGui.Checkbox("Visible During Cutscene", ref ovVisibleDuringCutscene)) {
+				overlay.VisibleDuringCutscene = ovVisibleDuringCutscene;
+			}
+
+			if (ImGui.IsItemHovered()) {
+				ImGui.SetTooltip("Makes overlay as visible during cutscene");
+			}
+			
+			ImGui.Columns(1);
 
 			if (ImGui.Button("Reload")) {
 				selectedOverlay.overlay.Reload();

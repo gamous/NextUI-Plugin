@@ -59,7 +59,7 @@
 
 	<!-- Included Content -->
 	<ItemGroup>
-		<Content Include="NextUIPlugin.json" CopyToOutputDirectory="Always"/>
+		<Content Include="NextUIPlugin.json" CopyToOutputDirectory="Always" />
 	</ItemGroup>
 
 	<!-- Library References -->
@@ -101,26 +101,20 @@
 
 	<!-- NuGet Packages -->
 	<ItemGroup>
-		<PackageReference Include="DalamudPackager" Version="2.1.4"/>
-		<PackageReference Include="Fleck" Version="1.2.0"/>
-		<PackageReference Include="McMaster.NETCore.Plugins" Version="1.4.0"/>
+		<PackageReference Include="DalamudPackager" Version="2.1.4" />
+		<PackageReference Include="Fleck" Version="1.2.0" />
+		<PackageReference Include="McMaster.NETCore.Plugins" Version="1.4.0" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<Folder Include="obj"/>
+		<Folder Include="obj" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\NextUIShared\NextUIShared.csproj"/>
+		<ProjectReference Include="..\NextUIShared\NextUIShared.csproj" />
 	</ItemGroup>
 
 	<Target Name="PackagePlugin" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
-		<DalamudPackager
-				ProjectDir="$(ProjectDir)"
-				OutputPath="$(OutputPath)"
-				AssemblyName="$(AssemblyName)"
-				MakeZip="true"
-				Exclude="NextUIShared.pdb"
-				VersionComponents="4"/>
+		<DalamudPackager ProjectDir="$(ProjectDir)" OutputPath="$(OutputPath)" AssemblyName="$(AssemblyName)" MakeZip="true" Exclude="NextUIShared.pdb" VersionComponents="4" />
 	</Target>
 </Project>

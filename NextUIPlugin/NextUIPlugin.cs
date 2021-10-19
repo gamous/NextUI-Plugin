@@ -1,9 +1,11 @@
 ﻿using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.ClientState;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.Command;
 using Dalamud.Game.Network;
+using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
 using Newtonsoft.Json;
@@ -31,6 +33,7 @@ namespace NextUIPlugin {
 		public static ClientState clientState = null!;
 		public static DataManager dataManager = null!;
 		public static TargetManager targetManager = null!;
+		[PluginService] public static Condition Condition { get; protected set; } = null!;
 
 		public static MouseOverService? mouseOverService;
 
@@ -59,6 +62,8 @@ namespace NextUIPlugin {
 			NextUIPlugin.clientState = clientState;
 			NextUIPlugin.dataManager = dataManager;
 			NextUIPlugin.gameNetwork = gameNetwork;
+
+			pluginInterface.UiBuilder.DisableCutsceneUiHide = true;
 
 			mouseOverService = new MouseOverService(sigScanner, dataManager);
 

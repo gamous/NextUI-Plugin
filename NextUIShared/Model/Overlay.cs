@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Reactive.Subjects;
 using NextUIShared.Data;
 using NextUIShared.Request;
 
@@ -15,6 +16,7 @@ namespace NextUIShared.Model {
 		protected string url = "";
 		protected IntPtr texturePointer;
 		protected Size size;
+		protected bool fullscreen;
 		protected Point position;
 		protected Cursor cursor;
 
@@ -26,7 +28,7 @@ namespace NextUIShared.Model {
 				}
 
 				name = value;
-				NameChange?.Invoke(name);
+				NameChange.OnNext(value);
 			}
 		}
 
@@ -38,10 +40,9 @@ namespace NextUIShared.Model {
 				}
 
 				url = value;
-				UrlChange?.Invoke(url);
+				UrlChange.OnNext(url);
 			}
 		}
-
 
 		public IntPtr TexturePointer {
 			get { return texturePointer; }
@@ -51,31 +52,39 @@ namespace NextUIShared.Model {
 				}
 
 				texturePointer = value;
-				TexturePointerChange?.Invoke(texturePointer);
+				TexturePointerChange.OnNext(texturePointer);
 			}
 		}
 
 		public Size Size {
-			get { return size; }
+			get { return FullScreen ? FullScreenSize : size; }
 			set {
-				if (size == value) {
+				if (size.Equals(value)) {
 					return;
 				}
 
-				size = value;
-				SizeChange?.Invoke(size);
+				var s = new Size(value.Width, value.Height);
+				if (s.Width < 1) {
+					s.Width = 1;
+				}
+				if (s.Height < 1) {
+					s.Height = 1;
+				}
+
+				size = s;
+				SizeChange.OnNext(s);
 			}
 		}
 
 		public Point Position {
-			get { return position; }
+			get { return FullScreen ? Point.Empty : position; }
 			set {
 				if (position == value) {
 					return;
 				}
 
 				position = value;
-				PositionChange?.Invoke(position);
+				PositionChange.OnNext(position);
 			}
 		}
 
@@ -87,7 +96,19 @@ namespace NextUIShared.Model {
 				}
 
 				cursor = value;
-				CursorChange?.Invoke(cursor);
+				CursorChange.OnNext(cursor);
+			}
+		}
+
+		public bool FullScreen {
+			get { return fullscreen; }
+			set {
+				if (fullscreen == value) {
+					return;
+				}
+
+				fullscreen = value;
+				SizeChange.OnNext(FullScreenSize);
 			}
 		}
 
@@ -95,22 +116,26 @@ namespace NextUIShared.Model {
 		public bool TypeThrough { get; set; }
 		public bool Locked { get; set; } = true;
 		public bool Hidden { get; set; }
+		public bool VisibleDuringCutscene { get; set; }
+		public Size FullScreenSize { get; set; }
 
-		public event Action<IntPtr>? TexturePointerChange;
-		public event Action<string>? NameChange;
-		public event Action<string>? UrlChange;
-		public event Action<Size>? SizeChange;
-		public event Action<Point>? PositionChange;
-		public event Action<Cursor>? CursorChange;
-		public event Action<MouseEventRequest>? MouseEvent;
-		public event Action<KeyEventRequest>? KeyEvent;
+		// ReSharper disable InconsistentNaming
+		public Subject<IntPtr> TexturePointerChange = new();
+		public Subject<string> NameChange = new();
+		public Subject<string> UrlChange = new();
+		public Subject<Size> SizeChange = new();
+		public Subject<Point> PositionChange = new();
+		public Subject<Cursor> CursorChange = new();
+		public Subject<MouseEventRequest> MouseEvent = new();
+		public Subject<KeyEventRequest> KeyEvent = new();
+		// ReSharper restore InconsistentNaming
 
 		public event Action? DebugRequest;
 		public event Action? ReloadRequest;
 		public event Action? DisposeRequest;
 
 		public Overlay(string url, Size newSize) {
-			Guid = new Guid();
+			Guid = Guid.NewGuid();
 			Url = url;
 			size = newSize;
 			if (size.Width != 0 && size.Height != 0) {
@@ -142,11 +167,11 @@ namespace NextUIShared.Model {
 		}
 
 		public void RequestMouseEvent(MouseEventRequest request) {
-			MouseEvent?.Invoke(request);
+			MouseEvent.OnNext(request);
 		}
 
 		public void RequestKeyEvent(KeyEventRequest request) {
-			KeyEvent?.Invoke(request);
+			KeyEvent.OnNext(request);
 		}
 	}
 }

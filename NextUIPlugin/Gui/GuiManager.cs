@@ -6,6 +6,7 @@ using System.Numerics;
 using Dalamud.Logging;
 using Dalamud.Plugin;
 using ImGuiNET;
+using NextUIPlugin.Configuration;
 using NextUIShared;
 using NextUIShared.Model;
 using D3D11 = SharpDX.Direct3D11;
@@ -34,7 +35,7 @@ namespace NextUIPlugin.Gui {
 			MicroPluginFullyLoaded = true;
 			// loading ov
 			PluginLog.Log("OnMicroPluginFullyLoaded");
-			CreateOverlay("http://localhost:4200?OVERLAY_WS=ws://127.0.0.1:10501/ws", new Size(1920, 1080));
+			LoadOverlays(NextUIPlugin.configuration.overlays);
 		}
 
 		protected (bool, long) OnWndProc(WindowsMessage msg, ulong wParam, long lParam) {
@@ -52,6 +53,9 @@ namespace NextUIPlugin.Gui {
 			}
 
 			var overlay = new Overlay(url, size);
+			var fsSize = ImGui.GetMainViewport().Size;
+			overlay.FullScreenSize = new Size((int)fsSize.X, (int)fsSize.Y);
+
 			// Data should be populated here ie texture pointer
 			RequestNewOverlay?.Invoke(overlay);
 
@@ -69,6 +73,31 @@ namespace NextUIPlugin.Gui {
 			}
 
 			ImGui.PopStyleVar();
+		}
+
+		public void LoadOverlays(List<OverlayConfig> newOverlays) {
+			if (!MicroPluginFullyLoaded) {
+				PluginLog.Warning("Overlay not created, MicroPlugin not ready");
+				return;
+			}
+
+			foreach (var overlayCfg in newOverlays) {
+				var overlay = overlayCfg.ToOverlay();
+
+				// Reload full screen size
+				var fsSize = ImGui.GetMainViewport().Size;
+				overlay.FullScreenSize = new Size((int)fsSize.X, (int)fsSize.Y);
+
+				// Data should be populated here ie texture pointer
+				RequestNewOverlay?.Invoke(overlay);
+
+				var overlayGui = new OverlayGui(overlay);
+				overlays.Add(overlayGui);
+			}
+		}
+
+		public List<OverlayConfig> SaveOverlays() {
+			return overlays.Select(overlay => OverlayConfig.FromOverlay(overlay.overlay)).ToList();
 		}
 
 		public void Dispose() {

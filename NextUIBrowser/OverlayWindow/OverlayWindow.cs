@@ -3,7 +3,7 @@ using CefSharp.OffScreen;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Threading;
+using System.Reactive.Linq;
 using Dalamud.Logging;
 using NextUIBrowser.RenderHandlers;
 using NextUIShared.Data;
@@ -13,15 +13,20 @@ using NextUIShared.Request;
 namespace NextUIBrowser.OverlayWindow {
 	public class OverlayWindow : IDisposable {
 		protected readonly Overlay overlay;
-		protected readonly BaseRenderHandler renderHandler;
+		protected readonly TextureRenderHandler renderHandler;
 
 		protected ChromiumWebBrowser? browser;
 
-		public OverlayWindow(Overlay overlay, BaseRenderHandler renderHandler) {
+		public OverlayWindow(Overlay overlay, TextureRenderHandler renderHandler) {
 			this.renderHandler = renderHandler;
 			this.overlay = overlay;
 		}
 
+		protected IDisposable sizeObservableSub;
+		protected IDisposable urlChangeSub;
+		protected IDisposable mouseEventSub;
+		protected IDisposable keyEventSub;
+		
 		public void Initialize() {
 			browser = new ChromiumWebBrowser(overlay.Url, automaticallyCreateBrowser: false);
 			browser.RenderHandler = renderHandler;
@@ -50,10 +55,30 @@ namespace NextUIBrowser.OverlayWindow {
 			// Handle any changes done on overlay data
 			overlay.DebugRequest += Debug;
 			overlay.ReloadRequest += Reload;
-			overlay.UrlChange += Navigate;
-			overlay.SizeChange += Resize;
-			overlay.MouseEvent += HandleMouseEvent;
-			overlay.KeyEvent += HandleKeyEvent;
+			
+			urlChangeSub = overlay.UrlChange.Subscribe(Navigate);
+			mouseEventSub = overlay.MouseEvent.Subscribe(HandleMouseEvent);
+			keyEventSub = overlay.KeyEvent.Subscribe(HandleKeyEvent);
+			
+			sizeObservableSub = overlay.SizeChange.AsObservable()
+				.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
+			
+			
+			// Handle pointers
+			
+			// Populate texture pointer in overlay data structure and notify if it changes
+			overlay.TexturePointer = renderHandler.SharedTextureHandle;
+			renderHandler.TexturePointerChange += RenderHandlerOnTexturePointerChange;
+			// Also request cursor if it changes
+			renderHandler.CursorChanged += RenderHandlerOnCursorChanged;
+		}
+
+		protected void RenderHandlerOnTexturePointerChange(IntPtr ptr) {
+			overlay.TexturePointer = ptr;
+		}
+
+		protected void RenderHandlerOnCursorChanged(object? sender, Cursor cursor) {
+			overlay.SetCursor(cursor);
 		}
 
 		public void Dispose() {
@@ -63,10 +88,12 @@ namespace NextUIBrowser.OverlayWindow {
 
 			overlay.DebugRequest -= Debug;
 			overlay.ReloadRequest -= Reload;
-			overlay.UrlChange -= Navigate;
-			// overlay.SizeChange -= Resize;
-			overlay.MouseEvent -= HandleMouseEvent;
-			overlay.KeyEvent -= HandleKeyEvent;
+			renderHandler.CursorChanged -= RenderHandlerOnCursorChanged;
+
+			urlChangeSub.Dispose();
+			sizeObservableSub.Dispose();
+			mouseEventSub.Dispose();
+			keyEventSub.Dispose();
 
 			browser.RenderHandler = null;
 			renderHandler.Dispose();
@@ -94,19 +121,14 @@ namespace NextUIBrowser.OverlayWindow {
 			browser.ShowDevTools();
 		}
 
-		protected bool resizing;
 		public void Resize(Size size) {
-			if (resizing) {
-				return;
-			}
-			resizing = true;
-			// Need to resize renderer first, the browser will check it (and hence the texture) when browser.Size is set.
-			renderHandler.Resize(size);
+			PluginLog.Log("CREATED WITH ZIE " + overlay.Size);
+			// Need to resize renderer first, the browser will check it (and hence the texture) when browser.
+			// We are disregarding param as Size will adjust based on Fullscreen prop
+			renderHandler.Resize(overlay.Size);
 			if (browser != null) {
-				browser.Size = size;
+				browser.Size = overlay.Size;
 			}
-			Thread.Sleep(100);
-			resizing = false;
 		}
 
 		protected void HandleMouseEvent(MouseEventRequest request) {

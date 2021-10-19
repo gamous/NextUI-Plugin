@@ -57,13 +57,6 @@ namespace NextUIBrowser.OverlayWindow {
 			}
 
 			var textureHandler = new TextureRenderHandler(device, overlay.Size);
-
-			// Populate texture pointer in overlay data structure and notify if it changes
-			overlay.TexturePointer = textureHandler.SharedTextureHandle;
-			textureHandler.TexturePointerChange += ptr => { overlay.TexturePointer = ptr; };
-			// Also request cursor if it changes
-			textureHandler.CursorChanged += (_, cursor) => { overlay.SetCursor(cursor); };
-
 			var overlayWindow = new OverlayWindow(overlay, textureHandler);
 			overlayWindows.Add(overlayWindow);
 

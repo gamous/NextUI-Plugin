@@ -2,7 +2,7 @@
 using System;
 using System.Drawing;
 using System.Numerics;
-using Dalamud.Logging;
+using Dalamud.Game.ClientState.Conditions;
 using ImGuiScene;
 using NextUIShared;
 using NextUIShared.Data;
@@ -13,7 +13,7 @@ using D3D = SharpDX.Direct3D;
 
 namespace NextUIPlugin.Gui {
 	public class OverlayGui : IDisposable {
-		public NextUIShared.Model.Overlay overlay;
+		public readonly Overlay overlay;
 
 		protected bool mouseInWindow;
 		protected bool windowFocused;
@@ -23,13 +23,16 @@ namespace NextUIPlugin.Gui {
 		public bool acceptFocus;
 		protected TextureWrap? textureWrap;
 
+		protected readonly IDisposable texturePointerSub;
+		protected readonly IDisposable cursorChangeSub;
+
 		public OverlayGui(
 			Overlay overlay
 		) {
 			this.overlay = overlay;
 			BuildTextureWrap();
-			overlay.TexturePointerChange += TexturePointerChange;
-			overlay.CursorChange += SetCursor;
+			texturePointerSub = overlay.TexturePointerChange.Subscribe(TexturePointerChange);
+			cursorChangeSub = overlay.CursorChange.Subscribe(SetCursor);
 		}
 
 		protected void TexturePointerChange(IntPtr obj) {
@@ -41,12 +44,12 @@ namespace NextUIPlugin.Gui {
 				return;
 			}
 
-			D3D11.Texture2D? texture = DxHandler.Device?.OpenSharedResource<D3D11.Texture2D>(overlay.TexturePointer);
+			var texture = DxHandler.Device?.OpenSharedResource<D3D11.Texture2D>(overlay.TexturePointer);
 			if (texture == null) {
 				return;
 			}
 
-			D3D11.ShaderResourceView? view = new(
+			var view = new D3D11.ShaderResourceView(
 				DxHandler.Device,
 				texture,
 				new D3D11.ShaderResourceViewDescription {
@@ -60,13 +63,13 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void Dispose() {
-			overlay.TexturePointerChange -= TexturePointerChange;
-			overlay.CursorChange -= SetCursor;
+			texturePointerSub.Dispose();
+			cursorChangeSub.Dispose();
 			overlay.Dispose();
 			textureWrap?.Dispose();
 		}
 
-		
+
 		public void Navigate(string newUrl) {
 			overlay.Navigate(newUrl);
 		}
@@ -110,7 +113,7 @@ namespace NextUIPlugin.Gui {
 				return (false, 0);
 			}
 
-			var isSystemKey = 
+			var isSystemKey =
 				msg is WindowsMessage.WmSysKeyDown or WindowsMessage.WmSysKeyUp or WindowsMessage.WmSysChar;
 
 			// TODO: Technically this is only firing once, because we're checking focused before this point,
@@ -150,6 +153,14 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void Render() {
+			if (!overlay.VisibleDuringCutscene) {
+				if (NextUIPlugin.Condition[ConditionFlag.OccupiedInCutSceneEvent] ||
+				    NextUIPlugin.Condition[ConditionFlag.WatchingCutscene78]) {
+					mouseInWindow = false;
+					return;
+				}
+			}
+
 			if (overlay.Hidden) {
 				mouseInWindow = false;
 				return;
@@ -158,7 +169,7 @@ namespace NextUIPlugin.Gui {
 			if (textureWrap == null) {
 				return;
 			}
-
+			
 			ImGui.SetNextWindowPos(new Vector2(overlay.Position.X, overlay.Position.Y), ImGuiCond.Always);
 			ImGui.SetNextWindowSize(new Vector2(overlay.Size.Width, overlay.Size.Height), ImGuiCond.Always);
 			ImGui.Begin($"NUOverlay-{overlay.Guid}", GetWindowFlags());
@@ -166,7 +177,9 @@ namespace NextUIPlugin.Gui {
 			ImGui.Image(textureWrap.ImGuiHandle, new Vector2(textureWrap.Width, textureWrap.Height));
 
 			HandleMouseEvent();
-
+			var wSize = ImGui.GetWindowSize();
+			var newSize = new Size((int)wSize.X, (int)wSize.Y);
+			overlay.Size = newSize;
 			ImGui.End();
 		}
 
@@ -180,8 +193,8 @@ namespace NextUIPlugin.Gui {
 				| ImGuiWindowFlags.NoBringToFrontOnFocus
 				| ImGuiWindowFlags.NoFocusOnAppearing;
 
-			// ClickThrough is implicitly locked\
-			var locked = overlay.Locked || overlay.ClickThrough;
+			// ClickThrough is implicitly locked
+			var locked = overlay.Locked || overlay.ClickThrough || overlay.FullScreen;
 
 			if (locked) {
 				flags |=
@@ -199,12 +212,11 @@ namespace NextUIPlugin.Gui {
 		}
 
 		private void HandleMouseEvent() {
-			// Render proc won't be ready on first boot
 			// Totally skip mouse handling for click through inlays, as well
-			// if (renderProcess == null) {
-			// 	//  || inlayConfig.ClickThrough
-			// 	return;
-			// }
+			if (overlay.ClickThrough) {
+				//  || inlayConfig.ClickThrough
+				return;
+			}
 
 			var io = ImGui.GetIO();
 			var windowPos = ImGui.GetWindowPos();

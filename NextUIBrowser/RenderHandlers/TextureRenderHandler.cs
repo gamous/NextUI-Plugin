@@ -6,11 +6,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using System.Security;
 using Dalamud.Logging;
 using Size = System.Drawing.Size;
 
 namespace NextUIBrowser.RenderHandlers {
-	class TextureRenderHandler : BaseRenderHandler {
+	public class TextureRenderHandler : BaseRenderHandler {
 		// CEF buffers are 32-bit BGRA
 		protected const byte BytesPerPixel = 4;
 
@@ -26,13 +27,12 @@ namespace NextUIBrowser.RenderHandlers {
 		public event Action<IntPtr>? TexturePointerChange;
 
 		public IntPtr SharedTextureHandle {
-			get {
-				return sharedTextureHandle;
-			}
+			get { return sharedTextureHandle; }
 			protected set {
 				if (value == sharedTextureHandle) {
 					return;
 				}
+
 				sharedTextureHandle = value;
 				TexturePointerChange?.Invoke(sharedTextureHandle);
 			}
@@ -57,7 +57,10 @@ namespace NextUIBrowser.RenderHandlers {
 			}
 		}
 
+		protected bool resizing;
+
 		public override void Resize(Size size) {
+			resizing = true;
 			var oldTexture = texture;
 			texture = BuildViewTexture(size);
 			if (oldTexture != null) {
@@ -66,8 +69,12 @@ namespace NextUIBrowser.RenderHandlers {
 		}
 
 		// Nasty shit needs nasty attributes.
-		[HandleProcessCorruptedStateExceptions]
+		[HandleProcessCorruptedStateExceptions, SecurityCritical]
 		protected override byte GetAlphaAt(int x, int y) {
+			if (resizing || bufferPtr == IntPtr.Zero) {
+				return 255;
+			}
+
 			var rowPitch = bufferWidth * BytesPerPixel;
 
 			// Get the offset for the alpha of the cursor's current position.
@@ -83,7 +90,7 @@ namespace NextUIBrowser.RenderHandlers {
 				alpha = Marshal.ReadByte(bufferPtr + cursorAlphaOffset);
 			}
 			catch {
-				Console.Error.WriteLine("Failed to read alpha value from cef buffer.");
+				// Console.Error.WriteLine("Failed to read alpha value from cef buffer.");
 				return 255;
 			}
 
@@ -106,7 +113,7 @@ namespace NextUIBrowser.RenderHandlers {
 				OptionFlags = D3D11.ResourceOptionFlags.Shared,
 			});
 			IntPtr texHandle;
-			
+
 			using (var resource = newTexture.QueryInterface<DXGI.Resource>()) {
 				texHandle = resource.SharedHandle;
 			}
@@ -135,7 +142,14 @@ namespace NextUIBrowser.RenderHandlers {
 			return new Rect(0, 0, texDesc.Width, texDesc.Height);
 		}
 
-		public override void OnPaint(PaintElementType type, Rect dirtyRect, IntPtr buffer, int width, int height) {
+
+		public override void OnPaint(
+			PaintElementType type,
+			Rect dirtyRect,
+			IntPtr buffer,
+			int width,
+			int height
+		) {
 			var targetTexture = type switch {
 				PaintElementType.View => texture,
 				PaintElementType.Popup => popupTexture,
@@ -147,6 +161,9 @@ namespace NextUIBrowser.RenderHandlers {
 				bufferPtr = buffer;
 				bufferWidth = width;
 				bufferHeight = height;
+
+				// Nasty hack fixed with resizing lock which eliminates race conditions
+				resizing = false;
 			}
 
 			// Calculate offset multipliers for the current buffer
@@ -156,7 +173,7 @@ namespace NextUIBrowser.RenderHandlers {
 			// Build the destination region for the dirty rect that we'll draw to
 			var texDesc = targetTexture.Description;
 			var sourceRegionPtr = buffer + (dirtyRect.X * BytesPerPixel) + (dirtyRect.Y * rowPitch);
-			D3D11.ResourceRegion destinationRegion = new() {
+			var destinationRegion = new D3D11.ResourceRegion {
 				Top = Math.Min(dirtyRect.Y, texDesc.Height),
 				Bottom = Math.Min(dirtyRect.Y + dirtyRect.Height, texDesc.Height),
 				Left = Math.Min(dirtyRect.X, texDesc.Width),
@@ -196,7 +213,8 @@ namespace NextUIBrowser.RenderHandlers {
 		public override void OnPopupSize(Rect rect) {
 			popupRect = rect;
 
-			// I'm really not sure if this happens. If it does, frequently - will probably need 2x shared textures and some jazz.
+			// I'm really not sure if this happens. If it does,
+			// frequently - will probably need 2x shared textures and some jazz.
 			var texDesc = texture.Description;
 			if (rect.Width > texDesc.Width || rect.Height > texDesc.Height) {
 				Console.Error.WriteLine(
