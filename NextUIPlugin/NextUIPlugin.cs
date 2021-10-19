@@ -89,7 +89,8 @@ namespace NextUIPlugin {
 			MicroPluginService.Initialize();
 
 			commandManager.AddHandler("/nu", new CommandInfo(OnCommandDebugCombo) {
-				HelpMessage = "Open NextUI Plugin configuration",
+				HelpMessage = "Open NextUI Plugin configuration. \n" +
+				              "/nu toggle → Toggles all visible overlays.",
 				ShowInHelp = true
 			});
 		}
@@ -166,6 +167,9 @@ namespace NextUIPlugin {
 			string[] argumentsParts = arguments.Split();
 
 			switch (argumentsParts[0]) {
+				case "toggle":
+					guiManager.ToggleOverlays();
+					break;
 				// case "setall": {
 				// 	foreach (var value in Enum.GetValues(typeof(CustomComboPreset)).Cast<CustomComboPreset>()) {
 				// 		if (value == CustomComboPreset.None)

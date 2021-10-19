@@ -27,7 +27,7 @@ namespace NextUIPlugin.Configuration {
 			RenderPaneSelector();
 			RenderOverlayPane();
 			
-			ImGui.SetCursorPos(new Vector2(8, 460));
+			ImGui.SetCursorPos(new Vector2(8, 450));
 
 			if (ImGui.Button("Save")) {
 				NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager.SaveOverlays();
@@ -117,26 +117,26 @@ namespace NextUIPlugin.Configuration {
 			
 			// Position
 			var posX = overlay.Position.X;
-			if (ImGui.DragInt("Position X", ref posX, 0.1f)) {
+			if (ImGui.DragInt("Position X", ref posX, 1f)) {
 				overlay.Position = new Point(posX, overlay.Position.Y);
 			}
 			ImGui.NextColumn();
 			
 			var posY = overlay.Position.Y;
-			if (ImGui.DragInt("Position Y", ref posY, 0.1f)) {
+			if (ImGui.DragInt("Position Y", ref posY, 1f)) {
 				overlay.Position = new Point(overlay.Position.X, posY);
 			}
 			ImGui.NextColumn();
 			
 			// Size
 			var sizeW = overlay.Size.Width;
-			if (ImGui.DragInt("Width", ref sizeW, 0.1f)) {
+			if (ImGui.DragInt("Width", ref sizeW, 1f)) {
 				overlay.Size = new Size(sizeW, overlay.Size.Height);
 			}
 			ImGui.NextColumn();
 			
 			var sizeH = overlay.Size.Height;
-			if (ImGui.DragInt("Height", ref sizeH, 0.1f)) {
+			if (ImGui.DragInt("Height", ref sizeH, 1f)) {
 				overlay.Size = new Size(overlay.Size.Width, sizeH);
 			}
 			ImGui.NextColumn();
