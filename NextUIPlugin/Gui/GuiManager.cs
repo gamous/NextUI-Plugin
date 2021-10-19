@@ -75,10 +75,8 @@ namespace NextUIPlugin.Gui {
 			ImGui.PopStyleVar();
 		}
 
-		public void ToggleOverlays()
-		{
-			foreach (var ov in overlays)
-			{
+		public void ToggleOverlays() {
+			foreach (var ov in overlays) {
 				ov.overlay.Toggled = !ov.overlay.Toggled;
 			}
 		}
