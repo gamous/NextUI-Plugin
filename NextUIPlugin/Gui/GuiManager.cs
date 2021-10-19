@@ -75,6 +75,14 @@ namespace NextUIPlugin.Gui {
 			ImGui.PopStyleVar();
 		}
 
+		public void ToggleOverlays()
+		{
+			foreach (var ov in overlays)
+			{
+				ov.overlay.Toggled = !ov.overlay.Toggled;
+			}
+		}
+
 		public void LoadOverlays(List<OverlayConfig> newOverlays) {
 			if (!MicroPluginFullyLoaded) {
 				PluginLog.Warning("Overlay not created, MicroPlugin not ready");

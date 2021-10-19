@@ -116,6 +116,7 @@ namespace NextUIShared.Model {
 		public bool TypeThrough { get; set; }
 		public bool Locked { get; set; } = true;
 		public bool Hidden { get; set; }
+		public bool Toggled { get; set; }
 		public bool VisibleDuringCutscene { get; set; }
 		public Size FullScreenSize { get; set; }
 

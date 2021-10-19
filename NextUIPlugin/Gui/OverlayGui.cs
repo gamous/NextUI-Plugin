@@ -161,7 +161,7 @@ namespace NextUIPlugin.Gui {
 				}
 			}
 
-			if (overlay.Hidden) {
+			if (overlay.Hidden || overlay.Toggled) {
 				mouseInWindow = false;
 				return;
 			}
