@@ -23,13 +23,19 @@ namespace NextUIPlugin.Configuration {
 
 			if (firstInstalled) {
 				var ov = new Overlay(
-					"https://kaminaris.github.io/Next-UI/?OVERLAY_WS=ws://127.0.0.1:10501/ws", 
+					"https://kaminaris.github.io/Next-UI/?OVERLAY_WS=ws://127.0.0.1:10501/ws",
 					new Size(800, 600)
 				);
 				var fsSize = ImGui.GetMainViewport().Size;
 				ov.FullScreenSize = new Size((int)fsSize.X, (int)fsSize.Y);
 				ov.FullScreen = true;
-				ov.VisibleDuringCutscene = true;
+				ov.Visibility =
+					OverlayVisibility.DuringCutscene |
+					OverlayVisibility.InCombat |
+					OverlayVisibility.InGroup |
+					OverlayVisibility.InDeepDungeon |
+					OverlayVisibility.InPVP
+					;
 				ov.Name = "NextUI";
 				overlays.Add(OverlayConfig.FromOverlay(ov));
 

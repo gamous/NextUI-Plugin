@@ -21,7 +21,7 @@ namespace NextUIPlugin.Configuration {
 		public bool TypeThrough { get; set; }
 		public bool Locked { get; set; }
 		public bool Hidden { get; set; }
-		public bool VisibleDuringCutscene { get; set; }
+		public OverlayVisibility Visibility { get; set; }
 
 		public string FullScreenSize { get; set; }
 
@@ -37,7 +37,7 @@ namespace NextUIPlugin.Configuration {
 			overlayConfig.TypeThrough = overlay.TypeThrough;
 			overlayConfig.Locked = overlay.Locked;
 			overlayConfig.Hidden = overlay.Hidden;
-			overlayConfig.VisibleDuringCutscene = overlay.VisibleDuringCutscene;
+			overlayConfig.Visibility = overlay.Visibility;
 			overlayConfig.FullScreenSize = SizeToString(overlay.FullScreenSize);
 
 			return overlayConfig;
@@ -56,7 +56,7 @@ namespace NextUIPlugin.Configuration {
 			overlay.TypeThrough = TypeThrough;
 			overlay.Locked = Locked;
 			overlay.Hidden = Hidden;
-			overlay.VisibleDuringCutscene = VisibleDuringCutscene;
+			overlay.Visibility = Visibility;
 			overlay.FullScreenSize = ParseSize(FullScreenSize);
 
 			return overlay;

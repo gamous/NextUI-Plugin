@@ -26,7 +26,7 @@ namespace NextUIPlugin.Configuration {
 
 			RenderPaneSelector();
 			RenderOverlayPane();
-			
+
 			ImGui.SetCursorPos(new Vector2(8, 450));
 
 			if (ImGui.Button("Save")) {
@@ -101,7 +101,7 @@ namespace NextUIPlugin.Configuration {
 			if (ImGui.InputText("Name", ref ovName, 150)) {
 				overlay.Name = ovName;
 			}
-			
+
 			// ImGui.SameLine();
 
 			var ovUrl = overlay.Url;
@@ -110,31 +110,31 @@ namespace NextUIPlugin.Configuration {
 				selectedOverlay.overlay.Url = ovUrl;
 				selectedOverlay.Navigate(ovUrl);
 			}
-			
-			
+
+
 			ImGui.SetNextItemWidth(140);
 			ImGui.Columns(2, "overlayOptions", false);
-			
+
 			// Position
 			var posX = overlay.Position.X;
 			if (ImGui.DragInt("Position X", ref posX, 1f)) {
 				overlay.Position = new Point(posX, overlay.Position.Y);
 			}
 			ImGui.NextColumn();
-			
+
 			var posY = overlay.Position.Y;
 			if (ImGui.DragInt("Position Y", ref posY, 1f)) {
 				overlay.Position = new Point(overlay.Position.X, posY);
 			}
 			ImGui.NextColumn();
-			
+
 			// Size
 			var sizeW = overlay.Size.Width;
 			if (ImGui.DragInt("Width", ref sizeW, 1f)) {
 				overlay.Size = new Size(sizeW, overlay.Size.Height);
 			}
 			ImGui.NextColumn();
-			
+
 			var sizeH = overlay.Size.Height;
 			if (ImGui.DragInt("Height", ref sizeH, 1f)) {
 				overlay.Size = new Size(overlay.Size.Width, sizeH);
@@ -191,15 +191,17 @@ namespace NextUIPlugin.Configuration {
 			}
 			ImGui.NextColumn();
 
-			var ovVisibleDuringCutscene = overlay.VisibleDuringCutscene;
-			if (ImGui.Checkbox("Visible During Cutscene", ref ovVisibleDuringCutscene)) {
-				overlay.VisibleDuringCutscene = ovVisibleDuringCutscene;
-			}
 
-			if (ImGui.IsItemHovered()) {
-				ImGui.SetTooltip("Makes overlay as visible during cutscene");
-			}
-			
+
+			// var ovVisibleDuringCutscene = overlay.VisibleDuringCutscene;
+			// if (ImGui.Checkbox("Visible During Cutscene", ref ovVisibleDuringCutscene)) {
+			// 	overlay.VisibleDuringCutscene = ovVisibleDuringCutscene;
+			// }
+			//
+			// if (ImGui.IsItemHovered()) {
+			// 	ImGui.SetTooltip("Makes overlay as visible during cutscene");
+			// }
+
 			ImGui.Columns(1);
 
 			if (ImGui.Button("Reload")) {

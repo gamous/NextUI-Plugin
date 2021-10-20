@@ -117,8 +117,8 @@ namespace NextUIShared.Model {
 		public bool Locked { get; set; } = true;
 		public bool Hidden { get; set; }
 		public bool Toggled { get; set; }
-		public bool VisibleDuringCutscene { get; set; }
 		public Size FullScreenSize { get; set; }
+		public OverlayVisibility Visibility { get; set; }
 
 		// ReSharper disable InconsistentNaming
 		public Subject<IntPtr> TexturePointerChange = new();

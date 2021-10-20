@@ -153,14 +153,6 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void Render() {
-			if (!overlay.VisibleDuringCutscene) {
-				if (NextUIPlugin.Condition[ConditionFlag.OccupiedInCutSceneEvent] ||
-				    NextUIPlugin.Condition[ConditionFlag.WatchingCutscene78]) {
-					mouseInWindow = false;
-					return;
-				}
-			}
-
 			if (overlay.Hidden || overlay.Toggled) {
 				mouseInWindow = false;
 				return;
@@ -169,7 +161,51 @@ namespace NextUIPlugin.Gui {
 			if (textureWrap == null) {
 				return;
 			}
-			
+
+			var conditions = NextUIPlugin.Condition;
+			if (
+				!overlay.Visibility.HasFlag(OverlayVisibility.DuringCutscene) &&
+				(
+					conditions[ConditionFlag.OccupiedInCutSceneEvent] ||
+					conditions[ConditionFlag.WatchingCutscene78]
+				)
+			) {
+				mouseInWindow = false;
+				return;
+			}
+
+			if (
+				!overlay.Visibility.HasFlag(OverlayVisibility.InCombat) &&
+				conditions[ConditionFlag.InCombat]
+			) {
+				mouseInWindow = false;
+				return;
+			}
+
+			if (
+				!overlay.Visibility.HasFlag(OverlayVisibility.InDeepDungeon) &&
+				conditions[ConditionFlag.InDeepDungeon]
+			) {
+				mouseInWindow = false;
+				return;
+			}
+
+			if (
+				!overlay.Visibility.HasFlag(OverlayVisibility.InPVP) &&
+				conditions[ConditionFlag.PvPDisplayActive]
+			) {
+				mouseInWindow = false;
+				return;
+			}
+
+			if (
+				!overlay.Visibility.HasFlag(OverlayVisibility.InGroup) &&
+				NextUIPlugin.PartyList.Length > 0
+			) {
+				mouseInWindow = false;
+				return;
+			}
+
 			ImGui.SetNextWindowPos(new Vector2(overlay.Position.X, overlay.Position.Y), ImGuiCond.Always);
 			ImGui.SetNextWindowSize(new Vector2(overlay.Size.Width, overlay.Size.Height), ImGuiCond.Always);
 			ImGui.Begin($"NUOverlay-{overlay.Guid}", GetWindowFlags());
@@ -177,9 +213,12 @@ namespace NextUIPlugin.Gui {
 			ImGui.Image(textureWrap.ImGuiHandle, new Vector2(textureWrap.Width, textureWrap.Height));
 
 			HandleMouseEvent();
+
+			// Handle dynamic resize, if size is the same value won't change
 			var wSize = ImGui.GetWindowSize();
 			var newSize = new Size((int)wSize.X, (int)wSize.Y);
 			overlay.Size = newSize;
+
 			ImGui.End();
 		}
 
