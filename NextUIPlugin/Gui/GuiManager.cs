@@ -66,6 +66,10 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void Render() {
+			if (loadingOverlays) {
+				return;
+			}
+
 			ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0, 0));
 
 			foreach (var ov in overlays) {
@@ -81,9 +85,12 @@ namespace NextUIPlugin.Gui {
 			}
 		}
 
+		protected bool loadingOverlays;
 		public void LoadOverlays(List<OverlayConfig> newOverlays) {
+			loadingOverlays = true;
 			if (!MicroPluginFullyLoaded) {
 				PluginLog.Warning("Overlay not created, MicroPlugin not ready");
+				loadingOverlays = false;
 				return;
 			}
 
@@ -100,6 +107,8 @@ namespace NextUIPlugin.Gui {
 				var overlayGui = new OverlayGui(overlay);
 				overlays.Add(overlayGui);
 			}
+
+			loadingOverlays = false;
 		}
 
 		public List<OverlayConfig> SaveOverlays() {

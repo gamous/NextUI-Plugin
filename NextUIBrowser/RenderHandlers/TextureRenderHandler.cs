@@ -9,6 +9,9 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Security;
 using Dalamud.Logging;
+using NextUIShared.Model;
+using NextUIShared.Request;
+using SharpDX.Direct3D;
 using Size = System.Drawing.Size;
 
 namespace NextUIBrowser.RenderHandlers {
@@ -16,25 +19,26 @@ namespace NextUIBrowser.RenderHandlers {
 		// CEF buffers are 32-bit BGRA
 		protected const byte BytesPerPixel = 4;
 
-		protected readonly D3D11.Device device;
-		protected D3D11.Texture2D? popupTexture;
-		protected ConcurrentBag<D3D11.Texture2D> obsoleteTextures = new();
+		// protected readonly D3D11.Device device;
+		// protected D3D11.Texture2D? popupTexture;
+		// protected ConcurrentBag<D3D11.Texture2D> obsoleteTextures = new();
 
-		protected bool popupVisible;
-		protected Rect popupRect;
+		protected Overlay overlay;
 
-
-		protected D3D11.Texture2D? texture;
-
-		// ReSharper disable once InconsistentNaming
-		public Subject<D3D11.Texture2D?> TextureChange = new();
-		public D3D11.Texture2D? Texture {
-			get { return texture; }
-			set {
-				texture = value;
-				TextureChange.OnNext(value);
-			}
-		}
+		//
+		// protected D3D11.Texture2D? texture;
+		//
+		// protected D3DTextureWrap? textureWrap;
+		//
+		// // ReSharper disable once InconsistentNaming
+		// public Subject<D3DTextureWrap?> TextureWrapChange = new();
+		// public D3DTextureWrap? TextureWrap {
+		// 	get { return textureWrap; }
+		// 	set {
+		// 		textureWrap = value;
+		// 		TextureWrapChange.OnNext(value);
+		// 	}
+		// }
 		// protected IntPtr sharedTextureHandle = IntPtr.Zero;
 		// public event Action<IntPtr>? TexturePointerChange;
 
@@ -55,31 +59,33 @@ namespace NextUIBrowser.RenderHandlers {
 		protected int bufferWidth;
 		protected int bufferHeight;
 
-		public TextureRenderHandler(D3D11.Device device, Size size) {
-			this.device = device;
-			Texture = BuildViewTexture(size);
+		public TextureRenderHandler(Overlay overlay) {
+			this.overlay = overlay;
+			// this.device = device;
+			// texture = BuildViewTexture(size);
 		}
 
 		public override void Dispose() {
-			texture?.Dispose();
-			popupTexture?.Dispose();
+			// texture?.Dispose();
+			// popupTexture?.Dispose();
 
-			Texture = null;
+			// TextureWrap = null;
 
-			foreach (D3D11.Texture2D tex in obsoleteTextures) {
-				tex.Dispose();
-			}
+			// foreach (D3D11.Texture2D tex in obsoleteTextures) {
+				// tex.Dispose();
+			// }
 		}
 
 		protected bool resizing;
 
+		// We only need to keep GetAlphaAt away from reading pointer while browser resizes itself
 		public override void Resize(Size size) {
 			resizing = true;
-			var oldTexture = texture;
-			Texture = BuildViewTexture(size);
-			if (oldTexture != null) {
-				obsoleteTextures.Add(oldTexture);
-			}
+			// var oldTexture = texture;
+			// texture = BuildViewTexture(size);
+			// if (oldTexture != null) {
+			// 	obsoleteTextures.Add(oldTexture);
+			// }
 		}
 
 		// Nasty shit needs nasty attributes.
@@ -111,6 +117,7 @@ namespace NextUIBrowser.RenderHandlers {
 			return alpha;
 		}
 
+		/*
 		private D3D11.Texture2D BuildViewTexture(Size size) {
 			// Build texture. Most of these properties are defined to match how CEF exposes the render buffer.
 			var newTexture = new D3D11.Texture2D(device, new D3D11.Texture2DDescription() {
@@ -127,7 +134,17 @@ namespace NextUIBrowser.RenderHandlers {
 				OptionFlags = D3D11.ResourceOptionFlags.None,
 			});
 
+			var view = new D3D11.ShaderResourceView(
+				device,
+				newTexture,
+				new D3D11.ShaderResourceViewDescription {
+					Format = newTexture.Description.Format,
+					Dimension = ShaderResourceViewDimension.Texture2D,
+					Texture2D = { MipLevels = newTexture.Description.MipLevels },
+				}
+			);
 
+			TextureWrap = new D3DTextureWrap(view, newTexture.Description.Width, newTexture.Description.Height);
 			// IntPtr texHandle;
 			//
 			// using (var resource = newTexture.QueryInterface<DXGI.Resource>()) {
@@ -137,6 +154,7 @@ namespace NextUIBrowser.RenderHandlers {
 			// SharedTextureHandle = texHandle;
 			return newTexture;
 		}
+		*/
 
 		public override Rect GetViewRect() {
 			// There's a very small chance that OnPaint's cleanup will delete the current texture midway through this
@@ -154,8 +172,8 @@ namespace NextUIBrowser.RenderHandlers {
 		}
 
 		private Rect GetViewRectInternal() {
-			var texDesc = texture.Description;
-			return new Rect(0, 0, texDesc.Width, texDesc.Height);
+			// var texDesc = texture.Description;
+			return new Rect(0, 0, overlay.Size.Width, overlay.Size.Height);
 		}
 
 
@@ -166,12 +184,6 @@ namespace NextUIBrowser.RenderHandlers {
 			int width,
 			int height
 		) {
-			var targetTexture = type switch {
-				PaintElementType.View => texture,
-				PaintElementType.Popup => popupTexture,
-				_ => throw new Exception($"Unknown paint type {type}"),
-			};
-
 			// Nasty hack; we're keeping a ref to the view buffer for pixel lookups without going through DX
 			if (type == PaintElementType.View) {
 				bufferPtr = buffer;
@@ -182,80 +194,26 @@ namespace NextUIBrowser.RenderHandlers {
 				resizing = false;
 			}
 
-			// Calculate offset multipliers for the current buffer
-			var rowPitch = width * BytesPerPixel;
-			var depthPitch = rowPitch * height;
+			var requestType = type == PaintElementType.View ? PaintType.View : PaintType.Popup;
+			var newRect = new XRect(dirtyRect.X, dirtyRect.Y, dirtyRect.Width, dirtyRect.Height);
 
-			// Build the destination region for the dirty rect that we'll draw to
-			var texDesc = targetTexture.Description;
-			var sourceRegionPtr = buffer + (dirtyRect.X * BytesPerPixel) + (dirtyRect.Y * rowPitch);
-			var destinationRegion = new D3D11.ResourceRegion {
-				Top = Math.Min(dirtyRect.Y, texDesc.Height),
-				Bottom = Math.Min(dirtyRect.Y + dirtyRect.Height, texDesc.Height),
-				Left = Math.Min(dirtyRect.X, texDesc.Width),
-				Right = Math.Min(dirtyRect.X + dirtyRect.Width, texDesc.Width),
-				Front = 0,
-				Back = 1,
-			};
-
-			// Draw to the target
-			var context = targetTexture.Device.ImmediateContext;
-			context.UpdateSubresource(targetTexture, 0, destinationRegion, sourceRegionPtr, rowPitch, depthPitch);
-
-			// Only need to do composition + flush on primary texture
-			if (type != PaintElementType.View) {
-				return;
-			}
-
-			// Intersect with dirty?
-			if (popupVisible) {
-				context.CopySubresourceRegion(popupTexture, 0, null, targetTexture, 0, popupRect.X, popupRect.Y);
-			}
-
-			context.Flush();
-
-			// Rendering is complete, clean up any obsolete textures
-			var textures = obsoleteTextures;
-			obsoleteTextures = new ConcurrentBag<D3D11.Texture2D>();
-			foreach (var tex in textures) {
-				tex.Dispose();
-			}
+			overlay.Paint.OnNext(new PaintRequest() {
+				buffer = buffer,
+				height = height,
+				width = width,
+				type = requestType,
+				dirtyRect = newRect
+			});
 		}
 
 		public override void OnPopupShow(bool show) {
-			popupVisible = show;
+			overlay.PopupShow.OnNext(show);
 		}
 
 		public override void OnPopupSize(Rect rect) {
-			popupRect = rect;
-
-			// I'm really not sure if this happens. If it does,
-			// frequently - will probably need 2x shared textures and some jazz.
-			var texDesc = texture.Description;
-			if (rect.Width > texDesc.Width || rect.Height > texDesc.Height) {
-				Console.Error.WriteLine(
-					$"Trying to build popup layer ({rect.Width}x{rect.Height}) larger than primary surface ({texDesc.Width}x{texDesc.Height})."
-				);
-			}
-
-			// Get a reference to the old texture, we'll make sure to assign a new texture before disposing the old one.
-			var oldTexture = popupTexture;
-
-			// Build a texture for the new sized popup
-			popupTexture = new D3D11.Texture2D(texture.Device, new D3D11.Texture2DDescription() {
-				Width = rect.Width,
-				Height = rect.Height,
-				MipLevels = 1,
-				ArraySize = 1,
-				Format = DXGI.Format.B8G8R8A8_UNorm,
-				SampleDescription = new DXGI.SampleDescription(1, 0),
-				Usage = D3D11.ResourceUsage.Default,
-				BindFlags = D3D11.BindFlags.ShaderResource,
-				CpuAccessFlags = D3D11.CpuAccessFlags.None,
-				OptionFlags = D3D11.ResourceOptionFlags.None,
+			overlay.PopupSize.OnNext(new PopupSizeRequest() {
+				rect = new XRect(rect.X, rect.Y, rect.Width, rect.Height)
 			});
-
-			oldTexture?.Dispose();
 		}
 	}
 }

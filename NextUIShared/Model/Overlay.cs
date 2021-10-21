@@ -14,7 +14,6 @@ namespace NextUIShared.Model {
 
 		protected string name = "New Overlay";
 		protected string url = "";
-		protected object? texture; // It is D3D11.Texture2D but Shared cannot have references to that
 		protected Size size;
 		protected bool fullscreen;
 		protected Point position;
@@ -41,18 +40,6 @@ namespace NextUIShared.Model {
 
 				url = value;
 				UrlChange.OnNext(url);
-			}
-		}
-
-		public object? Texture {
-			get { return texture; }
-			set {
-				if (texture == value) {
-					return;
-				}
-
-				texture = value;
-				TextureChange.OnNext(value);
 			}
 		}
 
@@ -121,7 +108,6 @@ namespace NextUIShared.Model {
 		public OverlayVisibility Visibility { get; set; }
 
 		// ReSharper disable InconsistentNaming
-		public Subject<object?> TextureChange = new();
 		public Subject<string> NameChange = new();
 		public Subject<string> UrlChange = new();
 		public Subject<Size> SizeChange = new();
@@ -129,6 +115,9 @@ namespace NextUIShared.Model {
 		public Subject<Cursor> CursorChange = new();
 		public Subject<MouseEventRequest> MouseEvent = new();
 		public Subject<KeyEventRequest> KeyEvent = new();
+		public Subject<PaintRequest> Paint = new();
+		public Subject<PopupSizeRequest> PopupSize = new();
+		public Subject<bool> PopupShow = new();
 		// ReSharper restore InconsistentNaming
 
 		public event Action? DebugRequest;

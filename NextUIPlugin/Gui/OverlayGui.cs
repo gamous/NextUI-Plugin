@@ -1,8 +1,10 @@
 ﻿using ImGuiNET;
 using System;
+using System.Collections.Concurrent;
 using System.Drawing;
 using System.Numerics;
 using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Logging;
 using ImGuiScene;
 using NextUIShared;
 using NextUIShared.Data;
@@ -10,9 +12,12 @@ using NextUIShared.Model;
 using NextUIShared.Request;
 using D3D11 = SharpDX.Direct3D11;
 using D3D = SharpDX.Direct3D;
+using DXGI = SharpDX.DXGI;
 
 namespace NextUIPlugin.Gui {
 	public class OverlayGui : IDisposable {
+		protected const byte BytesPerPixel = 4;
+
 		public readonly Overlay overlay;
 
 		protected bool mouseInWindow;
@@ -23,30 +28,152 @@ namespace NextUIPlugin.Gui {
 		public bool acceptFocus;
 		protected TextureWrap? textureWrap;
 
-		protected readonly IDisposable textureSub;
+		protected D3D11.Texture2D? texture;
+		protected D3D11.Texture2D? popupTexture;
+		protected ConcurrentBag<D3D11.Texture2D> obsoleteTextures = new();
+
+		protected bool popupVisible;
+		protected XRect? popupRect;
+
 		protected readonly IDisposable cursorChangeSub;
+		protected readonly IDisposable paintSub;
+		protected readonly IDisposable popupSizeSub;
+		protected readonly IDisposable popupShowSub;
+		protected readonly IDisposable sizeChangeSub;
 
 		public OverlayGui(
 			Overlay overlay
 		) {
 			this.overlay = overlay;
 			BuildTextureWrap();
-			textureSub = overlay.TextureChange.Subscribe(TextureChange);
 			cursorChangeSub = overlay.CursorChange.Subscribe(SetCursor);
+			paintSub = overlay.Paint.Subscribe(OnPaint);
+			popupSizeSub = overlay.PopupSize.Subscribe(OnPopupSize);
+			popupShowSub = overlay.PopupShow.Subscribe(OnPopupShow);
+			sizeChangeSub = overlay.SizeChange.Subscribe(OnSizeChange);
 		}
 
-		protected void TextureChange(object? obj) {
-			BuildTextureWrap();
+		protected void OnPopupShow(bool show) {
+			popupVisible = show;
 		}
 
-		public void BuildTextureWrap() {
-			if (overlay.Texture is not D3D11.Texture2D texture) {
+		protected void OnPopupSize(PopupSizeRequest r) {
+			if (texture == null) {
+				return;
+			}
+			popupRect = r.rect;
+
+			// I'm really not sure if this happens. If it does,
+			// frequently - will probably need 2x shared textures and some jazz.
+			var texDesc = texture.Description;
+			if (r.rect.width > texDesc.Width || r.rect.height > texDesc.Height) {
+				PluginLog.Warning(
+					$"Trying to build popup layer ({r.rect.width}x{r.rect.height}) larger than primary surface ({texDesc.Width}x{texDesc.Height})."
+				);
 				return;
 			}
 
-			// DxHandler.Device
+			// Get a reference to the old texture, we'll make sure to assign a new texture before disposing the old one.
+			var oldTexture = popupTexture;
+
+			//This operation takes time, have to make sure nobody uses that tex before we rebuild it
+			popupTexture = null;
+			// Build a texture for the new sized popup
+			popupTexture = new D3D11.Texture2D(texture.Device, new D3D11.Texture2DDescription() {
+				Width = r.rect.width,
+				Height = r.rect.height,
+				MipLevels = 1,
+				ArraySize = 1,
+				Format = DXGI.Format.B8G8R8A8_UNorm,
+				SampleDescription = new DXGI.SampleDescription(1, 0),
+				Usage = D3D11.ResourceUsage.Default,
+				BindFlags = D3D11.BindFlags.ShaderResource,
+				CpuAccessFlags = D3D11.CpuAccessFlags.None,
+				OptionFlags = D3D11.ResourceOptionFlags.None,
+			});
+
+			oldTexture?.Dispose();
+		}
+
+		protected void OnSizeChange(Size obj) {
+			// var oldTexture = texture;
+			// return;
+			BuildTextureWrap();
+
+			// if (oldTexture != null) {
+			// 	obsoleteTextures.Add(oldTexture);
+			// }
+		}
+
+		protected void OnPaint(PaintRequest r) {
+
+			PluginLog.Log("0 PAINT");
+			// Calculate offset multipliers for the current buffer
+			var rowPitch = r.width * BytesPerPixel;
+			var depthPitch = rowPitch * r.height;
+
+			var targetTexture = r.type == PaintType.View ? texture : popupTexture;
+
+			if (targetTexture == null) {
+				return;
+			}
+
+			// Build the destination region for the dirty rect that we'll draw to
+			var texDesc = targetTexture.Description;
+			var sourceRegionPtr = r.buffer + (r.dirtyRect.x * BytesPerPixel) + (r.dirtyRect.y * rowPitch);
+			var destinationRegion = new D3D11.ResourceRegion {
+				Top = Math.Min(r.dirtyRect.y, texDesc.Height),
+				Bottom = Math.Min(r.dirtyRect.y + r.dirtyRect.height, texDesc.Height),
+				Left = Math.Min(r.dirtyRect.x, texDesc.Width),
+				Right = Math.Min(r.dirtyRect.x + r.dirtyRect.width, texDesc.Width),
+				Front = 0,
+				Back = 1,
+			};
+
+			// Draw to the target
+			var context = targetTexture.Device.ImmediateContext;
+			context.UpdateSubresource(targetTexture, 0, destinationRegion, sourceRegionPtr, rowPitch, depthPitch);
+
+			// Only need to do composition + flush on primary texture
+			if (r.type != PaintType.View) {
+				return;
+			}
+
+			// Intersect with dirty?
+			if (popupVisible && popupTexture != null && popupRect != null) {
+				context.CopySubresourceRegion(popupTexture, 0, null, targetTexture, 0, popupRect.x, popupRect.y);
+			}
+
+			// No idea why this dies, no idea if it's needed
+			// context.Flush();
+
+			// Rendering is complete, clean up any obsolete textures
+			var textures = obsoleteTextures;
+			obsoleteTextures = new ConcurrentBag<D3D11.Texture2D>();
+			foreach (var tex in textures) {
+				tex.Dispose();
+			}
+		}
+
+		public void BuildTextureWrap() {
+			PluginLog.Log("0 BUILDING " + overlay.Size);
+			var oldTexture = texture;
+
+			texture = new D3D11.Texture2D(DxHandler.Device, new D3D11.Texture2DDescription() {
+				Width = overlay.Size.Width,
+				Height = overlay.Size.Height,
+				MipLevels = 1,
+				ArraySize = 1,
+				Format = DXGI.Format.B8G8R8A8_UNorm,
+				SampleDescription = new DXGI.SampleDescription(1, 0),
+				Usage = D3D11.ResourceUsage.Default,
+				BindFlags = D3D11.BindFlags.ShaderResource,
+				CpuAccessFlags = D3D11.CpuAccessFlags.None,
+				OptionFlags = D3D11.ResourceOptionFlags.None,
+			});
+
 			var view = new D3D11.ShaderResourceView(
-				texture.Device,
+				DxHandler.Device,
 				texture,
 				new D3D11.ShaderResourceViewDescription {
 					Format = texture.Description.Format,
@@ -56,10 +183,18 @@ namespace NextUIPlugin.Gui {
 			);
 
 			textureWrap = new D3DTextureWrap(view, texture.Description.Width, texture.Description.Height);
+
+			if (oldTexture != null) {
+				obsoleteTextures.Add(oldTexture);
+			}
+			PluginLog.Log("1 BUILT");
 		}
 
 		public void Dispose() {
-			textureSub.Dispose();
+			paintSub.Dispose();
+			popupShowSub.Dispose();
+			popupSizeSub.Dispose();
+			sizeChangeSub.Dispose();
 			cursorChangeSub.Dispose();
 			overlay.Dispose();
 			textureWrap?.Dispose();

@@ -63,6 +63,9 @@
 		<Reference Include="Dalamud">
 			<Private>false</Private>
 		</Reference>
+		<Reference Include="ImGuiScene">
+			<Private>false</Private>
+		</Reference>
 		<Reference Include="SharpDX">
 			<Private>false</Private>
 		</Reference>
@@ -76,30 +79,30 @@
 
 	<!-- NuGet Packages -->
 	<ItemGroup>
-		<PackageReference Include="CefSharp.OffScreen.NETCore" Version="94.4.50" />
-		<PackageReference Include="System.Reactive" Version="5.0.0" />
+		<PackageReference Include="CefSharp.OffScreen.NETCore" Version="94.4.50"/>
+		<PackageReference Include="System.Reactive" Version="5.0.0"/>
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\NextUIShared\NextUIShared.csproj" />
+		<ProjectReference Include="..\NextUIShared\NextUIShared.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="app.config" />
+		<None Include="app.config"/>
 	</ItemGroup>
 
 	<!-- Hot reload for dev version -->
 	<Target Name="CopyMicroPlugin" AfterTargets="Build" Condition="'$(Configuration)'=='Debug'">
 		<ItemGroup>
-			<MicroPluginFiles Include="$(TargetDir)**\*.*" />
+			<MicroPluginFiles Include="$(TargetDir)**\*.*"/>
 		</ItemGroup>
-		<Copy SourceFiles="@(MicroPluginFiles)" DestinationFolder="$(SolutionDir)NextUIPlugin\bin\$(Configuration)\MicroPlugin\%(RecursiveDir)" />
+		<Copy SourceFiles="@(MicroPluginFiles)" DestinationFolder="$(SolutionDir)NextUIPlugin\bin\$(Configuration)\MicroPlugin\%(RecursiveDir)"/>
 
-		<Message Text="Copied microplugin files" Importance="High" />
+		<Message Text="Copied microplugin files" Importance="High"/>
 	</Target>
 
 	<!-- Zip for release -->
 	<Target Name="ZipOutputPath" AfterTargets="Build" Condition="'$(Configuration)'=='Release'">
-		<ZipDirectory Overwrite="true" SourceDirectory="$(OutputPath)" DestinationFile="$(MSBuildProjectDirectory)\bin\latest.zip" />
+		<ZipDirectory Overwrite="true" SourceDirectory="$(OutputPath)" DestinationFile="$(MSBuildProjectDirectory)\bin\latest.zip"/>
 	</Target>
 </Project>

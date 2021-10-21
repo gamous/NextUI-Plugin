@@ -28,7 +28,6 @@ namespace NextUIBrowser.OverlayWindow {
 		protected IDisposable urlChangeSub;
 		protected IDisposable mouseEventSub;
 		protected IDisposable keyEventSub;
-		protected IDisposable textureSub;
 
 		public void Initialize() {
 			browser = new ChromiumWebBrowser(overlay.Url, automaticallyCreateBrowser: false);
@@ -71,15 +70,16 @@ namespace NextUIBrowser.OverlayWindow {
 			// Handle pointers
 
 			// Populate texture pointer in overlay data structure and notify if it changes
-			overlay.Texture = renderHandler.Texture;
-			textureSub = renderHandler.TextureChange.Subscribe(RenderHandlerTextureChange);
+			// overlay.TextureWrap = renderHandler.TextureWrap;
+			// textureSub = renderHandler.TextureWrapChange.Subscribe(RenderHandlerTextureChange);
+
 			// Also request cursor if it changes
 			renderHandler.CursorChanged += RenderHandlerOnCursorChanged;
 		}
 
-		protected void RenderHandlerTextureChange(Texture2D? obj) {
-			overlay.Texture = obj;
-		}
+		// protected void RenderHandlerTextureChange(D3DTextureWrap? obj) {
+			// overlay.TextureWrap = obj;
+		// }
 
 		protected void RenderHandlerOnCursorChanged(object? sender, Cursor cursor) {
 			overlay.SetCursor(cursor);
@@ -98,7 +98,6 @@ namespace NextUIBrowser.OverlayWindow {
 			sizeObservableSub.Dispose();
 			mouseEventSub.Dispose();
 			keyEventSub.Dispose();
-			textureSub.Dispose();
 
 			browser.RenderHandler = null;
 			renderHandler.Dispose();

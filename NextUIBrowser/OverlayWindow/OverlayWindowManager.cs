@@ -56,7 +56,7 @@ namespace NextUIBrowser.OverlayWindow {
 				return;
 			}
 
-			var textureHandler = new TextureRenderHandler(device, overlay.Size);
+			var textureHandler = new TextureRenderHandler(overlay);
 			var overlayWindow = new OverlayWindow(overlay, textureHandler);
 			overlayWindows.Add(overlayWindow);
 
