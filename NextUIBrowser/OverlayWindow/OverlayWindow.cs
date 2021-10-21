@@ -10,7 +10,6 @@ using NextUIBrowser.RenderHandlers;
 using NextUIShared.Data;
 using NextUIShared.Model;
 using NextUIShared.Request;
-using SharpDX.Direct3D11;
 
 namespace NextUIBrowser.OverlayWindow {
 	public class OverlayWindow : IDisposable {

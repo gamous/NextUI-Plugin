@@ -1,17 +1,12 @@
 ﻿using CefSharp;
 using CefSharp.Structs;
-using D3D11 = SharpDX.Direct3D11;
-using DXGI = SharpDX.DXGI;
 using System;
-using System.Collections.Concurrent;
-using System.Reactive.Subjects;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Security;
 using Dalamud.Logging;
 using NextUIShared.Model;
 using NextUIShared.Request;
-using SharpDX.Direct3D;
 using Size = System.Drawing.Size;
 
 namespace NextUIBrowser.RenderHandlers {
@@ -19,40 +14,7 @@ namespace NextUIBrowser.RenderHandlers {
 		// CEF buffers are 32-bit BGRA
 		protected const byte BytesPerPixel = 4;
 
-		// protected readonly D3D11.Device device;
-		// protected D3D11.Texture2D? popupTexture;
-		// protected ConcurrentBag<D3D11.Texture2D> obsoleteTextures = new();
-
 		protected Overlay overlay;
-
-		//
-		// protected D3D11.Texture2D? texture;
-		//
-		// protected D3DTextureWrap? textureWrap;
-		//
-		// // ReSharper disable once InconsistentNaming
-		// public Subject<D3DTextureWrap?> TextureWrapChange = new();
-		// public D3DTextureWrap? TextureWrap {
-		// 	get { return textureWrap; }
-		// 	set {
-		// 		textureWrap = value;
-		// 		TextureWrapChange.OnNext(value);
-		// 	}
-		// }
-		// protected IntPtr sharedTextureHandle = IntPtr.Zero;
-		// public event Action<IntPtr>? TexturePointerChange;
-
-		// public IntPtr SharedTextureHandle {
-		// 	get { return sharedTextureHandle; }
-		// 	protected set {
-		// 		if (value == sharedTextureHandle) {
-		// 			return;
-		// 		}
-		//
-		// 		sharedTextureHandle = value;
-		// 		TexturePointerChange?.Invoke(sharedTextureHandle);
-		// 	}
-		// }
 
 		// Transparent background click-through state
 		protected IntPtr bufferPtr;
@@ -61,19 +23,10 @@ namespace NextUIBrowser.RenderHandlers {
 
 		public TextureRenderHandler(Overlay overlay) {
 			this.overlay = overlay;
-			// this.device = device;
-			// texture = BuildViewTexture(size);
 		}
 
 		public override void Dispose() {
-			// texture?.Dispose();
-			// popupTexture?.Dispose();
-
-			// TextureWrap = null;
-
-			// foreach (D3D11.Texture2D tex in obsoleteTextures) {
-				// tex.Dispose();
-			// }
+			// are even need to dispose anything?
 		}
 
 		protected bool resizing;
@@ -81,11 +34,6 @@ namespace NextUIBrowser.RenderHandlers {
 		// We only need to keep GetAlphaAt away from reading pointer while browser resizes itself
 		public override void Resize(Size size) {
 			resizing = true;
-			// var oldTexture = texture;
-			// texture = BuildViewTexture(size);
-			// if (oldTexture != null) {
-			// 	obsoleteTextures.Add(oldTexture);
-			// }
 		}
 
 		// Nasty shit needs nasty attributes.
@@ -116,45 +64,6 @@ namespace NextUIBrowser.RenderHandlers {
 
 			return alpha;
 		}
-
-		/*
-		private D3D11.Texture2D BuildViewTexture(Size size) {
-			// Build texture. Most of these properties are defined to match how CEF exposes the render buffer.
-			var newTexture = new D3D11.Texture2D(device, new D3D11.Texture2DDescription() {
-				Width = size.Width,
-				Height = size.Height,
-				MipLevels = 1,
-				ArraySize = 1,
-				Format = DXGI.Format.B8G8R8A8_UNorm,
-				SampleDescription = new DXGI.SampleDescription(1, 0),
-				Usage = D3D11.ResourceUsage.Default,
-				BindFlags = D3D11.BindFlags.ShaderResource,
-				CpuAccessFlags = D3D11.CpuAccessFlags.None,
-				// TODO: Look into getting SharedKeyedMutex working without a CTD from the plugin side.
-				OptionFlags = D3D11.ResourceOptionFlags.None,
-			});
-
-			var view = new D3D11.ShaderResourceView(
-				device,
-				newTexture,
-				new D3D11.ShaderResourceViewDescription {
-					Format = newTexture.Description.Format,
-					Dimension = ShaderResourceViewDimension.Texture2D,
-					Texture2D = { MipLevels = newTexture.Description.MipLevels },
-				}
-			);
-
-			TextureWrap = new D3DTextureWrap(view, newTexture.Description.Width, newTexture.Description.Height);
-			// IntPtr texHandle;
-			//
-			// using (var resource = newTexture.QueryInterface<DXGI.Resource>()) {
-			// 	texHandle = resource.SharedHandle;
-			// }
-			//
-			// SharedTextureHandle = texHandle;
-			return newTexture;
-		}
-		*/
 
 		public override Rect GetViewRect() {
 			// There's a very small chance that OnPaint's cleanup will delete the current texture midway through this
