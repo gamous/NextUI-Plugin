@@ -10,6 +10,7 @@ using NextUIBrowser.RenderHandlers;
 using NextUIShared.Data;
 using NextUIShared.Model;
 using NextUIShared.Request;
+using SharpDX.Direct3D11;
 
 namespace NextUIBrowser.OverlayWindow {
 	public class OverlayWindow : IDisposable {
@@ -27,7 +28,8 @@ namespace NextUIBrowser.OverlayWindow {
 		protected IDisposable urlChangeSub;
 		protected IDisposable mouseEventSub;
 		protected IDisposable keyEventSub;
-		
+		protected IDisposable textureSub;
+
 		public void Initialize() {
 			browser = new ChromiumWebBrowser(overlay.Url, automaticallyCreateBrowser: false);
 			browser.RenderHandler = renderHandler;
@@ -57,26 +59,26 @@ namespace NextUIBrowser.OverlayWindow {
 			// Handle any changes done on overlay data
 			overlay.DebugRequest += Debug;
 			overlay.ReloadRequest += Reload;
-			
+
 			urlChangeSub = overlay.UrlChange.Subscribe(Navigate);
 			mouseEventSub = overlay.MouseEvent.Subscribe(HandleMouseEvent);
 			keyEventSub = overlay.KeyEvent.Subscribe(HandleKeyEvent);
-			
+
 			sizeObservableSub = overlay.SizeChange.AsObservable()
 				.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
-			
-			
+
+
 			// Handle pointers
-			
+
 			// Populate texture pointer in overlay data structure and notify if it changes
-			overlay.TexturePointer = renderHandler.SharedTextureHandle;
-			renderHandler.TexturePointerChange += RenderHandlerOnTexturePointerChange;
+			overlay.Texture = renderHandler.Texture;
+			textureSub = renderHandler.TextureChange.Subscribe(RenderHandlerTextureChange);
 			// Also request cursor if it changes
 			renderHandler.CursorChanged += RenderHandlerOnCursorChanged;
 		}
 
-		protected void RenderHandlerOnTexturePointerChange(IntPtr ptr) {
-			overlay.TexturePointer = ptr;
+		protected void RenderHandlerTextureChange(Texture2D? obj) {
+			overlay.Texture = obj;
 		}
 
 		protected void RenderHandlerOnCursorChanged(object? sender, Cursor cursor) {
@@ -96,6 +98,7 @@ namespace NextUIBrowser.OverlayWindow {
 			sizeObservableSub.Dispose();
 			mouseEventSub.Dispose();
 			keyEventSub.Dispose();
+			textureSub.Dispose();
 
 			browser.RenderHandler = null;
 			renderHandler.Dispose();

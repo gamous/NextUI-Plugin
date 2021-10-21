@@ -4,6 +4,7 @@ using D3D11 = SharpDX.Direct3D11;
 using DXGI = SharpDX.DXGI;
 using System;
 using System.Collections.Concurrent;
+using System.Reactive.Subjects;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Security;
@@ -16,27 +17,38 @@ namespace NextUIBrowser.RenderHandlers {
 		protected const byte BytesPerPixel = 4;
 
 		protected readonly D3D11.Device device;
-		protected D3D11.Texture2D? texture;
 		protected D3D11.Texture2D? popupTexture;
 		protected ConcurrentBag<D3D11.Texture2D> obsoleteTextures = new();
 
 		protected bool popupVisible;
 		protected Rect popupRect;
 
-		protected IntPtr sharedTextureHandle = IntPtr.Zero;
-		public event Action<IntPtr>? TexturePointerChange;
 
-		public IntPtr SharedTextureHandle {
-			get { return sharedTextureHandle; }
-			protected set {
-				if (value == sharedTextureHandle) {
-					return;
-				}
+		protected D3D11.Texture2D? texture;
 
-				sharedTextureHandle = value;
-				TexturePointerChange?.Invoke(sharedTextureHandle);
+		// ReSharper disable once InconsistentNaming
+		public Subject<D3D11.Texture2D?> TextureChange = new();
+		public D3D11.Texture2D? Texture {
+			get { return texture; }
+			set {
+				texture = value;
+				TextureChange.OnNext(value);
 			}
 		}
+		// protected IntPtr sharedTextureHandle = IntPtr.Zero;
+		// public event Action<IntPtr>? TexturePointerChange;
+
+		// public IntPtr SharedTextureHandle {
+		// 	get { return sharedTextureHandle; }
+		// 	protected set {
+		// 		if (value == sharedTextureHandle) {
+		// 			return;
+		// 		}
+		//
+		// 		sharedTextureHandle = value;
+		// 		TexturePointerChange?.Invoke(sharedTextureHandle);
+		// 	}
+		// }
 
 		// Transparent background click-through state
 		protected IntPtr bufferPtr;
@@ -45,12 +57,14 @@ namespace NextUIBrowser.RenderHandlers {
 
 		public TextureRenderHandler(D3D11.Device device, Size size) {
 			this.device = device;
-			texture = BuildViewTexture(size);
+			Texture = BuildViewTexture(size);
 		}
 
 		public override void Dispose() {
 			texture?.Dispose();
 			popupTexture?.Dispose();
+
+			Texture = null;
 
 			foreach (D3D11.Texture2D tex in obsoleteTextures) {
 				tex.Dispose();
@@ -62,7 +76,7 @@ namespace NextUIBrowser.RenderHandlers {
 		public override void Resize(Size size) {
 			resizing = true;
 			var oldTexture = texture;
-			texture = BuildViewTexture(size);
+			Texture = BuildViewTexture(size);
 			if (oldTexture != null) {
 				obsoleteTextures.Add(oldTexture);
 			}
@@ -110,15 +124,17 @@ namespace NextUIBrowser.RenderHandlers {
 				BindFlags = D3D11.BindFlags.ShaderResource,
 				CpuAccessFlags = D3D11.CpuAccessFlags.None,
 				// TODO: Look into getting SharedKeyedMutex working without a CTD from the plugin side.
-				OptionFlags = D3D11.ResourceOptionFlags.Shared,
+				OptionFlags = D3D11.ResourceOptionFlags.None,
 			});
-			IntPtr texHandle;
 
-			using (var resource = newTexture.QueryInterface<DXGI.Resource>()) {
-				texHandle = resource.SharedHandle;
-			}
 
-			SharedTextureHandle = texHandle;
+			// IntPtr texHandle;
+			//
+			// using (var resource = newTexture.QueryInterface<DXGI.Resource>()) {
+			// 	texHandle = resource.SharedHandle;
+			// }
+			//
+			// SharedTextureHandle = texHandle;
 			return newTexture;
 		}
 

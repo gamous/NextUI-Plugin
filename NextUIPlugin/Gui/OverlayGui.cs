@@ -23,7 +23,7 @@ namespace NextUIPlugin.Gui {
 		public bool acceptFocus;
 		protected TextureWrap? textureWrap;
 
-		protected readonly IDisposable texturePointerSub;
+		protected readonly IDisposable textureSub;
 		protected readonly IDisposable cursorChangeSub;
 
 		public OverlayGui(
@@ -31,26 +31,22 @@ namespace NextUIPlugin.Gui {
 		) {
 			this.overlay = overlay;
 			BuildTextureWrap();
-			texturePointerSub = overlay.TexturePointerChange.Subscribe(TexturePointerChange);
+			textureSub = overlay.TextureChange.Subscribe(TextureChange);
 			cursorChangeSub = overlay.CursorChange.Subscribe(SetCursor);
 		}
 
-		protected void TexturePointerChange(IntPtr obj) {
+		protected void TextureChange(object? obj) {
 			BuildTextureWrap();
 		}
 
 		public void BuildTextureWrap() {
-			if (overlay.TexturePointer == IntPtr.Zero) {
+			if (overlay.Texture is not D3D11.Texture2D texture) {
 				return;
 			}
 
-			var texture = DxHandler.Device?.OpenSharedResource<D3D11.Texture2D>(overlay.TexturePointer);
-			if (texture == null) {
-				return;
-			}
-
+			// DxHandler.Device
 			var view = new D3D11.ShaderResourceView(
-				DxHandler.Device,
+				texture.Device,
 				texture,
 				new D3D11.ShaderResourceViewDescription {
 					Format = texture.Description.Format,
@@ -63,7 +59,7 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void Dispose() {
-			texturePointerSub.Dispose();
+			textureSub.Dispose();
 			cursorChangeSub.Dispose();
 			overlay.Dispose();
 			textureWrap?.Dispose();
@@ -162,6 +158,7 @@ namespace NextUIPlugin.Gui {
 				return;
 			}
 
+			/*
 			var conditions = NextUIPlugin.Condition;
 			if (
 				!overlay.Visibility.HasFlag(OverlayVisibility.DuringCutscene) &&
@@ -205,7 +202,7 @@ namespace NextUIPlugin.Gui {
 				mouseInWindow = false;
 				return;
 			}
-
+*/
 			ImGui.SetNextWindowPos(new Vector2(overlay.Position.X, overlay.Position.Y), ImGuiCond.Always);
 			ImGui.SetNextWindowSize(new Vector2(overlay.Size.Width, overlay.Size.Height), ImGuiCond.Always);
 			ImGui.Begin($"NUOverlay-{overlay.Guid}", GetWindowFlags());
