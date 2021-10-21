@@ -104,10 +104,16 @@ namespace NextUIPlugin.Gui {
 		}
 
 		protected bool paiting;
+		protected PaintRequest paintRequest;
 		protected void OnPaint(object? sender, PaintRequest r) {
 			if (paiting) {
 				return;
 			}
+			if (r.type != PaintType.View) {
+				return;
+			}
+			paintRequest = r;
+			return;
 
 			paiting = true;
 			PluginLog.Log("0 PAINT");
@@ -124,7 +130,8 @@ namespace NextUIPlugin.Gui {
 				return;
 			}
 
-			PluginLog.Log("1 PAINT " + r.dirtyRect.ToString());
+			// targetTexture = textureClone;
+			PluginLog.Log("1 PAINT " + r.buffer.ToInt64());
 			// Build the destination region for the dirty rect that we'll draw to
 			var texDesc = targetTexture.Description;
 			var sourceRegionPtr = r.buffer + (r.dirtyRect.x * BytesPerPixel) + (r.dirtyRect.y * rowPitch);
@@ -138,11 +145,6 @@ namespace NextUIPlugin.Gui {
 			};
 
 			// Draw to the target
-			// if (dataStream == null) {
-				// return;
-			// }
-			// dataStream.WriteRange(r.buffer, r.width * r.height * 4);
-			// deviceContext.UnmapSubresource(depthImageTexture, 0);
 
 			var context = targetTexture.Device.ImmediateContext;
 			context.UpdateSubresource(targetTexture, 0, destinationRegion, sourceRegionPtr, rowPitch, depthPitch);
@@ -159,7 +161,7 @@ namespace NextUIPlugin.Gui {
 			}
 
 			// No idea why this dies, no idea if it's needed
-			// context.Flush();
+			context.Flush();
 
 			// Rendering is complete, clean up any obsolete textures
 			var textures = obsoleteTextures;
@@ -170,9 +172,32 @@ namespace NextUIPlugin.Gui {
 			paiting = false;
 		}
 
+		// protected static D3D11.Device? customDevice;
+		// protected  D3D11.Texture2D textureClone;
 		public void BuildTextureWrap() {
 			PluginLog.Log("0 BUILDING " + overlay.Size);
 			var oldTexture = texture;
+
+			// if (customDevice == null) {
+			// 	var flags = D3D11.DeviceCreationFlags.BgraSupport;
+			// 	flags |= D3D11.DeviceCreationFlags.Debug;
+			//
+			// 	var dxgiDevice = DxHandler.Device.QueryInterface<DXGI.Device>();
+			// 	customDevice = new D3D11.Device(dxgiDevice.Adapter, flags);
+			// }
+			//
+			// textureClone = new D3D11.Texture2D(customDevice, new D3D11.Texture2DDescription() {
+			// 	Width = overlay.Size.Width,
+			// 	Height = overlay.Size.Height,
+			// 	MipLevels = 1,
+			// 	ArraySize = 1,
+			// 	Format = DXGI.Format.B8G8R8A8_UNorm,
+			// 	SampleDescription = new DXGI.SampleDescription(1, 0),
+			// 	Usage = D3D11.ResourceUsage.Default,
+			// 	BindFlags = D3D11.BindFlags.ShaderResource,
+			// 	CpuAccessFlags = D3D11.CpuAccessFlags.None,
+			// 	OptionFlags = D3D11.ResourceOptionFlags.Shared,
+			// });
 
 			texture = new D3D11.Texture2D(DxHandler.Device, new D3D11.Texture2DDescription() {
 				Width = overlay.Size.Width,
@@ -306,7 +331,7 @@ namespace NextUIPlugin.Gui {
 				return;
 			}
 
-			if (textureWrap == null) {
+			if (textureWrap == null || texture == null) {
 				return;
 			}
 
@@ -358,6 +383,25 @@ namespace NextUIPlugin.Gui {
 			ImGui.SetNextWindowPos(new Vector2(overlay.Position.X, overlay.Position.Y), ImGuiCond.Always);
 			ImGui.SetNextWindowSize(new Vector2(overlay.Size.Width, overlay.Size.Height), ImGuiCond.Always);
 			ImGui.Begin($"NUOverlay-{overlay.Guid}", GetWindowFlags());
+
+			var rowPitch = paintRequest.width * BytesPerPixel;
+			var depthPitch = rowPitch * paintRequest.height;
+
+			var texDesc = texture.Description;
+			var sourceRegionPtr = paintRequest.buffer + (paintRequest.dirtyRect.x * BytesPerPixel) + (paintRequest.dirtyRect.y * rowPitch);
+			var destinationRegion = new D3D11.ResourceRegion {
+				Top = Math.Min(paintRequest.dirtyRect.y, texDesc.Height),
+				Bottom = Math.Min(paintRequest.dirtyRect.y + paintRequest.dirtyRect.height, texDesc.Height),
+				Left = Math.Min(paintRequest.dirtyRect.x, texDesc.Width),
+				Right = Math.Min(paintRequest.dirtyRect.x + paintRequest.dirtyRect.width, texDesc.Width),
+				Front = 0,
+				Back = 1,
+			};
+
+			// Draw to the target
+
+			var context = texture.Device.ImmediateContext;
+			context.UpdateSubresource(texture, 0, destinationRegion, sourceRegionPtr, rowPitch, depthPitch);
 
 			ImGui.Image(textureWrap.ImGuiHandle, new Vector2(textureWrap.Width, textureWrap.Height));
 

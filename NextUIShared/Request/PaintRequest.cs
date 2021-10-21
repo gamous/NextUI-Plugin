@@ -9,7 +9,7 @@ namespace NextUIShared.Request {
 
 	// Translated rect
 	[Serializable]
-	public class XRect {
+	public struct XRect {
 		public int x;
 		public int y;
 		public int width;
@@ -28,9 +28,9 @@ namespace NextUIShared.Request {
 	}
 
 	[Serializable]
-	public class PaintRequest {
+	public struct PaintRequest {
 		public PaintType type;
-		public XRect dirtyRect = null!;
+		public XRect dirtyRect;
 		public IntPtr buffer;
 		public int width;
 		public int height;

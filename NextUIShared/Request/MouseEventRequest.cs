@@ -3,7 +3,7 @@ using NextUIShared.Data;
 
 namespace NextUIShared.Request {
 	[Serializable]
-	public class MouseEventRequest : DownstreamIpcRequest {
+	public struct MouseEventRequest {
 		public float x;
 		public float y;
 
@@ -17,10 +17,5 @@ namespace NextUIShared.Request {
 		public float wheelX;
 		public float wheelY;
 		public InputModifier modifier;
-		
-		
-		public MouseEventRequest() {
-			reqType = "mouseEvent";
-		}
 	}
 }

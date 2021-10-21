@@ -1,5 +1,5 @@
 ﻿namespace NextUIShared.Request {
-	public class PopupSizeRequest {
-		public XRect rect = null!;
+	public struct PopupSizeRequest {
+		public XRect rect;
 	}
 }
