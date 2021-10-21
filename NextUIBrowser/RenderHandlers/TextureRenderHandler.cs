@@ -85,17 +85,27 @@ namespace NextUIBrowser.RenderHandlers {
 			return new Rect(0, 0, overlay.Size.Width, overlay.Size.Height);
 		}
 
-
-		public override void OnPaint(
+		protected IntPtr internalBuffer;
+		public override unsafe void OnPaint(
 			PaintElementType type,
 			Rect dirtyRect,
 			IntPtr buffer,
 			int width,
 			int height
 		) {
+			if (type == PaintElementType.Popup) {
+				return;
+			}
+			var len = width * height * 4;
+			if (internalBuffer == IntPtr.Zero) {
+				internalBuffer = Marshal.AllocHGlobal(len);
+			}
+
+			Buffer.MemoryCopy(buffer.ToPointer(), internalBuffer.ToPointer(), len, len);
+
 			// Nasty hack; we're keeping a ref to the view buffer for pixel lookups without going through DX
 			if (type == PaintElementType.View) {
-				bufferPtr = buffer;
+				bufferPtr = internalBuffer;
 				bufferWidth = width;
 				bufferHeight = height;
 
@@ -106,8 +116,8 @@ namespace NextUIBrowser.RenderHandlers {
 			var requestType = type == PaintElementType.View ? PaintType.View : PaintType.Popup;
 			var newRect = new XRect(dirtyRect.X, dirtyRect.Y, dirtyRect.Width, dirtyRect.Height);
 
-			overlay.Paint.OnNext(new PaintRequest() {
-				buffer = buffer,
+			overlay.PaintRequest(new PaintRequest() {
+				buffer = internalBuffer,
 				height = height,
 				width = width,
 				type = requestType,
@@ -116,11 +126,11 @@ namespace NextUIBrowser.RenderHandlers {
 		}
 
 		public override void OnPopupShow(bool show) {
-			overlay.PopupShow.OnNext(show);
+			overlay.ShowPopup(show);
 		}
 
 		public override void OnPopupSize(Rect rect) {
-			overlay.PopupSize.OnNext(new PopupSizeRequest() {
+			overlay.PopupSizeChange(new PopupSizeRequest() {
 				rect = new XRect(rect.X, rect.Y, rect.Width, rect.Height)
 			});
 		}

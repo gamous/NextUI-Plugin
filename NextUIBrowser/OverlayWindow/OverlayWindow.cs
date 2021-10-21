@@ -58,12 +58,14 @@ namespace NextUIBrowser.OverlayWindow {
 			overlay.DebugRequest += Debug;
 			overlay.ReloadRequest += Reload;
 
-			urlChangeSub = overlay.UrlChange.Subscribe(Navigate);
-			mouseEventSub = overlay.MouseEvent.Subscribe(HandleMouseEvent);
-			keyEventSub = overlay.KeyEvent.Subscribe(HandleKeyEvent);
+			overlay.UrlChange += Navigate;
+			overlay.MouseEvent += HandleMouseEvent;
+			overlay.KeyEvent += HandleKeyEvent;
+			overlay.SizeChange += Resize;
 
-			sizeObservableSub = overlay.SizeChange.AsObservable()
-				.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
+			//
+			// sizeObservableSub = overlay.SizeChange.AsObservable()
+			// 	.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
 
 
 			// Handle pointers
@@ -105,7 +107,7 @@ namespace NextUIBrowser.OverlayWindow {
 			PluginLog.Log("Browser was disposed");
 		}
 
-		public void Navigate(string newUrl) {
+		public void Navigate(object? sender, string newUrl) {
 			// If navigating to the same url, force a clean reload
 			if (browser?.Address == newUrl) {
 				browser.Reload(true);
@@ -124,7 +126,7 @@ namespace NextUIBrowser.OverlayWindow {
 			browser.ShowDevTools();
 		}
 
-		public void Resize(Size size) {
+		public void Resize(object? sender, Size size) {
 			PluginLog.Log("CREATED WITH ZIE " + overlay.Size);
 			// Need to resize renderer first, the browser will check it (and hence the texture) when browser.
 			// We are disregarding param as Size will adjust based on Fullscreen prop
@@ -134,7 +136,7 @@ namespace NextUIBrowser.OverlayWindow {
 			}
 		}
 
-		protected void HandleMouseEvent(MouseEventRequest request) {
+		protected void HandleMouseEvent(object? sender, MouseEventRequest request) {
 			// If the browser isn't ready yet, noop
 			if (browser == null || !browser.IsBrowserInitialized || browser.IsLoading) {
 				return;
@@ -166,7 +168,7 @@ namespace NextUIBrowser.OverlayWindow {
 			host.SendMouseWheelEvent(evt, (int)request.wheelX * deltaMult, (int)request.wheelY * deltaMult);
 		}
 
-		public void HandleKeyEvent(KeyEventRequest request) {
+		public void HandleKeyEvent(object? sender, KeyEventRequest request) {
 			if (browser == null || !browser.IsBrowserInitialized || browser.IsLoading) {
 				return;
 			}

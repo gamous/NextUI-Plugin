@@ -70,7 +70,7 @@
 
 	<!-- NuGet Packages -->
 	<ItemGroup>
-		<PackageReference Include="CefSharp.OffScreen.NETCore" Version="94.4.50"/>
+		<PackageReference Include="CefSharp.OffScreen" Version="94.4.50"/>
 		<PackageReference Include="System.Reactive" Version="5.0.0"/>
 	</ItemGroup>
 

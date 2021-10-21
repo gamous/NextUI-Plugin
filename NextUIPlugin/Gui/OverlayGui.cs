@@ -10,6 +10,7 @@ using NextUIShared;
 using NextUIShared.Data;
 using NextUIShared.Model;
 using NextUIShared.Request;
+using SharpDX;
 using D3D11 = SharpDX.Direct3D11;
 using D3D = SharpDX.Direct3D;
 using DXGI = SharpDX.DXGI;
@@ -35,29 +36,25 @@ namespace NextUIPlugin.Gui {
 		protected bool popupVisible;
 		protected XRect? popupRect;
 
-		protected readonly IDisposable cursorChangeSub;
-		protected readonly IDisposable paintSub;
-		protected readonly IDisposable popupSizeSub;
-		protected readonly IDisposable popupShowSub;
-		protected readonly IDisposable sizeChangeSub;
 
 		public OverlayGui(
 			Overlay overlay
 		) {
 			this.overlay = overlay;
 			BuildTextureWrap();
-			cursorChangeSub = overlay.CursorChange.Subscribe(SetCursor);
-			paintSub = overlay.Paint.Subscribe(OnPaint);
-			popupSizeSub = overlay.PopupSize.Subscribe(OnPopupSize);
-			popupShowSub = overlay.PopupShow.Subscribe(OnPopupShow);
-			sizeChangeSub = overlay.SizeChange.Subscribe(OnSizeChange);
+			overlay.CursorChange += SetCursor;
+			overlay.Paint += OnPaint;
+			overlay.PopupSize += OnPopupSize;
+			overlay.PopupShow += OnPopupShow;
+			overlay.SizeChange += OnSizeChange;
 		}
 
-		protected void OnPopupShow(bool show) {
+		protected void OnPopupShow(object? sender, bool show) {
 			popupVisible = show;
 		}
 
-		protected void OnPopupSize(PopupSizeRequest r) {
+		protected void OnPopupSize(object? sender, PopupSizeRequest r) {
+			return;
 			if (texture == null) {
 				return;
 			}
@@ -66,6 +63,7 @@ namespace NextUIPlugin.Gui {
 			// I'm really not sure if this happens. If it does,
 			// frequently - will probably need 2x shared textures and some jazz.
 			var texDesc = texture.Description;
+			PluginLog.Log("POP " + r.rect + " " + texDesc.Width + " " + texDesc.Height);
 			if (r.rect.width > texDesc.Width || r.rect.height > texDesc.Height) {
 				PluginLog.Warning(
 					$"Trying to build popup layer ({r.rect.width}x{r.rect.height}) larger than primary surface ({texDesc.Width}x{texDesc.Height})."
@@ -86,16 +84,16 @@ namespace NextUIPlugin.Gui {
 				ArraySize = 1,
 				Format = DXGI.Format.B8G8R8A8_UNorm,
 				SampleDescription = new DXGI.SampleDescription(1, 0),
-				Usage = D3D11.ResourceUsage.Default,
+				Usage = D3D11.ResourceUsage.Dynamic,
 				BindFlags = D3D11.BindFlags.ShaderResource,
-				CpuAccessFlags = D3D11.CpuAccessFlags.None,
+				CpuAccessFlags = D3D11.CpuAccessFlags.Write,
 				OptionFlags = D3D11.ResourceOptionFlags.None,
 			});
 
 			oldTexture?.Dispose();
 		}
 
-		protected void OnSizeChange(Size obj) {
+		protected void OnSizeChange(object? sender, Size obj) {
 			// var oldTexture = texture;
 			// return;
 			BuildTextureWrap();
@@ -105,19 +103,28 @@ namespace NextUIPlugin.Gui {
 			// }
 		}
 
-		protected void OnPaint(PaintRequest r) {
+		protected bool paiting;
+		protected void OnPaint(object? sender, PaintRequest r) {
+			if (paiting) {
+				return;
+			}
 
+			paiting = true;
 			PluginLog.Log("0 PAINT");
 			// Calculate offset multipliers for the current buffer
 			var rowPitch = r.width * BytesPerPixel;
 			var depthPitch = rowPitch * r.height;
 
 			var targetTexture = r.type == PaintType.View ? texture : popupTexture;
-
+			if (r.type != PaintType.View) {
+				return;
+			}
 			if (targetTexture == null) {
+				paiting = false;
 				return;
 			}
 
+			PluginLog.Log("1 PAINT " + r.dirtyRect.ToString());
 			// Build the destination region for the dirty rect that we'll draw to
 			var texDesc = targetTexture.Description;
 			var sourceRegionPtr = r.buffer + (r.dirtyRect.x * BytesPerPixel) + (r.dirtyRect.y * rowPitch);
@@ -131,17 +138,24 @@ namespace NextUIPlugin.Gui {
 			};
 
 			// Draw to the target
+			// if (dataStream == null) {
+				// return;
+			// }
+			// dataStream.WriteRange(r.buffer, r.width * r.height * 4);
+			// deviceContext.UnmapSubresource(depthImageTexture, 0);
+
 			var context = targetTexture.Device.ImmediateContext;
 			context.UpdateSubresource(targetTexture, 0, destinationRegion, sourceRegionPtr, rowPitch, depthPitch);
 
 			// Only need to do composition + flush on primary texture
 			if (r.type != PaintType.View) {
+				paiting = false;
 				return;
 			}
 
 			// Intersect with dirty?
 			if (popupVisible && popupTexture != null && popupRect != null) {
-				context.CopySubresourceRegion(popupTexture, 0, null, targetTexture, 0, popupRect.x, popupRect.y);
+				//context.CopySubresourceRegion(popupTexture, 0, null, targetTexture, 0, popupRect.x, popupRect.y);
 			}
 
 			// No idea why this dies, no idea if it's needed
@@ -153,6 +167,7 @@ namespace NextUIPlugin.Gui {
 			foreach (var tex in textures) {
 				tex.Dispose();
 			}
+			paiting = false;
 		}
 
 		public void BuildTextureWrap() {
@@ -168,7 +183,7 @@ namespace NextUIPlugin.Gui {
 				SampleDescription = new DXGI.SampleDescription(1, 0),
 				Usage = D3D11.ResourceUsage.Default,
 				BindFlags = D3D11.BindFlags.ShaderResource,
-				CpuAccessFlags = D3D11.CpuAccessFlags.None,
+				CpuAccessFlags = D3D11.CpuAccessFlags.Write,
 				OptionFlags = D3D11.ResourceOptionFlags.None,
 			});
 
@@ -191,11 +206,11 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void Dispose() {
-			paintSub.Dispose();
-			popupShowSub.Dispose();
-			popupSizeSub.Dispose();
-			sizeChangeSub.Dispose();
-			cursorChangeSub.Dispose();
+			overlay.CursorChange -= SetCursor;
+			overlay.Paint -= OnPaint;
+			overlay.PopupSize -= OnPopupSize;
+			overlay.PopupShow -= OnPopupShow;
+			overlay.SizeChange -= OnSizeChange;
 			overlay.Dispose();
 			textureWrap?.Dispose();
 		}
@@ -209,13 +224,15 @@ namespace NextUIPlugin.Gui {
 			overlay.Debug();
 		}
 
-		public void SetCursor(Cursor newCursor) {
+		public void SetCursor(object? sender, Cursor newCursor) {
+			return;
 			captureCursor = newCursor != Cursor.BrowserHostNoCapture;
 			cursor = DecodeCursor(newCursor);
 			// overlay.SetCursor();
 		}
 
 		public (bool, long) WndProcMessage(WindowsMessage msg, ulong wParam, long lParam) {
+			return (false, 0);
 			// Check if there was a click, and use it to set the window focused state
 			// We're avoiding ImGui for this, as we want to check for clicks entirely outside
 			// ImGui's pervue to defocus inlays

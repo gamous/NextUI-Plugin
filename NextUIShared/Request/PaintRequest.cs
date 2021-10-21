@@ -21,6 +21,10 @@ namespace NextUIShared.Request {
 			this.width = width;
 			this.height = height;
 		}
+
+		public override string ToString() {
+			return $"XRect({x}, {y}, {width}, {height})";
+		}
 	}
 
 	[Serializable]

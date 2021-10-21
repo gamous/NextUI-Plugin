@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Drawing;
-using System.Reactive.Subjects;
 using NextUIShared.Data;
 using NextUIShared.Request;
 
@@ -27,7 +26,7 @@ namespace NextUIShared.Model {
 				}
 
 				name = value;
-				NameChange.OnNext(value);
+				NameChange?.Invoke(this, value);
 			}
 		}
 
@@ -39,7 +38,7 @@ namespace NextUIShared.Model {
 				}
 
 				url = value;
-				UrlChange.OnNext(url);
+				UrlChange?.Invoke(this, url);
 			}
 		}
 
@@ -59,7 +58,7 @@ namespace NextUIShared.Model {
 				}
 
 				size = s;
-				SizeChange.OnNext(s);
+				SizeChange?.Invoke(this, s);
 			}
 		}
 
@@ -71,7 +70,7 @@ namespace NextUIShared.Model {
 				}
 
 				position = value;
-				PositionChange.OnNext(position);
+				PositionChange?.Invoke(this, position);
 			}
 		}
 
@@ -83,7 +82,7 @@ namespace NextUIShared.Model {
 				}
 
 				cursor = value;
-				CursorChange.OnNext(cursor);
+				CursorChange?.Invoke(this, cursor);
 			}
 		}
 
@@ -95,7 +94,7 @@ namespace NextUIShared.Model {
 				}
 
 				fullscreen = value;
-				SizeChange.OnNext(FullScreenSize);
+				SizeChange?.Invoke(this, FullScreenSize);
 			}
 		}
 
@@ -108,16 +107,16 @@ namespace NextUIShared.Model {
 		public OverlayVisibility Visibility { get; set; }
 
 		// ReSharper disable InconsistentNaming
-		public Subject<string> NameChange = new();
-		public Subject<string> UrlChange = new();
-		public Subject<Size> SizeChange = new();
-		public Subject<Point> PositionChange = new();
-		public Subject<Cursor> CursorChange = new();
-		public Subject<MouseEventRequest> MouseEvent = new();
-		public Subject<KeyEventRequest> KeyEvent = new();
-		public Subject<PaintRequest> Paint = new();
-		public Subject<PopupSizeRequest> PopupSize = new();
-		public Subject<bool> PopupShow = new();
+		public event EventHandler<string>? NameChange;
+		public event EventHandler<string>? UrlChange;
+		public event EventHandler<Size>? SizeChange;
+		public event EventHandler<Point>? PositionChange;
+		public event EventHandler<Cursor>? CursorChange;
+		public event EventHandler<MouseEventRequest>? MouseEvent;
+		public event EventHandler<KeyEventRequest>? KeyEvent;
+		public event EventHandler<PaintRequest>? Paint;
+		public event EventHandler<PopupSizeRequest>? PopupSize;
+		public event EventHandler<bool>? PopupShow;
 		// ReSharper restore InconsistentNaming
 
 		public event Action? DebugRequest;
@@ -157,11 +156,23 @@ namespace NextUIShared.Model {
 		}
 
 		public void RequestMouseEvent(MouseEventRequest request) {
-			MouseEvent.OnNext(request);
+			MouseEvent?.Invoke(this, request);
 		}
 
 		public void RequestKeyEvent(KeyEventRequest request) {
-			KeyEvent.OnNext(request);
+			KeyEvent?.Invoke(this, request);
+		}
+
+		public void PaintRequest(PaintRequest paintRequest) {
+			Paint?.Invoke(this, paintRequest);
+		}
+
+		public void ShowPopup(bool show) {
+			PopupShow?.Invoke(this, show);
+		}
+
+		public void PopupSizeChange(PopupSizeRequest popupSizeRequest) {
+			PopupSize?.Invoke(this, popupSizeRequest);
 		}
 	}
 }
