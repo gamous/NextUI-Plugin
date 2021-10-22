@@ -198,7 +198,6 @@ namespace NextUIPlugin.Gui {
 				return;
 			}
 
-			/*
 			var conditions = NextUIPlugin.Condition;
 			if (
 				!overlay.Visibility.HasFlag(OverlayVisibility.DuringCutscene) &&
@@ -242,7 +241,7 @@ namespace NextUIPlugin.Gui {
 				mouseInWindow = false;
 				return;
 			}
-*/
+
 			ImGui.SetNextWindowPos(new Vector2(overlay.Position.X, overlay.Position.Y), ImGuiCond.Always);
 			ImGui.SetNextWindowSize(new Vector2(overlay.Size.Width, overlay.Size.Height), ImGuiCond.Always);
 			ImGui.Begin($"NUOverlay-{overlay.Guid}", GetWindowFlags());
