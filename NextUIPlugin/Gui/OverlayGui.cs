@@ -33,6 +33,7 @@ namespace NextUIPlugin.Gui {
 		protected D3D11.Texture2D? texture;
 
 		protected IDisposable sizeChangeSub;
+		protected ConcurrentQueue<PaintRequest> paintRequests = new();
 
 		public OverlayGui(
 			Overlay overlay
@@ -50,14 +51,6 @@ namespace NextUIPlugin.Gui {
 			BuildTextureWrap();
 		}
 
-		protected PaintRequest paintRequest;
-
-		protected void OnPaint(object? sender, PaintRequest r) {
-			paintRequest = r;
-		}
-
-		// protected static D3D11.Device? customDevice;
-		// protected  D3D11.Texture2D textureClone;
 		public void BuildTextureWrap() {
 			PluginLog.Log("0 BUILDING " + overlay.Size);
 			var oldTexture = texture;
@@ -246,10 +239,7 @@ namespace NextUIPlugin.Gui {
 			ImGui.SetNextWindowSize(new Vector2(overlay.Size.Width, overlay.Size.Height), ImGuiCond.Always);
 			ImGui.Begin($"NUOverlay-{overlay.Guid}", GetWindowFlags());
 
-			if (paintRequest.buffer != IntPtr.Zero) {
-				RenderBuffer();
-			}
-
+			RenderBuffer();
 			HandleMouseEvent();
 
 			// Handle dynamic resize, if size is the same value won't change
@@ -260,38 +250,50 @@ namespace NextUIPlugin.Gui {
 			ImGui.End();
 		}
 
+		protected IntPtr lastBuffer;
+		protected void OnPaint(object? sender, PaintRequest r) {
+			paintRequests.Enqueue(r);
+			lastBuffer = r.buffer;
+		}
+
 		protected void RenderBuffer() {
-			var rowPitch = paintRequest.width * BytesPerPixel;
-			var depthPitch = rowPitch * paintRequest.height;
+			PaintRequest paintRequest;
 
-			var texDesc = texture.Description;
+			var hasRequest = paintRequests.TryDequeue(out paintRequest);
 
-			// TESTING
-			// var x = paintRequest.dirtyRect.x;
-			// var y = paintRequest.dirtyRect.y;
-			// var height = paintRequest.dirtyRect.height;
-			// var width = paintRequest.dirtyRect.width;
+			if (hasRequest && lastBuffer != IntPtr.Zero) {
+				var rowPitch = paintRequest.width * BytesPerPixel;
+				var depthPitch = rowPitch * paintRequest.height;
 
-			var x = 0;
-			var y = 0;
-			var height = texDesc.Height;
-			var width = texDesc.Width;
-			// TESTING
+				var texDesc = texture.Description;
 
-			var sourceRegionPtr = paintRequest.buffer + (x * BytesPerPixel) + (y * rowPitch);
-			var destinationRegion = new D3D11.ResourceRegion {
-				Top = Math.Min(y, texDesc.Height),
-				Bottom = Math.Min(y + height, texDesc.Height),
-				Left = Math.Min(x, texDesc.Width),
-				Right = Math.Min(x + width, texDesc.Width),
-				Front = 0,
-				Back = 1,
-			};
+				// TESTING
+				// var x = paintRequest.dirtyRect.x;
+				// var y = paintRequest.dirtyRect.y;
+				// var height = paintRequest.dirtyRect.height;
+				// var width = paintRequest.dirtyRect.width;
 
-			// Draw to the target
+				var x = 0;
+				var y = 0;
+				var height = texDesc.Height;
+				var width = texDesc.Width;
+				// TESTING
 
-			var context = texture.Device.ImmediateContext;
-			context.UpdateSubresource(texture, 0, destinationRegion, sourceRegionPtr, rowPitch, depthPitch);
+				var sourceRegionPtr = lastBuffer + (x * BytesPerPixel) + (y * rowPitch);
+				var destinationRegion = new D3D11.ResourceRegion {
+					Top = Math.Min(y, texDesc.Height),
+					Bottom = Math.Min(y + height, texDesc.Height),
+					Left = Math.Min(x, texDesc.Width),
+					Right = Math.Min(x + width, texDesc.Width),
+					Front = 0,
+					Back = 1,
+				};
+
+				// Draw to the target
+
+				var context = texture.Device.ImmediateContext;
+				context.UpdateSubresource(texture, 0, destinationRegion, sourceRegionPtr, rowPitch, depthPitch);
+			}
 
 			ImGui.Image(textureWrap.ImGuiHandle, new Vector2(textureWrap.Width, textureWrap.Height));
 		}
