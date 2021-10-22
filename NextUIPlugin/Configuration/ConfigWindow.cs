@@ -1,8 +1,11 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Logging;
 using ImGuiNET;
 using NextUIPlugin.Gui;
+using NextUIShared.Model;
 
 namespace NextUIPlugin.Configuration {
 	public static class ConfigWindow {
@@ -191,18 +194,26 @@ namespace NextUIPlugin.Configuration {
 			}
 			ImGui.NextColumn();
 
-
-
-			// var ovVisibleDuringCutscene = overlay.VisibleDuringCutscene;
-			// if (ImGui.Checkbox("Visible During Cutscene", ref ovVisibleDuringCutscene)) {
-			// 	overlay.VisibleDuringCutscene = ovVisibleDuringCutscene;
-			// }
-			//
-			// if (ImGui.IsItemHovered()) {
-			// 	ImGui.SetTooltip("Makes overlay as visible during cutscene");
-			// }
-
 			ImGui.Columns(1);
+
+			var ovVisibility = overlay.Visibility;
+			var flags = Enum.GetValues(typeof(OverlayVisibility)).Cast<OverlayVisibility>();
+			var flagString = ovVisibility == 0 ? "" : ovVisibility.ToString();
+			if (ImGui.BeginCombo("Visibility Flags", flagString)) {
+				foreach (var flag in flags) {
+					var isSelected = ovVisibility.HasFlag(flag);
+					if (ImGui.Checkbox(flag.ToString(), ref isSelected)) {
+						if (isSelected) {
+							overlay.Visibility |= flag;
+						}
+						else {
+							overlay.Visibility ^= flag;
+						}
+					}
+				}
+
+				ImGui.EndCombo();
+			}
 
 			if (ImGui.Button("Reload")) {
 				selectedOverlay.overlay.Reload();

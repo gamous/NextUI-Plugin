@@ -41,8 +41,6 @@ namespace NextUIPlugin.Gui {
 			BuildTextureWrap();
 			overlay.CursorChange += SetCursor;
 			overlay.Paint += OnPaint;
-			// overlay.PopupSize += OnPopupSize;
-			// overlay.PopupShow += OnPopupShow;
 
 			sizeChangeSub = overlay.SizeChange.AsObservable()
 				.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(OnSizeChange);
@@ -52,12 +50,9 @@ namespace NextUIPlugin.Gui {
 			BuildTextureWrap();
 		}
 
-		protected bool paiting;
 		protected PaintRequest paintRequest;
+
 		protected void OnPaint(object? sender, PaintRequest r) {
-			// if (paiting) {
-			// 	return;
-			// }
 			paintRequest = r;
 		}
 
@@ -252,16 +247,44 @@ namespace NextUIPlugin.Gui {
 			ImGui.SetNextWindowSize(new Vector2(overlay.Size.Width, overlay.Size.Height), ImGuiCond.Always);
 			ImGui.Begin($"NUOverlay-{overlay.Guid}", GetWindowFlags());
 
+			if (paintRequest.buffer != IntPtr.Zero) {
+				RenderBuffer();
+			}
+
+			HandleMouseEvent();
+
+			// Handle dynamic resize, if size is the same value won't change
+			var wSize = ImGui.GetWindowSize();
+			var newSize = new Size((int)wSize.X, (int)wSize.Y);
+			overlay.Size = newSize;
+
+			ImGui.End();
+		}
+
+		protected void RenderBuffer() {
 			var rowPitch = paintRequest.width * BytesPerPixel;
 			var depthPitch = rowPitch * paintRequest.height;
 
 			var texDesc = texture.Description;
-			var sourceRegionPtr = paintRequest.buffer + (paintRequest.dirtyRect.x * BytesPerPixel) + (paintRequest.dirtyRect.y * rowPitch);
+
+			// TESTING
+			// var x = paintRequest.dirtyRect.x;
+			// var y = paintRequest.dirtyRect.y;
+			// var height = paintRequest.dirtyRect.height;
+			// var width = paintRequest.dirtyRect.width;
+
+			var x = 0;
+			var y = 0;
+			var height = texDesc.Height;
+			var width = texDesc.Width;
+			// TESTING
+
+			var sourceRegionPtr = paintRequest.buffer + (x * BytesPerPixel) + (y * rowPitch);
 			var destinationRegion = new D3D11.ResourceRegion {
-				Top = Math.Min(paintRequest.dirtyRect.y, texDesc.Height),
-				Bottom = Math.Min(paintRequest.dirtyRect.y + paintRequest.dirtyRect.height, texDesc.Height),
-				Left = Math.Min(paintRequest.dirtyRect.x, texDesc.Width),
-				Right = Math.Min(paintRequest.dirtyRect.x + paintRequest.dirtyRect.width, texDesc.Width),
+				Top = Math.Min(y, texDesc.Height),
+				Bottom = Math.Min(y + height, texDesc.Height),
+				Left = Math.Min(x, texDesc.Width),
+				Right = Math.Min(x + width, texDesc.Width),
 				Front = 0,
 				Back = 1,
 			};
@@ -272,15 +295,6 @@ namespace NextUIPlugin.Gui {
 			context.UpdateSubresource(texture, 0, destinationRegion, sourceRegionPtr, rowPitch, depthPitch);
 
 			ImGui.Image(textureWrap.ImGuiHandle, new Vector2(textureWrap.Width, textureWrap.Height));
-
-			HandleMouseEvent();
-
-			// Handle dynamic resize, if size is the same value won't change
-			var wSize = ImGui.GetWindowSize();
-			var newSize = new Size((int)wSize.X, (int)wSize.Y);
-			overlay.Size = newSize;
-
-			ImGui.End();
 		}
 
 		protected ImGuiWindowFlags GetWindowFlags() {
