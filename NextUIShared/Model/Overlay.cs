@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Reactive.Subjects;
 using NextUIShared.Data;
 using NextUIShared.Request;
 
@@ -58,7 +59,7 @@ namespace NextUIShared.Model {
 				}
 
 				size = s;
-				SizeChange?.Invoke(this, s);
+				SizeChange.OnNext(s);
 			}
 		}
 
@@ -94,7 +95,7 @@ namespace NextUIShared.Model {
 				}
 
 				fullscreen = value;
-				SizeChange?.Invoke(this, FullScreenSize);
+				SizeChange.OnNext(FullScreenSize);
 			}
 		}
 
@@ -105,11 +106,11 @@ namespace NextUIShared.Model {
 		public bool Toggled { get; set; }
 		public Size FullScreenSize { get; set; }
 		public OverlayVisibility Visibility { get; set; }
+		public bool Resizing { get; set; }
 
 		// ReSharper disable InconsistentNaming
 		public event EventHandler<string>? NameChange;
 		public event EventHandler<string>? UrlChange;
-		public event EventHandler<Size>? SizeChange;
 		public event EventHandler<Point>? PositionChange;
 		public event EventHandler<Cursor>? CursorChange;
 		public event EventHandler<MouseEventRequest>? MouseEvent;
@@ -117,6 +118,8 @@ namespace NextUIShared.Model {
 		public event EventHandler<PaintRequest>? Paint;
 		public event EventHandler<PopupSizeRequest>? PopupSize;
 		public event EventHandler<bool>? PopupShow;
+		// This thing needs special handling
+		public Subject<Size> SizeChange = new();
 		// ReSharper restore InconsistentNaming
 
 		public event Action? DebugRequest;

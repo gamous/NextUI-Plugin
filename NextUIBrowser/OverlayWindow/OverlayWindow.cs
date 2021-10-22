@@ -18,15 +18,12 @@ namespace NextUIBrowser.OverlayWindow {
 
 		protected ChromiumWebBrowser? browser;
 
+		protected IDisposable sizeObservableSub;
+
 		public OverlayWindow(Overlay overlay, TextureRenderHandler renderHandler) {
 			this.renderHandler = renderHandler;
 			this.overlay = overlay;
 		}
-
-		protected IDisposable sizeObservableSub;
-		protected IDisposable urlChangeSub;
-		protected IDisposable mouseEventSub;
-		protected IDisposable keyEventSub;
 
 		public void Initialize() {
 			browser = new ChromiumWebBrowser(overlay.Url, automaticallyCreateBrowser: false);
@@ -61,11 +58,8 @@ namespace NextUIBrowser.OverlayWindow {
 			overlay.UrlChange += Navigate;
 			overlay.MouseEvent += HandleMouseEvent;
 			overlay.KeyEvent += HandleKeyEvent;
-			overlay.SizeChange += Resize;
-
-			//
-			// sizeObservableSub = overlay.SizeChange.AsObservable()
-			// 	.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
+			sizeObservableSub = overlay.SizeChange.AsObservable()
+				.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
 
 
 			// Handle pointers
@@ -95,10 +89,10 @@ namespace NextUIBrowser.OverlayWindow {
 			overlay.ReloadRequest -= Reload;
 			renderHandler.CursorChanged -= RenderHandlerOnCursorChanged;
 
-			urlChangeSub.Dispose();
-			sizeObservableSub.Dispose();
-			mouseEventSub.Dispose();
-			keyEventSub.Dispose();
+			overlay.UrlChange -= Navigate;
+			overlay.MouseEvent -= HandleMouseEvent;
+			overlay.KeyEvent -= HandleKeyEvent;
+			sizeObservableSub?.Dispose();
 
 			browser.RenderHandler = null;
 			renderHandler.Dispose();
@@ -126,8 +120,9 @@ namespace NextUIBrowser.OverlayWindow {
 			browser.ShowDevTools();
 		}
 
-		public void Resize(object? sender, Size size) {
+		public void Resize(Size size) {
 			PluginLog.Log("CREATED WITH ZIE " + overlay.Size);
+			overlay.Resizing = true;
 			// Need to resize renderer first, the browser will check it (and hence the texture) when browser.
 			// We are disregarding param as Size will adjust based on Fullscreen prop
 			renderHandler.Resize(overlay.Size);

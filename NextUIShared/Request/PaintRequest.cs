@@ -29,7 +29,6 @@ namespace NextUIShared.Request {
 
 	[Serializable]
 	public struct PaintRequest {
-		public PaintType type;
 		public XRect dirtyRect;
 		public IntPtr buffer;
 		public int width;

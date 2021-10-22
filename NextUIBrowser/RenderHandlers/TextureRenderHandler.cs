@@ -14,32 +14,32 @@ namespace NextUIBrowser.RenderHandlers {
 		// CEF buffers are 32-bit BGRA
 		protected const byte BytesPerPixel = 4;
 
-		protected Overlay overlay;
+		protected readonly Overlay overlay;
 
 		// Transparent background click-through state
-		protected IntPtr bufferPtr;
+		protected IntPtr internalBuffer;
 		protected int bufferWidth;
 		protected int bufferHeight;
+		protected int bufferSize;
 
 		public TextureRenderHandler(Overlay overlay) {
 			this.overlay = overlay;
 		}
 
 		public override void Dispose() {
-			// are even need to dispose anything?
+			// are even need to dispose anything aside from freeing memory?
+			Marshal.FreeHGlobal(internalBuffer);
 		}
-
-		protected bool resizing;
 
 		// We only need to keep GetAlphaAt away from reading pointer while browser resizes itself
 		public override void Resize(Size size) {
-			resizing = true;
+
 		}
 
 		// Nasty shit needs nasty attributes.
 		[HandleProcessCorruptedStateExceptions, SecurityCritical]
 		protected override byte GetAlphaAt(int x, int y) {
-			if (resizing || bufferPtr == IntPtr.Zero) {
+			if (overlay.Resizing || internalBuffer == IntPtr.Zero) {
 				return 255;
 			}
 
@@ -55,7 +55,7 @@ namespace NextUIBrowser.RenderHandlers {
 
 			byte alpha;
 			try {
-				alpha = Marshal.ReadByte(bufferPtr + cursorAlphaOffset);
+				alpha = Marshal.ReadByte(internalBuffer + cursorAlphaOffset);
 			}
 			catch {
 				// Console.Error.WriteLine("Failed to read alpha value from cef buffer.");
@@ -65,7 +65,9 @@ namespace NextUIBrowser.RenderHandlers {
 			return alpha;
 		}
 
+		// TEST
 		public override Rect GetViewRect() {
+			return new Rect(0, 0, overlay.Size.Width, overlay.Size.Height);
 			// There's a very small chance that OnPaint's cleanup will delete the current texture midway through this
 			// function. Try a few times just in case before failing out with an obviously-wrong value
 			// hi adam
@@ -85,7 +87,6 @@ namespace NextUIBrowser.RenderHandlers {
 			return new Rect(0, 0, overlay.Size.Width, overlay.Size.Height);
 		}
 
-		protected IntPtr internalBuffer;
 		public override unsafe void OnPaint(
 			PaintElementType type,
 			Rect dirtyRect,
@@ -93,34 +94,40 @@ namespace NextUIBrowser.RenderHandlers {
 			int width,
 			int height
 		) {
-			if (type == PaintElementType.Popup) {
-				return;
-			}
-			var len = width * height * 4;
+			var newSize = width * height * BytesPerPixel;
+			// No buffer yet
 			if (internalBuffer == IntPtr.Zero) {
-				internalBuffer = Marshal.AllocHGlobal(len);
+				internalBuffer = Marshal.AllocHGlobal(newSize);
+				bufferSize = newSize;
 			}
 
-			Buffer.MemoryCopy(buffer.ToPointer(), internalBuffer.ToPointer(), len, len);
-
-			// Nasty hack; we're keeping a ref to the view buffer for pixel lookups without going through DX
-			if (type == PaintElementType.View) {
-				bufferPtr = internalBuffer;
-				bufferWidth = width;
-				bufferHeight = height;
-
-				// Nasty hack fixed with resizing lock which eliminates race conditions
-				resizing = false;
+			if (bufferSize != newSize) {
+				// our buffer changed size
+				Marshal.FreeHGlobal(internalBuffer);
+				internalBuffer = Marshal.AllocHGlobal(newSize);
+				bufferSize = newSize;
 			}
 
-			var requestType = type == PaintElementType.View ? PaintType.View : PaintType.Popup;
+			bufferWidth = width;
+			bufferHeight = height;
+			bufferSize = newSize;
+
+			// var rowPitch = bufferWidth * BytesPerPixel;
+			// var offset = (dirtyRect.X * BytesPerPixel) + (dirtyRect.Y * BytesPerPixel * rowPitch);
+
+			// This is probably faster than trying to calculate exact rects to update
+			Buffer.MemoryCopy(buffer.ToPointer(), internalBuffer.ToPointer(), bufferSize, bufferSize);
+
+			// Nasty hack fixed with resizing lock which eliminates race conditions
+			overlay.Resizing = false;
+
+			// var requestType = type == PaintElementType.View ? PaintType.View : PaintType.Popup;
 			var newRect = new XRect(dirtyRect.X, dirtyRect.Y, dirtyRect.Width, dirtyRect.Height);
 
 			overlay.PaintRequest(new PaintRequest() {
 				buffer = internalBuffer,
 				height = height,
 				width = width,
-				type = requestType,
 				dirtyRect = newRect
 			});
 		}

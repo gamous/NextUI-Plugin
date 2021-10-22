@@ -3,6 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Drawing;
 using System.Numerics;
+using System.Reactive.Linq;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Logging;
 using ImGuiScene;
@@ -30,12 +31,8 @@ namespace NextUIPlugin.Gui {
 		protected TextureWrap? textureWrap;
 
 		protected D3D11.Texture2D? texture;
-		protected D3D11.Texture2D? popupTexture;
-		protected ConcurrentBag<D3D11.Texture2D> obsoleteTextures = new();
 
-		protected bool popupVisible;
-		protected XRect? popupRect;
-
+		protected IDisposable sizeChangeSub;
 
 		public OverlayGui(
 			Overlay overlay
@@ -44,132 +41,24 @@ namespace NextUIPlugin.Gui {
 			BuildTextureWrap();
 			overlay.CursorChange += SetCursor;
 			overlay.Paint += OnPaint;
-			overlay.PopupSize += OnPopupSize;
-			overlay.PopupShow += OnPopupShow;
-			overlay.SizeChange += OnSizeChange;
+			// overlay.PopupSize += OnPopupSize;
+			// overlay.PopupShow += OnPopupShow;
+
+			sizeChangeSub = overlay.SizeChange.AsObservable()
+				.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(OnSizeChange);
 		}
 
-		protected void OnPopupShow(object? sender, bool show) {
-			popupVisible = show;
-		}
-
-		protected void OnPopupSize(object? sender, PopupSizeRequest r) {
-			return;
-			if (texture == null) {
-				return;
-			}
-			popupRect = r.rect;
-
-			// I'm really not sure if this happens. If it does,
-			// frequently - will probably need 2x shared textures and some jazz.
-			var texDesc = texture.Description;
-			PluginLog.Log("POP " + r.rect + " " + texDesc.Width + " " + texDesc.Height);
-			if (r.rect.width > texDesc.Width || r.rect.height > texDesc.Height) {
-				PluginLog.Warning(
-					$"Trying to build popup layer ({r.rect.width}x{r.rect.height}) larger than primary surface ({texDesc.Width}x{texDesc.Height})."
-				);
-				return;
-			}
-
-			// Get a reference to the old texture, we'll make sure to assign a new texture before disposing the old one.
-			var oldTexture = popupTexture;
-
-			//This operation takes time, have to make sure nobody uses that tex before we rebuild it
-			popupTexture = null;
-			// Build a texture for the new sized popup
-			popupTexture = new D3D11.Texture2D(texture.Device, new D3D11.Texture2DDescription() {
-				Width = r.rect.width,
-				Height = r.rect.height,
-				MipLevels = 1,
-				ArraySize = 1,
-				Format = DXGI.Format.B8G8R8A8_UNorm,
-				SampleDescription = new DXGI.SampleDescription(1, 0),
-				Usage = D3D11.ResourceUsage.Dynamic,
-				BindFlags = D3D11.BindFlags.ShaderResource,
-				CpuAccessFlags = D3D11.CpuAccessFlags.Write,
-				OptionFlags = D3D11.ResourceOptionFlags.None,
-			});
-
-			oldTexture?.Dispose();
-		}
-
-		protected void OnSizeChange(object? sender, Size obj) {
-			// var oldTexture = texture;
-			// return;
+		protected void OnSizeChange(Size obj) {
 			BuildTextureWrap();
-
-			// if (oldTexture != null) {
-			// 	obsoleteTextures.Add(oldTexture);
-			// }
 		}
 
 		protected bool paiting;
 		protected PaintRequest paintRequest;
 		protected void OnPaint(object? sender, PaintRequest r) {
-			if (paiting) {
-				return;
-			}
-			if (r.type != PaintType.View) {
-				return;
-			}
+			// if (paiting) {
+			// 	return;
+			// }
 			paintRequest = r;
-			return;
-
-			paiting = true;
-			PluginLog.Log("0 PAINT");
-			// Calculate offset multipliers for the current buffer
-			var rowPitch = r.width * BytesPerPixel;
-			var depthPitch = rowPitch * r.height;
-
-			var targetTexture = r.type == PaintType.View ? texture : popupTexture;
-			if (r.type != PaintType.View) {
-				return;
-			}
-			if (targetTexture == null) {
-				paiting = false;
-				return;
-			}
-
-			// targetTexture = textureClone;
-			PluginLog.Log("1 PAINT " + r.buffer.ToInt64());
-			// Build the destination region for the dirty rect that we'll draw to
-			var texDesc = targetTexture.Description;
-			var sourceRegionPtr = r.buffer + (r.dirtyRect.x * BytesPerPixel) + (r.dirtyRect.y * rowPitch);
-			var destinationRegion = new D3D11.ResourceRegion {
-				Top = Math.Min(r.dirtyRect.y, texDesc.Height),
-				Bottom = Math.Min(r.dirtyRect.y + r.dirtyRect.height, texDesc.Height),
-				Left = Math.Min(r.dirtyRect.x, texDesc.Width),
-				Right = Math.Min(r.dirtyRect.x + r.dirtyRect.width, texDesc.Width),
-				Front = 0,
-				Back = 1,
-			};
-
-			// Draw to the target
-
-			var context = targetTexture.Device.ImmediateContext;
-			context.UpdateSubresource(targetTexture, 0, destinationRegion, sourceRegionPtr, rowPitch, depthPitch);
-
-			// Only need to do composition + flush on primary texture
-			if (r.type != PaintType.View) {
-				paiting = false;
-				return;
-			}
-
-			// Intersect with dirty?
-			if (popupVisible && popupTexture != null && popupRect != null) {
-				//context.CopySubresourceRegion(popupTexture, 0, null, targetTexture, 0, popupRect.x, popupRect.y);
-			}
-
-			// No idea why this dies, no idea if it's needed
-			context.Flush();
-
-			// Rendering is complete, clean up any obsolete textures
-			var textures = obsoleteTextures;
-			obsoleteTextures = new ConcurrentBag<D3D11.Texture2D>();
-			foreach (var tex in textures) {
-				tex.Dispose();
-			}
-			paiting = false;
 		}
 
 		// protected static D3D11.Device? customDevice;
@@ -177,27 +66,6 @@ namespace NextUIPlugin.Gui {
 		public void BuildTextureWrap() {
 			PluginLog.Log("0 BUILDING " + overlay.Size);
 			var oldTexture = texture;
-
-			// if (customDevice == null) {
-			// 	var flags = D3D11.DeviceCreationFlags.BgraSupport;
-			// 	flags |= D3D11.DeviceCreationFlags.Debug;
-			//
-			// 	var dxgiDevice = DxHandler.Device.QueryInterface<DXGI.Device>();
-			// 	customDevice = new D3D11.Device(dxgiDevice.Adapter, flags);
-			// }
-			//
-			// textureClone = new D3D11.Texture2D(customDevice, new D3D11.Texture2DDescription() {
-			// 	Width = overlay.Size.Width,
-			// 	Height = overlay.Size.Height,
-			// 	MipLevels = 1,
-			// 	ArraySize = 1,
-			// 	Format = DXGI.Format.B8G8R8A8_UNorm,
-			// 	SampleDescription = new DXGI.SampleDescription(1, 0),
-			// 	Usage = D3D11.ResourceUsage.Default,
-			// 	BindFlags = D3D11.BindFlags.ShaderResource,
-			// 	CpuAccessFlags = D3D11.CpuAccessFlags.None,
-			// 	OptionFlags = D3D11.ResourceOptionFlags.Shared,
-			// });
 
 			texture = new D3D11.Texture2D(DxHandler.Device, new D3D11.Texture2DDescription() {
 				Width = overlay.Size.Width,
@@ -225,19 +93,22 @@ namespace NextUIPlugin.Gui {
 			textureWrap = new D3DTextureWrap(view, texture.Description.Width, texture.Description.Height);
 
 			if (oldTexture != null) {
-				obsoleteTextures.Add(oldTexture);
+				oldTexture.Dispose();
 			}
+
+			overlay.Resizing = false;
 			PluginLog.Log("1 BUILT");
 		}
 
 		public void Dispose() {
 			overlay.CursorChange -= SetCursor;
 			overlay.Paint -= OnPaint;
-			overlay.PopupSize -= OnPopupSize;
-			overlay.PopupShow -= OnPopupShow;
-			overlay.SizeChange -= OnSizeChange;
+			// overlay.PopupSize -= OnPopupSize;
+			// overlay.PopupShow -= OnPopupShow;
+			sizeChangeSub?.Dispose();
 			overlay.Dispose();
 			textureWrap?.Dispose();
+			texture?.Dispose();
 		}
 
 
@@ -250,14 +121,12 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void SetCursor(object? sender, Cursor newCursor) {
-			return;
 			captureCursor = newCursor != Cursor.BrowserHostNoCapture;
 			cursor = DecodeCursor(newCursor);
 			// overlay.SetCursor();
 		}
 
 		public (bool, long) WndProcMessage(WindowsMessage msg, ulong wParam, long lParam) {
-			return (false, 0);
 			// Check if there was a click, and use it to set the window focused state
 			// We're avoiding ImGui for this, as we want to check for clicks entirely outside
 			// ImGui's pervue to defocus inlays
@@ -313,7 +182,6 @@ namespace NextUIPlugin.Gui {
 			}
 
 			overlay.RequestKeyEvent(new KeyEventRequest() {
-				// Guid = RenderGuid,
 				keyEventType = eventType.Value,
 				systemKey = isSystemKey,
 				userKeyCode = (int)wParam,
@@ -326,7 +194,7 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void Render() {
-			if (overlay.Hidden || overlay.Toggled) {
+			if (overlay.Hidden || overlay.Toggled || overlay.Resizing) {
 				mouseInWindow = false;
 				return;
 			}
