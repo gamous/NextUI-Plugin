@@ -24,6 +24,11 @@ namespace NextUIBrowser.OverlayWindow {
 			var overlayWindow = new OverlayWindow(overlay, textureHandler);
 			overlayWindows.Add(overlayWindow);
 
+			overlay.BrowserDispose += () => {
+				overlayWindows.Remove(overlayWindow);
+				overlayWindow.Dispose();
+			};
+
 			overlayWindow.Initialize();
 		}
 

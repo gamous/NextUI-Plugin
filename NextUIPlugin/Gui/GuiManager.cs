@@ -65,6 +65,10 @@ namespace NextUIPlugin.Gui {
 			return overlayGui;
 		}
 
+		public void RemoveOverlay(OverlayGui overlay) {
+			overlays.Remove(overlay);
+		}
+
 		public void Render() {
 			if (loadingOverlays) {
 				return;
@@ -86,6 +90,7 @@ namespace NextUIPlugin.Gui {
 		}
 
 		protected bool loadingOverlays;
+
 		public void LoadOverlays(List<OverlayConfig> newOverlays) {
 			loadingOverlays = true;
 			if (!MicroPluginFullyLoaded) {

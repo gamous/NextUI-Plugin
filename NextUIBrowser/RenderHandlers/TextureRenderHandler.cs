@@ -65,25 +65,7 @@ namespace NextUIBrowser.RenderHandlers {
 			return alpha;
 		}
 
-		// TEST
 		public override Rect GetViewRect() {
-			return new Rect(0, 0, overlay.Size.Width, overlay.Size.Height);
-			// There's a very small chance that OnPaint's cleanup will delete the current texture midway through this
-			// function. Try a few times just in case before failing out with an obviously-wrong value
-			// hi adam
-			for (var i = 0; i < 5; i++) {
-				try {
-					return GetViewRectInternal();
-				}
-				catch (NullReferenceException) {
-				}
-			}
-
-			return new Rect(0, 0, 1, 1);
-		}
-
-		private Rect GetViewRectInternal() {
-			// var texDesc = texture.Description;
 			return new Rect(0, 0, overlay.Size.Width, overlay.Size.Height);
 		}
 

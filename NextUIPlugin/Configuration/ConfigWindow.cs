@@ -33,13 +33,13 @@ namespace NextUIPlugin.Configuration {
 			ImGui.SetCursorPos(new Vector2(8, 450));
 
 			if (ImGui.Button("Save")) {
-				NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager.SaveOverlays();
+				NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager!.SaveOverlays();
 				NextUIPlugin.pluginInterface.SavePluginConfig(NextUIPlugin.configuration);
 			}
 
 			ImGui.SameLine();
 			if (ImGui.Button("Save and Close")) {
-				NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager.SaveOverlays();
+				NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager!.SaveOverlays();
 				NextUIPlugin.pluginInterface.SavePluginConfig(NextUIPlugin.configuration);
 				isConfigOpen = false;
 			}
@@ -91,8 +91,7 @@ namespace NextUIPlugin.Configuration {
 			ImGui.EndChild();
 		}
 
-
-		private static void RenderOverlayConfig() {
+		internal static void RenderOverlayConfig() {
 			if (selectedOverlay == null) {
 				return;
 			}
@@ -223,6 +222,14 @@ namespace NextUIPlugin.Configuration {
 			if (ImGui.Button("Open Dev Tools")) {
 				selectedOverlay.overlay.Debug();
 			}
+
+			ImGui.SameLine();
+			ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(1f, 0, 0, 1));
+			if (ImGui.Button("Delete")) {
+				PluginLog.Log("Start remove");
+				selectedOverlay.overlay.RemoveRequest();
+			}
+			ImGui.PopStyleColor();
 
 			ImGui.PopID();
 		}

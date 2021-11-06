@@ -61,13 +61,6 @@ namespace NextUIBrowser.OverlayWindow {
 			sizeObservableSub = overlay.SizeChange.AsObservable()
 				.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
 
-
-			// Handle pointers
-
-			// Populate texture pointer in overlay data structure and notify if it changes
-			// overlay.TextureWrap = renderHandler.TextureWrap;
-			// textureSub = renderHandler.TextureWrapChange.Subscribe(RenderHandlerTextureChange);
-
 			// Also request cursor if it changes
 			renderHandler.CursorChanged += RenderHandlerOnCursorChanged;
 		}

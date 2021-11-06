@@ -54,6 +54,7 @@ namespace NextUIShared.Model {
 				if (s.Width < 1) {
 					s.Width = 1;
 				}
+
 				if (s.Height < 1) {
 					s.Height = 1;
 				}
@@ -118,6 +119,7 @@ namespace NextUIShared.Model {
 		public event EventHandler<PaintRequest>? Paint;
 		public event EventHandler<PopupSizeRequest>? PopupSize;
 		public event EventHandler<bool>? PopupShow;
+
 		// This thing needs special handling
 		public Subject<Size> SizeChange = new();
 		// ReSharper restore InconsistentNaming
@@ -125,11 +127,18 @@ namespace NextUIShared.Model {
 		public event Action? DebugRequest;
 		public event Action? ReloadRequest;
 		public event Action? DisposeRequest;
+		public event EventHandler? Remove;
+		public event Action? BrowserDispose;
 
 		public Overlay(string url, Size newSize) {
 			Guid = Guid.NewGuid();
 			Url = url;
 			size = newSize;
+			Visibility =
+				OverlayVisibility.InCombat |
+				OverlayVisibility.InGroup |
+				OverlayVisibility.InDeepDungeon |
+				OverlayVisibility.InPVP;
 			if (size.Width != 0 && size.Height != 0) {
 				return;
 			}
@@ -152,6 +161,14 @@ namespace NextUIShared.Model {
 
 		public void Dispose() {
 			DisposeRequest?.Invoke();
+		}
+
+		public void RemoveRequest() {
+			Remove?.Invoke(this, EventArgs.Empty);
+		}
+
+		public void BrowserDisposeRequest() {
+			BrowserDispose?.Invoke();
 		}
 
 		public void SetCursor(Cursor newCursor) {

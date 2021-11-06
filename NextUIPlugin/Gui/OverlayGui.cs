@@ -28,6 +28,7 @@ namespace NextUIPlugin.Gui {
 		protected ImGuiMouseCursor cursor;
 		protected bool captureCursor;
 		public bool acceptFocus;
+		protected bool disposing;
 		protected TextureWrap? textureWrap;
 
 		protected D3D11.Texture2D? texture;
@@ -42,9 +43,14 @@ namespace NextUIPlugin.Gui {
 			BuildTextureWrap();
 			overlay.CursorChange += SetCursor;
 			overlay.Paint += OnPaint;
+			overlay.Remove += OnRemove;
 
 			sizeChangeSub = overlay.SizeChange.AsObservable()
 				.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(OnSizeChange);
+		}
+
+		protected void OnRemove(object? sender, EventArgs e) {
+			Dispose();
 		}
 
 		protected void OnSizeChange(Size obj) {
@@ -89,16 +95,21 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void Dispose() {
+			PluginLog.Log("Disposing overlay GUI");
+			disposing = true;
 			overlay.CursorChange -= SetCursor;
 			overlay.Paint -= OnPaint;
-			// overlay.PopupSize -= OnPopupSize;
-			// overlay.PopupShow -= OnPopupShow;
+			overlay.Remove -= OnRemove;
 			sizeChangeSub?.Dispose();
-			overlay.Dispose();
 			textureWrap?.Dispose();
 			texture?.Dispose();
-		}
+			PluginLog.Log("Disposed overlay GUI");
 
+			NextUIPlugin.guiManager.RemoveOverlay(this);
+
+			// After gui has been disposed, dispose browser
+			overlay.BrowserDisposeRequest();
+		}
 
 		public void Navigate(string newUrl) {
 			overlay.Navigate(newUrl);
@@ -115,6 +126,10 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public (bool, long) WndProcMessage(WindowsMessage msg, ulong wParam, long lParam) {
+			if (disposing) {
+				return (false, 0);
+			}
+
 			// Check if there was a click, and use it to set the window focused state
 			// We're avoiding ImGui for this, as we want to check for clicks entirely outside
 			// ImGui's pervue to defocus inlays
@@ -182,7 +197,7 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void Render() {
-			if (overlay.Hidden || overlay.Toggled || overlay.Resizing) {
+			if (overlay.Hidden || overlay.Toggled || overlay.Resizing || disposing) {
 				mouseInWindow = false;
 				return;
 			}
@@ -252,6 +267,10 @@ namespace NextUIPlugin.Gui {
 
 		protected IntPtr lastBuffer;
 		protected void OnPaint(object? sender, PaintRequest r) {
+			if (disposing) {
+				return;
+			}
+
 			paintRequests.Enqueue(r);
 			lastBuffer = r.buffer;
 		}
@@ -268,15 +287,15 @@ namespace NextUIPlugin.Gui {
 				var texDesc = texture.Description;
 
 				// TESTING
-				// var x = paintRequest.dirtyRect.x;
-				// var y = paintRequest.dirtyRect.y;
-				// var height = paintRequest.dirtyRect.height;
-				// var width = paintRequest.dirtyRect.width;
+				var x = paintRequest.dirtyRect.x;
+				var y = paintRequest.dirtyRect.y;
+				var height = paintRequest.dirtyRect.height;
+				var width = paintRequest.dirtyRect.width;
 
-				var x = 0;
-				var y = 0;
-				var height = texDesc.Height;
-				var width = texDesc.Width;
+				// var x = 0;
+				// var y = 0;
+				// var height = texDesc.Height;
+				// var width = texDesc.Width;
 				// TESTING
 
 				var sourceRegionPtr = lastBuffer + (x * BytesPerPixel) + (y * rowPitch);
@@ -326,7 +345,7 @@ namespace NextUIPlugin.Gui {
 			return flags;
 		}
 
-		private void HandleMouseEvent() {
+		protected void HandleMouseEvent() {
 			// Totally skip mouse handling for click through inlays, as well
 			if (overlay.ClickThrough) {
 				//  || inlayConfig.ClickThrough

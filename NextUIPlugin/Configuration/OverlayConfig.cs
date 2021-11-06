@@ -8,14 +8,14 @@ namespace NextUIPlugin.Configuration {
 	// This class needs to be created because shared project cannot reference anything otherwise it breaks
 	[Serializable]
 	public class OverlayConfig {
-		public string Guid { get; set; }
+		public string Guid { get; set; } = null!;
 
-		public string Name { get; set; }
-		public string Url { get; set; }
+		public string Name { get; set; } = null!;
+		public string Url { get; set; } = null!;
 
-		public string Size { get; set; }
+		public string Size { get; set; } = null!;
 
-		public string Position { get; set; }
+		public string Position { get; set; } = null!;
 		public bool FullScreen { get; set; }
 		public bool ClickThrough { get; set; }
 		public bool TypeThrough { get; set; }
@@ -23,7 +23,7 @@ namespace NextUIPlugin.Configuration {
 		public bool Hidden { get; set; }
 		public OverlayVisibility Visibility { get; set; }
 
-		public string FullScreenSize { get; set; }
+		public string FullScreenSize { get; set; } = null!;
 
 		public static OverlayConfig FromOverlay(Overlay overlay) {
 			var overlayConfig = new OverlayConfig();
