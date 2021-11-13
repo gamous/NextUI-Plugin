@@ -105,7 +105,7 @@ namespace NextUIPlugin.Gui {
 			texture?.Dispose();
 			PluginLog.Log("Disposed overlay GUI");
 
-			NextUIPlugin.guiManager.RemoveOverlay(this);
+			NextUIPlugin.guiManager!.RemoveOverlay(this);
 
 			// After gui has been disposed, dispose browser
 			overlay.BrowserDisposeRequest();
@@ -284,7 +284,8 @@ namespace NextUIPlugin.Gui {
 				var rowPitch = paintRequest.width * BytesPerPixel;
 				var depthPitch = rowPitch * paintRequest.height;
 
-				var texDesc = texture.Description;
+				// we know texture is not null
+				var texDesc = texture!.Description;
 
 				// TESTING
 				var x = paintRequest.dirtyRect.x;
@@ -314,7 +315,7 @@ namespace NextUIPlugin.Gui {
 				context.UpdateSubresource(texture, 0, destinationRegion, sourceRegionPtr, rowPitch, depthPitch);
 			}
 
-			ImGui.Image(textureWrap.ImGuiHandle, new Vector2(textureWrap.Width, textureWrap.Height));
+			ImGui.Image(textureWrap!.ImGuiHandle, new Vector2(textureWrap.Width, textureWrap.Height));
 		}
 
 		protected ImGuiWindowFlags GetWindowFlags() {

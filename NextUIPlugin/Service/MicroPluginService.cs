@@ -98,7 +98,7 @@ namespace NextUIPlugin.Service {
 					try {
 						Directory.Delete(oldCopy, true);
 					}
-					catch (Exception e) {
+					catch (Exception) {
 						PluginLog.Log("Unable to delete old copy " + oldCopy);
 					}
 				}

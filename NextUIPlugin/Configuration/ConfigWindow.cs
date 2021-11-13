@@ -58,7 +58,7 @@ namespace NextUIPlugin.Configuration {
 			ImGui.BeginChild("panes", new Vector2(selectorWidth, 300), true);
 
 			// Inlay selector list
-			foreach (var overlay in NextUIPlugin.guiManager.overlays) {
+			foreach (var overlay in NextUIPlugin.guiManager!.overlays) {
 				if (ImGui.Selectable(
 					$"{overlay.overlay.Name}##{overlay.overlay.Guid.ToString()}",
 					selectedOverlay == overlay

@@ -170,7 +170,7 @@ namespace NextUIPlugin {
 
 			switch (argumentsParts[0]) {
 				case "toggle":
-					guiManager.ToggleOverlays();
+					guiManager!.ToggleOverlays();
 					break;
 				// case "setall": {
 				// 	foreach (var value in Enum.GetValues(typeof(CustomComboPreset)).Cast<CustomComboPreset>()) {

@@ -18,7 +18,7 @@ namespace NextUIBrowser.OverlayWindow {
 
 		protected ChromiumWebBrowser? browser;
 
-		protected IDisposable sizeObservableSub;
+		protected IDisposable? sizeObservableSub;
 
 		public OverlayWindow(Overlay overlay, TextureRenderHandler renderHandler) {
 			this.renderHandler = renderHandler;
