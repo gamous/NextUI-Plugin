@@ -147,7 +147,7 @@ namespace NextUIPlugin {
 
 		public void Render() {
 			guiManager?.Render();
-
+			MicroPluginService.DrawProgress();
 			if (!ConfigWindow.isConfigOpen) {
 				return;
 			}

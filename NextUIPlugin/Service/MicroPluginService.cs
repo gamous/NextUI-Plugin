@@ -1,25 +1,31 @@
-﻿#define RELEASE_TEST
+﻿//#define RELEASE_TEST
 
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
+using System.Numerics;
 using System.Threading;
+using System.Threading.Tasks;
 using Dalamud.Interface.Internal.Notifications;
 using Dalamud.Logging;
+using ImGuiNET;
 using McMaster.NETCore.Plugins;
 using NextUIShared;
 
 namespace NextUIPlugin.Service {
 	public static class MicroPluginService {
 		internal const string MicroPluginDirName = "MicroPlugin";
-		internal const string RequiredVersion = "0.1.0.1";
+		// Manually updated, not every new version would require new microplugin
+		internal const string RequiredVersion = "0.1.2.0";
 
 		internal static string? pluginDir;
 		internal static string? configDir;
 		internal static PluginLoader? microPluginLoader;
 		internal static INuPlugin? microPlugin;
+
+		static float downloadProgress = -1;
 
 		// Thread zone
 		internal static Thread microPluginThread = null!;
@@ -44,7 +50,7 @@ namespace NextUIPlugin.Service {
 			microPluginThread.Join(1000);
 		}
 
-		public static void LoadMicroPlugin() {
+		public static async void LoadMicroPlugin() {
 			// This shouldn't realistically ever occur
 			if (pluginDir == null || configDir == null || NextUIPlugin.guiManager == null) {
 				PluginLog.Error("Unable to load MicroPlugin, unexpected error");
@@ -75,7 +81,7 @@ namespace NextUIPlugin.Service {
 
 			if (downloadNeeded) {
 				if (IsColdBoot()) {
-					DownloadMicroPlugin(microPluginDir);
+					await DownloadMicroPlugin(microPluginDir);
 				}
 				else {
 					// We cannot do anything, bail
@@ -154,7 +160,7 @@ namespace NextUIPlugin.Service {
 
 		#region Utils
 
-		internal static void DownloadMicroPlugin(string microPluginDir) {
+		internal static async Task DownloadMicroPlugin(string microPluginDir) {
 			if (configDir == null) {
 				return;
 			}
@@ -173,14 +179,20 @@ namespace NextUIPlugin.Service {
 			                  "/NextUIBrowser/bin/latest.zip?job=build";
 #endif
 
-				using (var webClient = new WebClient()) {
-					// webClient.Headers.Add("Accept: text/html, application/xhtml+xml, */*");
-					// webClient.Headers.Add("User-Agent: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)");
-					webClient.DownloadFile(
-						new Uri(artifactUrl),
-						downloadPath
-					);
-				}
+				using var webClient = new WebClient();
+				webClient.DownloadProgressChanged += (s, e) => {
+					// DrawProgress(e.ProgressPercentage);
+					downloadProgress = e.ProgressPercentage;
+					PluginLog.Log("MicroPlugin progress " + e.ProgressPercentage);
+				};
+				webClient.DownloadFileCompleted += (s, e) => {
+					downloadProgress = 100;
+				};
+
+				await webClient.DownloadFileTaskAsync(
+					new Uri(artifactUrl),
+					downloadPath
+				);
 
 				PluginLog.Log("Downloaded latest MicroPlugin");
 
@@ -200,6 +212,21 @@ namespace NextUIPlugin.Service {
 			catch (Exception) {
 				PluginLog.Warning("Unable to download MicroPlugin");
 			}
+		}
+
+		public static void DrawProgress() {
+			if (downloadProgress is >= 100 or < 0) {
+				return;
+			}
+
+			ImGui.SetNextWindowSize(new Vector2(300, 70));
+			ImGui.Begin(
+				"Downloading MicroPlugin",
+				ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoScrollbar
+			);
+
+			ImGui.ProgressBar(downloadProgress / 100f, new Vector2(280, 30));
+			ImGui.End();
 		}
 
 		internal static void ReadLastPid() {
