@@ -29,13 +29,6 @@ namespace NextUIPlugin.Configuration {
 				var fsSize = ImGui.GetMainViewport().Size;
 				ov.FullScreenSize = new Size((int)fsSize.X, (int)fsSize.Y);
 				ov.FullScreen = true;
-				ov.Visibility =
-					OverlayVisibility.DuringCutscene |
-					OverlayVisibility.InCombat |
-					OverlayVisibility.InGroup |
-					OverlayVisibility.InDeepDungeon |
-					OverlayVisibility.InPVP
-					;
 				ov.Name = "NextUI";
 				overlays.Add(OverlayConfig.FromOverlay(ov));
 

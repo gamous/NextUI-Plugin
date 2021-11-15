@@ -106,7 +106,8 @@ namespace NextUIShared.Model {
 		public bool Hidden { get; set; }
 		public bool Toggled { get; set; }
 		public Size FullScreenSize { get; set; }
-		public OverlayVisibility Visibility { get; set; }
+		public OverlayVisibility VisibilityShow { get; set; }
+		public OverlayVisibility VisibilityHide { get; set; }
 		public bool Resizing { get; set; }
 
 		// ReSharper disable InconsistentNaming
@@ -134,7 +135,7 @@ namespace NextUIShared.Model {
 			Guid = Guid.NewGuid();
 			Url = url;
 			size = newSize;
-			Visibility =
+			VisibilityShow =
 				OverlayVisibility.InCombat |
 				OverlayVisibility.InGroup |
 				OverlayVisibility.InDeepDungeon |

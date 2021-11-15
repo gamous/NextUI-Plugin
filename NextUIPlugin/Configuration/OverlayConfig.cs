@@ -21,7 +21,8 @@ namespace NextUIPlugin.Configuration {
 		public bool TypeThrough { get; set; }
 		public bool Locked { get; set; }
 		public bool Hidden { get; set; }
-		public OverlayVisibility Visibility { get; set; }
+		public OverlayVisibility VisibilityShow { get; set; }
+		public OverlayVisibility VisibilityHide { get; set; }
 
 		public string FullScreenSize { get; set; } = null!;
 
@@ -37,7 +38,8 @@ namespace NextUIPlugin.Configuration {
 			overlayConfig.TypeThrough = overlay.TypeThrough;
 			overlayConfig.Locked = overlay.Locked;
 			overlayConfig.Hidden = overlay.Hidden;
-			overlayConfig.Visibility = overlay.Visibility;
+			overlayConfig.VisibilityShow = overlay.VisibilityShow;
+			overlayConfig.VisibilityHide = overlay.VisibilityHide;
 			overlayConfig.FullScreenSize = SizeToString(overlay.FullScreenSize);
 
 			return overlayConfig;
@@ -56,7 +58,8 @@ namespace NextUIPlugin.Configuration {
 			overlay.TypeThrough = TypeThrough;
 			overlay.Locked = Locked;
 			overlay.Hidden = Hidden;
-			overlay.Visibility = Visibility;
+			overlay.VisibilityShow = VisibilityShow;
+			overlay.VisibilityHide = VisibilityHide;
 			overlay.FullScreenSize = ParseSize(FullScreenSize);
 
 			return overlay;

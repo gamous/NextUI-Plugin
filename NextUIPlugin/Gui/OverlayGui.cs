@@ -196,6 +196,54 @@ namespace NextUIPlugin.Gui {
 			return (acceptFocus, 0);
 		}
 
+		protected bool? ShouldShow(OverlayVisibility visibility) {
+			// If there is nothing selected
+			if (visibility == 0) {
+				return null;
+			}
+
+			var conditions = NextUIPlugin.Condition;
+			if (
+				visibility.HasFlag(OverlayVisibility.DuringCutscene) &&
+				(
+					conditions[ConditionFlag.OccupiedInCutSceneEvent] ||
+					conditions[ConditionFlag.WatchingCutscene78]
+				)
+			) {
+				return true;
+			}
+
+			if (
+				visibility.HasFlag(OverlayVisibility.InCombat) &&
+				conditions[ConditionFlag.InCombat]
+			) {
+				return true;
+			}
+
+			if (
+				visibility.HasFlag(OverlayVisibility.InDeepDungeon) &&
+				conditions[ConditionFlag.InDeepDungeon]
+			) {
+				return true;
+			}
+
+			if (
+				visibility.HasFlag(OverlayVisibility.InPVP) &&
+				conditions[ConditionFlag.PvPDisplayActive]
+			) {
+				return true;
+			}
+
+			if (
+				visibility.HasFlag(OverlayVisibility.InGroup) &&
+				NextUIPlugin.PartyList.Length > 0
+			) {
+				return true;
+			}
+
+			return false;
+		}
+
 		public void Render() {
 			if (overlay.Hidden || overlay.Toggled || overlay.Resizing || disposing) {
 				mouseInWindow = false;
@@ -206,46 +254,9 @@ namespace NextUIPlugin.Gui {
 				return;
 			}
 
-			var conditions = NextUIPlugin.Condition;
-			if (
-				!overlay.Visibility.HasFlag(OverlayVisibility.DuringCutscene) &&
-				(
-					conditions[ConditionFlag.OccupiedInCutSceneEvent] ||
-					conditions[ConditionFlag.WatchingCutscene78]
-				)
-			) {
-				mouseInWindow = false;
-				return;
-			}
-
-			if (
-				!overlay.Visibility.HasFlag(OverlayVisibility.InCombat) &&
-				conditions[ConditionFlag.InCombat]
-			) {
-				mouseInWindow = false;
-				return;
-			}
-
-			if (
-				!overlay.Visibility.HasFlag(OverlayVisibility.InDeepDungeon) &&
-				conditions[ConditionFlag.InDeepDungeon]
-			) {
-				mouseInWindow = false;
-				return;
-			}
-
-			if (
-				!overlay.Visibility.HasFlag(OverlayVisibility.InPVP) &&
-				conditions[ConditionFlag.PvPDisplayActive]
-			) {
-				mouseInWindow = false;
-				return;
-			}
-
-			if (
-				!overlay.Visibility.HasFlag(OverlayVisibility.InGroup) &&
-				NextUIPlugin.PartyList.Length > 0
-			) {
+			var shouldShow = ShouldShow(overlay.VisibilityShow);
+			var shouldHide = ShouldShow(overlay.VisibilityHide);
+			if (shouldShow is false || shouldHide is true) {
 				mouseInWindow = false;
 				return;
 			}
@@ -276,9 +287,7 @@ namespace NextUIPlugin.Gui {
 		}
 
 		protected void RenderBuffer() {
-			PaintRequest paintRequest;
-
-			var hasRequest = paintRequests.TryDequeue(out paintRequest);
+			var hasRequest = paintRequests.TryDequeue(out var paintRequest);
 
 			if (hasRequest && lastBuffer != IntPtr.Zero) {
 				var rowPitch = paintRequest.width * BytesPerPixel;
@@ -349,7 +358,6 @@ namespace NextUIPlugin.Gui {
 		protected void HandleMouseEvent() {
 			// Totally skip mouse handling for click through inlays, as well
 			if (overlay.ClickThrough) {
-				//  || inlayConfig.ClickThrough
 				return;
 			}
 

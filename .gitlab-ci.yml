@@ -1,7 +1,6 @@
 image: mcr.microsoft.com/dotnet/sdk:5.0
 stages:
     - build
-    - release
     - publish
 
 build:
@@ -24,16 +23,6 @@ build:
             - NextUIPlugin/bin/Release/NextUIPlugin/NextUIPlugin.json
             - NextUIBrowser/bin/latest.zip
 
-release:
-    stage: release
-    rules:
-        - if: $CI_COMMIT_TAG
-    image: registry.gitlab.com/gitlab-org/release-cli:latest
-    script:
-        - |
-            release-cli create --name "Release $CI_COMMIT_TAG" --tag-name $CI_COMMIT_TAG \
-              --assets-link "{\"name\":\"Release\",\"url\":\"https://gitlab.com/kaminariss/nextui-plugin/-/jobs/artifacts/$CI_COMMIT_TAG/raw/NextUIPlugin/bin/x64/Release/NextUIPlugin/latest.zip?job=build\"}"
-
 publish:
     stage: publish
     rules:
@@ -49,7 +38,7 @@ publish:
         - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
         - git config --global user.email "runner@gitlab.com"
         - git config --global user.name "Gitlab Runner"
-    script: 
+    script:
         - git clone git@gitlab.com:kaminariss/nextui-repo.git nextuirepo
         - cd nextuirepo
         - git fetch --all

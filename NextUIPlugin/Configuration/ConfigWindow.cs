@@ -191,22 +191,40 @@ namespace NextUIPlugin.Configuration {
 			if (ImGui.IsItemHovered()) {
 				ImGui.SetTooltip("Makes overlay over entire screen");
 			}
-			ImGui.NextColumn();
 
 			ImGui.Columns(1);
 
-			var ovVisibility = overlay.Visibility;
-			var flags = Enum.GetValues(typeof(OverlayVisibility)).Cast<OverlayVisibility>();
-			var flagString = ovVisibility == 0 ? "" : ovVisibility.ToString();
-			if (ImGui.BeginCombo("Visibility Flags", flagString)) {
-				foreach (var flag in flags) {
-					var isSelected = ovVisibility.HasFlag(flag);
+			var visFlags = Enum.GetValues(typeof(OverlayVisibility)).Cast<OverlayVisibility>();
+
+			var ovShow = overlay.VisibilityShow;
+			var showFlagString = ovShow == 0 ? "" : ovShow.ToString();
+			if (ImGui.BeginCombo("Show When", showFlagString)) {
+				foreach (var flag in visFlags) {
+					var isSelected = ovShow.HasFlag(flag);
 					if (ImGui.Checkbox(flag.ToString(), ref isSelected)) {
 						if (isSelected) {
-							overlay.Visibility |= flag;
+							overlay.VisibilityShow |= flag;
 						}
 						else {
-							overlay.Visibility ^= flag;
+							overlay.VisibilityShow ^= flag;
+						}
+					}
+				}
+
+				ImGui.EndCombo();
+			}
+
+			var ovHide = overlay.VisibilityHide;
+			var flagString = ovHide == 0 ? "" : ovHide.ToString();
+			if (ImGui.BeginCombo("Hide When", flagString)) {
+				foreach (var flag in visFlags) {
+					var isSelected = ovHide.HasFlag(flag);
+					if (ImGui.Checkbox(flag.ToString(), ref isSelected)) {
+						if (isSelected) {
+							overlay.VisibilityHide |= flag;
+						}
+						else {
+							overlay.VisibilityHide ^= flag;
 						}
 					}
 				}
