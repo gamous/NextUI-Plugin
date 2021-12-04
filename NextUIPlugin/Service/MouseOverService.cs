@@ -1,7 +1,7 @@
 ﻿/*
 Copyright(c) 2021 attickdoor (https://github.com/attickdoor/MOActionPlugin)
 Modifications Copyright(c) 2021 NextUI
-28-09-2021 - Used original's code hooks and action validations while using 
+28-09-2021 - Used original's code hooks and action validations while using
 NextUI's own logic to select a target. Borrowed from DelvUI.
 
 This program is free software: you can redistribute it and/or modify
@@ -34,7 +34,9 @@ namespace NextUIPlugin.Service {
 	public delegate void OnSetMouseoverActorId(long arg1, long arg2);
 #endif
 
-	public delegate ulong OnRequestAction(long arg1, uint arg2, ulong arg3, long arg4, uint arg5, uint arg6, int arg7);
+	public unsafe delegate ulong OnRequestAction(
+		long arg1, uint arg2, ulong arg3, long arg4, uint arg5, uint arg6, int arg7, void* arg8
+	);
 
 	public class MouseOverService {
 		protected SigScanner sigScanner;
@@ -44,12 +46,12 @@ namespace NextUIPlugin.Service {
 		protected Hook<OnSetMouseoverActorId> mouseOverActorIdHook;
 #endif
 		protected IntPtr requestAction;
-		protected Hook<OnRequestAction> requsetActionHook;
+		protected Hook<OnRequestAction> requestActionHook;
 
 		protected ExcelSheet<Action>? sheet;
 		public GameObject? Target = null;
 
-		public MouseOverService(SigScanner sigScanner, DataManager dataManager) {
+		public unsafe MouseOverService(SigScanner sigScanner, DataManager dataManager) {
 			this.sigScanner = sigScanner;
 			this.dataManager = dataManager;
 
@@ -64,10 +66,10 @@ namespace NextUIPlugin.Service {
 			mouseOverActorIdHook.Enable();
 #endif
 			requestAction = sigScanner.ScanText(
-				"40 53 55 57 41 54 41 57 48 83 EC 60 83 BC 24 ?? ?? ?? ?? ?? 49 8B E9 45 8B E0 44 8B FA 48 8B F9 41 8B D8 74 14 80 79 68 00 74 0E 32 C0 48 83 C4 60 41 5F 41 5C 5F 5D 5B C3"
+				"E8 ?? ?? ?? ?? 89 9F ?? ?? ?? ?? EB 0A C7 87 ?? ?? ?? ?? ?? ?? ?? ??"
 			);
-			requsetActionHook = new Hook<OnRequestAction>(requestAction, new OnRequestAction(HandleRequestAction));
-			requsetActionHook.Enable();
+			requestActionHook = new Hook<OnRequestAction>(requestAction, new OnRequestAction(HandleRequestAction));
+			requestActionHook.Enable();
 
 			sheet = dataManager.GetExcelSheet<Action>();
 		}
@@ -77,16 +79,19 @@ namespace NextUIPlugin.Service {
 			mouseOverActorIdHook.Original(arg1, arg2);
 		}
 #endif
-		protected ulong HandleRequestAction(
-			long arg1, uint arg2, ulong arg3, long arg4, uint arg5, uint arg6, int arg7
+		protected unsafe ulong HandleRequestAction(
+			long arg1, uint arg2, ulong arg3, long arg4, uint arg5, uint arg6, int arg7, void* arg8
 		) {
-			// PluginLog.Log("ACTION: {0} - {1} - {2} - {3} - {4} - {5} - {6}}", arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+			PluginLog.Log(
+				"ACTION: {0} - {1} - {2} - {3} - {4} - {5} - {6}}",
+				arg1, arg2, arg3, arg4, arg5, arg6, arg7
+			);
 
 			if (IsActionValid(arg3, Target)) {
-				return requsetActionHook.Original(arg1, arg2, arg3, Target!.ObjectId, arg5, arg6, arg7);
+				return requestActionHook.Original(arg1, arg2, arg3, Target!.ObjectId, arg5, arg6, arg7, arg8);
 			}
 
-			return requsetActionHook.Original(arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+			return requestActionHook.Original(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 		}
 
 		protected bool IsActionValid(ulong actionId, GameObject? target) {
@@ -94,7 +99,7 @@ namespace NextUIPlugin.Service {
 				return false;
 			}
 
-			Action? action = sheet.GetRow((uint)actionId);
+			var action = sheet.GetRow((uint)actionId);
 			if (action == null) {
 				return false;
 			}
