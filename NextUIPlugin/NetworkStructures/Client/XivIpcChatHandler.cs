@@ -1,17 +1,31 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using NextUIPlugin.NetworkStructures.Common;
+using Newtonsoft.Json;
 
 namespace NextUIPlugin.NetworkStructures.Client {
 	/**
-	 * Opcode: 0x03B0
+	 * Opcode: 0x01CC
 	 */
 	[Serializable]
 	[StructLayout(LayoutKind.Sequential)]
-	public struct XivIpcChatHandler {
-		public unsafe fixed byte pad_0000[4];
+	public struct XIVIpcChatHandler {
+		[JsonIgnore]
+		public uint unknown1;
+
 		public uint sourceId;
-		public unsafe fixed byte pad_0008[16];
-		public ushort chatType;
-		public unsafe fixed byte message[1012];
-	}
+		
+		public Position position;
+		public uint chatType;
+		public ushort unknown2;
+
+		[JsonIgnore]
+		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 1024)]
+		public byte[] messageRaw;
+
+		// ReSharper disable once InconsistentNaming
+		public string message {
+			get { return StructUtil.FixedUTF8String(messageRaw); }
+		}
+	};
 }

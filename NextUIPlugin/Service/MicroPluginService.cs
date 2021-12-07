@@ -49,8 +49,11 @@ namespace NextUIPlugin.Service {
 			MicroPluginResetEvent.Set();
 			microPluginThread.Join(1000);
 		}
-
+#if RELEASE
 		public static async void LoadMicroPlugin() {
+#else
+		public static void LoadMicroPlugin() {
+#endif
 			// This shouldn't realistically ever occur
 			if (pluginDir == null || configDir == null || NextUIPlugin.guiManager == null) {
 				PluginLog.Error("Unable to load MicroPlugin, unexpected error");

@@ -25,46 +25,33 @@ namespace NextUIPlugin {
 		public static NextUIConfiguration configuration = null!;
 
 		/** Dalamud injected services */
-		public readonly CommandManager commandManager;
+		// ReSharper disable InconsistentNaming
+		// ReSharper disable ReplaceAutoPropertyWithComputedProperty
+		[PluginService] public static CommandManager commandManager { get; set; } = null!;
+		[PluginService] public static DalamudPluginInterface pluginInterface { get; set; } = null!;
+		[PluginService] public static ObjectTable objectTable { get; set; } = null!;
+		[PluginService] public static Framework framework { get; set; } = null!;
+		[PluginService] public static GameNetwork gameNetwork { get; set; } = null!;
+		[PluginService] public static ClientState clientState { get; set; } = null!;
+		[PluginService] public static DataManager dataManager { get; set; } = null!;
+		[PluginService] public static TargetManager targetManager { get; set; } = null!;
+		[PluginService] public static Condition condition { get; set; } = null!;
+		[PluginService] public static PartyList partyList { get; set; } = null!;
+		[PluginService] public static SigScanner sigScanner { get; set; } = null!;
+		// ReSharper enable InconsistentNaming
+		// ReSharper enable ReplaceAutoPropertyWithComputedProperty
 
-		public static DalamudPluginInterface pluginInterface = null!;
-		public static ObjectTable objectTable = null!;
-		public static Framework framework = null!;
-		public static GameNetwork gameNetwork = null!;
-		public static ClientState clientState = null!;
-		public static DataManager dataManager = null!;
-		public static TargetManager targetManager = null!;
-		[PluginService] public static Condition Condition { get; protected set; } = null!;
-		[PluginService] public static PartyList PartyList { get; protected set; } = null!;
-
+		/** Internal services */
 		public static MouseOverService? mouseOverService;
 
 		// ReSharper disable once InconsistentNaming
 		public static NextUISocket socketServer = null!;
 
-		protected DataHandler dataHandler;
+		protected readonly DataHandler dataHandler;
+		protected readonly NetworkHandler networkHandler;
 		public static GuiManager? guiManager;
 
-		public NextUIPlugin(
-			CommandManager commandManager,
-			DalamudPluginInterface pluginInterface,
-			ObjectTable objectTable,
-			TargetManager targetManager,
-			Framework framework,
-			SigScanner sigScanner,
-			DataManager dataManager,
-			ClientState clientState,
-			GameNetwork gameNetwork
-		) {
-			this.commandManager = commandManager;
-			NextUIPlugin.pluginInterface = pluginInterface;
-			NextUIPlugin.objectTable = objectTable;
-			NextUIPlugin.targetManager = targetManager;
-			NextUIPlugin.framework = framework;
-			NextUIPlugin.clientState = clientState;
-			NextUIPlugin.dataManager = dataManager;
-			NextUIPlugin.gameNetwork = gameNetwork;
-
+		public NextUIPlugin() {
 			pluginInterface.UiBuilder.DisableCutsceneUiHide = true;
 
 			mouseOverService = new MouseOverService(sigScanner, dataManager);
@@ -80,10 +67,7 @@ namespace NextUIPlugin {
 			socketServer.Start();
 
 			dataHandler = new DataHandler();
-			// dataHandler.onPlayerNameChanged += NameChanged;
-			dataHandler.TargetChanged += TargetChanged;
-			dataHandler.CastStart += CastStart;
-			// dataHandler.onPartyChanged += PartyChanged;
+			networkHandler = new NetworkHandler();
 
 			guiManager = new GuiManager();
 			guiManager.Initialize(pluginInterface);
@@ -96,50 +80,6 @@ namespace NextUIPlugin {
 				ShowInHelp = true
 			});
 		}
-
-		protected void CastStart(
-			string target,
-			uint actionId,
-			string name,
-			float currentTime,
-			float totalTime,
-			uint targetId
-		) {
-			socketServer.Broadcast(JsonConvert.SerializeObject(new {
-				@event = "castStart",
-				target = target,
-				actionId = actionId,
-				actionName = name,
-				currentTime = currentTime,
-				totalTime = totalTime,
-				targetId,
-			}));
-		}
-
-		protected void TargetChanged(string type, uint? id, string? name) {
-			// socketServer.Broadcast(JsonConvert.SerializeObject(new {
-			// 	@event = "targetChanged",
-			// 	targetType = type,
-			// 	actorId = id,
-			// 	actorName = name
-			// }));
-		}
-
-		/*
-		protected void PartyChanged(List<int> party) {
-			socketServer.Broadcast(JsonConvert.SerializeObject(new SocketEventPartyChanged {
-				guid = Guid.NewGuid().ToString(),
-				type = "partyChanged",
-				party = party.ToArray()
-			}));
-		}
-
-		protected void NameChanged(string name) {
-			socketServer.Broadcast("player name: " + name);
-		}
-
-
-		*/
 
 		public void OnOpenConfigUi() {
 			ConfigWindow.isConfigOpen = true;
@@ -172,18 +112,6 @@ namespace NextUIPlugin {
 				case "toggle":
 					guiManager!.ToggleOverlays();
 					break;
-				// case "setall": {
-				// 	foreach (var value in Enum.GetValues(typeof(CustomComboPreset)).Cast<CustomComboPreset>()) {
-				// 		if (value == CustomComboPreset.None)
-				// 			continue;
-				//
-				// 		this.Configuration.ComboPresets |= value;
-				// 	}
-				//
-				// 	this.pluginInterface.Framework.Gui.Chat.Print("all SET");
-				// }
-				// 	break;
-
 				default:
 					ConfigWindow.isConfigOpen = true;
 					break;

@@ -4,6 +4,5 @@
 		public bool success = false;
 		public string target = "";
 		public string message = "";
-	
 	}
 }

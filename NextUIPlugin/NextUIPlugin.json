@@ -7,7 +7,7 @@
     "Tags": [
         "UI"
     ],
-    "AssemblyVersion": "0.1.2.3",
+    "AssemblyVersion": "0.2.0.0",
     "ApplicableVersion": "any",
-    "DalamudApiLevel": 4
+    "DalamudApiLevel": 5
 }

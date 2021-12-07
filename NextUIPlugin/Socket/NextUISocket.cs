@@ -9,10 +9,10 @@ using Newtonsoft.Json;
 
 namespace NextUIPlugin.Socket {
 	// ReSharper disable once InconsistentNaming
-	public class NextUISocket: IDisposable {
+	public class NextUISocket : IDisposable {
 		public int Port { get; set; }
 		protected WebSocketServer? server;
-		List<IWebSocketConnection> sockets = new();
+		protected readonly List<IWebSocketConnection> sockets = new();
 
 		protected readonly ObjectTable objectTable;
 		protected readonly TargetManager targetManager;
@@ -41,51 +41,57 @@ namespace NextUIPlugin.Socket {
 
 		protected void OnMessage(string data, IWebSocketConnection socket) {
 			try {
-				SocketEvent? ev = JsonConvert.DeserializeObject<SocketEvent>(data);
+				var ev = JsonConvert.DeserializeObject<SocketEvent>(data);
 				if (ev == null) {
 					return;
 				}
 
-				switch (ev.type) {
-					case "setTarget":
-						XivSetTarget(socket, ev, "target");
-						break;
-					case "setFocus":
-						XivSetTarget(socket, ev, "focus");
-						break;
-					case "setMouseOver":
-						XivSetTarget(socket, ev, "mouseOver");
-						break;
-					case "setMouseOverEx":
-						XivSetMouseOver(socket, ev);
-						break;
-					case "clearMouseOverEx":
-						XivSetMouseOver(socket, ev, false);
-						break;
-					case "setAcceptFocus":
-						XivSetAcceptFocus(socket, ev);
-						break;
-					default:
-						socket.Send(JsonResponse(false, "", "Unrecognized command: " + ev.type));
-						break;
+				var methodName = string.Concat(
+					"Xiv",
+					ev.type[0].ToString().ToUpper(),
+					ev.type.AsSpan(1)
+				);
+
+				var thisType = GetType();
+				var method = thisType.GetMethod(methodName);
+				if (method == null) {
+					socket.Send(JsonResponse(false, "", "Unrecognized command: " + ev.type));
+					return;
 				}
+
+				method.Invoke(this, new object[] { socket, ev });
 			}
 			catch (Exception err) {
 				socket.Send(JsonResponse(false, "", "Unrecognized data: " + data + " " + err));
 			}
 		}
 
-		protected void XivSetAcceptFocus(IWebSocketConnection socket, SocketEvent ev) {
-			//NextUIPlugin.guiManager?.SetAcceptFocus(ev.accept);
+		// ReSharper disable once UnusedMember.Global
+		public void XivSetAcceptFocus(IWebSocketConnection socket, SocketEvent ev) {
 			string msg = "AcceptFocus Changed " + ev.accept;
-			socket.Send(JsonResponse(true, ev.guid, msg, ""));
+			socket.Send(JsonResponse(true, ev.guid, msg));
 			PluginLog.Log(msg);
 		}
 
-		protected void XivSetTarget(IWebSocketConnection socket, SocketEvent ev, string type) {
+		// ReSharper disable once UnusedMember.Global
+		public void XivSetTarget(IWebSocketConnection socket, SocketEvent ev) {
+			SetTarget(socket, ev, "target");
+		}
+
+		// ReSharper disable once UnusedMember.Global
+		public void XivSetFocus(IWebSocketConnection socket, SocketEvent ev) {
+			SetTarget(socket, ev, "focus");
+		}
+
+		// ReSharper disable once UnusedMember.Global
+		public void XivSetMouseOver(IWebSocketConnection socket, SocketEvent ev) {
+			SetTarget(socket, ev, "mouseOver");
+		}
+
+		public void SetTarget(IWebSocketConnection socket, SocketEvent ev, string type) {
 			try {
-				uint targetId = uint.Parse(ev.target);
-				GameObject? target = objectTable.SearchById(targetId);
+				var targetId = uint.Parse(ev.target);
+				var target = objectTable.SearchById(targetId);
 				if (target == null) {
 					socket.Send(JsonResponse(false, ev.guid, "Invalid object ID", ev.target));
 					return;
@@ -110,10 +116,20 @@ namespace NextUIPlugin.Socket {
 			}
 		}
 
-		protected void XivSetMouseOver(IWebSocketConnection socket, SocketEvent ev, bool set = true) {
+		// ReSharper disable once UnusedMember.Global
+		public void XivClearMouseOverEx(IWebSocketConnection socket, SocketEvent ev) {
+			SetMouseOverEx(socket, ev, false);
+		}
+
+		// ReSharper disable once UnusedMember.Global
+		public void XivSetMouseOverEx(IWebSocketConnection socket, SocketEvent ev) {
+			SetMouseOverEx(socket, ev);
+		}
+
+		public void SetMouseOverEx(IWebSocketConnection socket, SocketEvent ev, bool set = true) {
 			try {
-				uint targetId = uint.Parse(ev.target);
-				GameObject? target = objectTable.SearchById(targetId);
+				var targetId = uint.Parse(ev.target);
+				var target = objectTable.SearchById(targetId);
 				if (target == null) {
 					socket.Send(JsonResponse(false, ev.guid, "Invalid object ID", ev.target));
 					return;
@@ -130,7 +146,9 @@ namespace NextUIPlugin.Socket {
 			}
 		}
 
-		public string JsonResponse(bool success, string guid, string message, string target = "") {
+		#region Internal methods
+
+		public static string JsonResponse(bool success, string guid, string message, string target = "") {
 			return JsonConvert.SerializeObject(new SocketResponse {
 				guid = guid, success = success, message = message, target = target
 			});
@@ -138,6 +156,10 @@ namespace NextUIPlugin.Socket {
 
 		public void Broadcast(string message) {
 			sockets.ForEach(s => s.Send(message));
+		}
+
+		public void Broadcast(object message) {
+			Broadcast(JsonConvert.SerializeObject(message));
 		}
 
 		public void Stop() {
@@ -150,8 +172,10 @@ namespace NextUIPlugin.Socket {
 		}
 
 		public void Dispose() {
-			sockets.ForEach(s => s.Close()); 
+			sockets.ForEach(s => s.Close());
 			server?.Dispose();
 		}
+
+		#endregion
 	}
 }

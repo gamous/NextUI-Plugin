@@ -30,6 +30,8 @@ namespace NextUIBrowser.Cef {
 #endif
 			};
 			settings.CefCommandLineArgs["allow-no-sandbox-job"] = "1";
+			settings.CefCommandLineArgs["enable-begin-frame-scheduling"] = "1";
+			settings.CefCommandLineArgs.Remove("enable-system-flash");
 
 			settings.EnableAudio();
 			settings.SetOffScreenRenderingBestPerformanceArgs();
