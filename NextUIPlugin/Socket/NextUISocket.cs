@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.Net;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Game.ClientState.Statuses;
 using Dalamud.Logging;
 using Fleck;
 using Newtonsoft.Json;
+// using BattleChara = FFXIVClientStructs.FFXIV.Client.Game.Character.BattleChara;
+// ReSharper disable UnusedMember.Global
 
 namespace NextUIPlugin.Socket {
 	// ReSharper disable once InconsistentNaming
@@ -64,6 +67,59 @@ namespace NextUIPlugin.Socket {
 			catch (Exception err) {
 				socket.Send(JsonResponse(false, "", "Unrecognized data: " + data + " " + err));
 			}
+		}
+
+		public void XivGetActors(IWebSocketConnection socket, SocketEvent ev) {
+			var actors = new List<object>();
+			foreach (var actor in NextUIPlugin.objectTable) {
+				if (actor is BattleChara chara) {
+					actors.Add(ActorToObject(chara));
+				}
+			}
+
+			Send(socket, new {
+				@event = "actors",
+				ev.guid,
+				actors
+			});
+		}
+
+		public void XivGetActor(IWebSocketConnection socket, SocketEvent ev) {
+			var objectId = ev.request.requestFor;
+			var actor = NextUIPlugin.objectTable.SearchById(objectId);
+
+			if (actor != null && actor is BattleChara chara) {
+				Send(socket, new {
+					@event = "actor",
+					ev.guid,
+					actor = ActorToObject(chara)
+				});
+				return;
+			}
+
+			Send(socket, new {
+				@event = "actor",
+				ev.guid,
+				actor = (object)null!
+			});
+		}
+
+		public void XivGetActorStatuses(IWebSocketConnection socket, SocketEvent ev) {
+			var objectId = ev.request.requestFor;
+			var actor = NextUIPlugin.objectTable.SearchById(objectId);
+
+			var statusList = new List<object>();
+			if (actor != null && actor is BattleChara chara) {
+				foreach (var status in chara.StatusList) {
+					statusList.Add(StatusToObject(status));
+				}
+			}
+
+			Send(socket, new {
+				@event = "statuses",
+				ev.guid,
+				statuses = statusList
+			});
 		}
 
 		// ReSharper disable once UnusedMember.Global
@@ -146,6 +202,34 @@ namespace NextUIPlugin.Socket {
 			}
 		}
 
+		#region Data Helpers
+
+		public static object ActorToObject(BattleChara actor) {
+			return new {
+				id = actor.ObjectId,
+				name = actor.Name.TextValue,
+				position = actor.Position,
+				hp = actor.CurrentHp,
+				hpMax = actor.MaxHp,
+				mana = actor.CurrentMp,
+				manaMax = actor.MaxMp,
+				jobId = actor.ClassJob.Id,
+				level = actor.Level,
+			};
+		}
+
+		public static object StatusToObject(Status status) {
+			return new {
+				id = status.StatusId,
+				name = status.GameData.Name.ToString(),
+				remains = status.RemainingTime,
+				sourceId = status.SourceID,
+				stack = status.StackCount
+			};
+		}
+
+		#endregion
+
 		#region Internal methods
 
 		public static string JsonResponse(bool success, string guid, string message, string target = "") {
@@ -160,6 +244,10 @@ namespace NextUIPlugin.Socket {
 
 		public void Broadcast(object message) {
 			Broadcast(JsonConvert.SerializeObject(message));
+		}
+
+		public void Send(IWebSocketConnection socket, object message) {
+			socket.Send(JsonConvert.SerializeObject(message));
 		}
 
 		public void Stop() {

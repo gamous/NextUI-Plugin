@@ -5,7 +5,7 @@ using NextUIPlugin.NetworkStructures.Common;
 
 namespace NextUIPlugin.NetworkStructures.Server {
 	[Serializable]
-	[StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
+	[StructLayout(LayoutKind.Sequential, Pack = 1)]
 	public struct XivIpcPlayerSpawn {
 		public ushort title;
 		public ushort u1b;

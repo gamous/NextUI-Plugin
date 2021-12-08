@@ -16,5 +16,13 @@ namespace NextUIPlugin.NetworkStructures {
 		public static string FixedUTF8String(byte[] source) {
 			return Marshal.PtrToStringUTF8(Marshal.UnsafeAddrOfPinnedArrayElement(source, 0)) ?? "";
 		}
+
+		public static ushort FloatToUShort(float val) {
+			return (ushort)(0x8000 + val * 32.767f);
+		}
+
+		public static float UShortToFloat(ushort val) {
+			return (val - 0x8000) / 32.767f;
+		}
 	}
 }
