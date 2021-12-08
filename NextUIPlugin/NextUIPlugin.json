@@ -2,7 +2,7 @@
     "Name": "NextUIPlugin",
     "InternalName": "NextUIPlugin",
     "Author": "Kaminaris",
-    "Description": "Provides an targeting plugin for NextUI complete user interface replacement for FFXIV",
+    "Description": "OverlayPlugin replacement for Dalamud, works similarly to BrowserHost with addition to having more options and built in websocket server.",
     "RepoUrl": "https://gitlab.com/kaminariss/nextui-plugin",
     "Tags": [
         "UI"
