@@ -115,7 +115,12 @@ namespace NextUIShared.Model {
 		public event EventHandler<string>? UrlChange;
 		public event EventHandler<Point>? PositionChange;
 		public event EventHandler<Cursor>? CursorChange;
-		public event EventHandler<MouseEventRequest>? MouseEvent;
+
+		public event EventHandler<MouseMoveEventRequest>? MouseMoveEvent;
+		public event EventHandler<MouseClickEventRequest>? MouseClickEvent;
+		public event EventHandler<MouseLeaveEventRequest>? MouseLeaveEvent;
+		public event EventHandler<MouseWheelEventRequest>? MouseWheelEvent;
+
 		public event EventHandler<KeyEventRequest>? KeyEvent;
 		public event EventHandler<PaintRequest>? Paint;
 		public event EventHandler<PopupSizeRequest>? PopupSize;
@@ -176,8 +181,20 @@ namespace NextUIShared.Model {
 			Cursor = newCursor;
 		}
 
-		public void RequestMouseEvent(MouseEventRequest request) {
-			MouseEvent?.Invoke(this, request);
+		public void RequestMouseMoveEvent(MouseMoveEventRequest request) {
+			MouseMoveEvent?.Invoke(this, request);
+		}
+
+		public void RequestMouseClickEvent(MouseClickEventRequest request) {
+			MouseClickEvent?.Invoke(this, request);
+		}
+
+		public void RequestMouseLeaveEvent(MouseLeaveEventRequest request) {
+			MouseLeaveEvent?.Invoke(this, request);
+		}
+
+		public void RequestMouseWheelEvent(MouseWheelEventRequest request) {
+			MouseWheelEvent?.Invoke(this, request);
 		}
 
 		public void RequestKeyEvent(KeyEventRequest request) {

@@ -3,19 +3,38 @@ using NextUIShared.Data;
 
 namespace NextUIShared.Request {
 	[Serializable]
-	public struct MouseEventRequest {
+	public struct MouseMoveEventRequest {
 		public float x;
 		public float y;
 
-		public bool leaving;
+		public InputModifier modifier;
+	}
 
-		// The following button fields represent changes since the previous event, not current state
-		// TODO: May be approaching being advantageous for button->fields map
-		public MouseButton mouseDown;
-		public MouseButton mouseDouble;
-		public MouseButton mouseUp;
+	[Serializable]
+	public struct MouseClickEventRequest {
+		public float x;
+		public float y;
+
+		public MouseButtonType mouseButtonType;
+		public bool isUp;
+		public int clickCount;
+		public InputModifier modifier;
+	}
+
+	[Serializable]
+	public struct MouseLeaveEventRequest {
+		public float x;
+		public float y;
+	}
+
+	[Serializable]
+	public struct MouseWheelEventRequest {
+		public float x;
+		public float y;
+
 		public float wheelX;
 		public float wheelY;
+
 		public InputModifier modifier;
 	}
 }

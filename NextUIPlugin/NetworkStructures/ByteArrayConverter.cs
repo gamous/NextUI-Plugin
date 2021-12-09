@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace NextUIPlugin.NetworkStructures {
 	public class ByteArrayConverter : JsonConverter {
-		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
+		public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
 			if (value == null) {
 				writer.WriteNull();
 				return;
@@ -25,7 +25,7 @@ namespace NextUIPlugin.NetworkStructures {
 		public override object ReadJson(
 			JsonReader reader,
 			Type objectType,
-			object existingValue,
+			object? existingValue,
 			JsonSerializer serializer
 		) {
 			if (reader.TokenType != JsonToken.StartArray) {

@@ -125,6 +125,10 @@ namespace NextUIPlugin.Socket {
 		// ReSharper disable once UnusedMember.Global
 		public void XivSetAcceptFocus(IWebSocketConnection socket, SocketEvent ev) {
 			string msg = "AcceptFocus Changed " + ev.accept;
+			foreach (var ov in NextUIPlugin.guiManager.overlays) {
+				ov.acceptFocus = ev.accept;
+			}
+
 			socket.Send(JsonResponse(true, ev.guid, msg));
 			PluginLog.Log(msg);
 		}

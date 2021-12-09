@@ -121,7 +121,7 @@ namespace NextUIPlugin.Gui {
 		}
 
 		public void Dispose() {
-			foreach (var ov in overlays) {
+			foreach (var ov in overlays.ToList()) {
 				ov.Dispose();
 			}
 

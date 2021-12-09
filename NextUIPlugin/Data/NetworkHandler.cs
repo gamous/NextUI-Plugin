@@ -10,8 +10,9 @@ using NextUIPlugin.NetworkStructures.Client;
 
 namespace NextUIPlugin.Data {
 	public class NetworkHandler : IDisposable {
+#if DEBUG
 		protected string logDir;
-
+#endif
 		public NetworkHandler() {
 			NextUIPlugin.gameNetwork.NetworkMessage += GameNetworkOnNetworkMessage;
 #if DEBUG

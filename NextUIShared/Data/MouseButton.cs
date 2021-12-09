@@ -10,4 +10,10 @@ namespace NextUIShared.Data {
 		Fourth = 1 << 3,
 		Fifth = 1 << 4
 	}
+
+	public enum MouseButtonType {
+		Left = 0,
+		Right = 1,
+		Middle = 2
+	}
 }

@@ -10,6 +10,7 @@ using NextUIBrowser.RenderHandlers;
 using NextUIShared.Data;
 using NextUIShared.Model;
 using NextUIShared.Request;
+using MouseButtonType = NextUIShared.Data.MouseButtonType;
 
 namespace NextUIBrowser.OverlayWindow {
 	public class OverlayWindow : IDisposable {
@@ -19,6 +20,8 @@ namespace NextUIBrowser.OverlayWindow {
 		protected ChromiumWebBrowser? browser;
 
 		protected IDisposable? sizeObservableSub;
+
+		protected bool BrowserLoading => browser == null || !browser.IsBrowserInitialized || browser.IsLoading;
 
 		public OverlayWindow(Overlay overlay, TextureRenderHandler renderHandler) {
 			this.renderHandler = renderHandler;
@@ -56,7 +59,12 @@ namespace NextUIBrowser.OverlayWindow {
 			overlay.ReloadRequest += Reload;
 
 			overlay.UrlChange += Navigate;
-			overlay.MouseEvent += HandleMouseEvent;
+
+			overlay.MouseMoveEvent += HandleMouseMoveEvent;
+			overlay.MouseClickEvent += HandleMouseClickEvent;
+			overlay.MouseWheelEvent += HandleMouseWheelEvent;
+			overlay.MouseLeaveEvent += HandleMouseLeaveEvent;
+
 			overlay.KeyEvent += HandleKeyEvent;
 			sizeObservableSub = overlay.SizeChange.AsObservable()
 				.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
@@ -64,10 +72,6 @@ namespace NextUIBrowser.OverlayWindow {
 			// Also request cursor if it changes
 			renderHandler.CursorChanged += RenderHandlerOnCursorChanged;
 		}
-
-		// protected void RenderHandlerTextureChange(D3DTextureWrap? obj) {
-			// overlay.TextureWrap = obj;
-		// }
 
 		protected void RenderHandlerOnCursorChanged(object? sender, Cursor cursor) {
 			overlay.SetCursor(cursor);
@@ -83,7 +87,10 @@ namespace NextUIBrowser.OverlayWindow {
 			renderHandler.CursorChanged -= RenderHandlerOnCursorChanged;
 
 			overlay.UrlChange -= Navigate;
-			overlay.MouseEvent -= HandleMouseEvent;
+			overlay.MouseMoveEvent -= HandleMouseMoveEvent;
+			overlay.MouseClickEvent -= HandleMouseClickEvent;
+			overlay.MouseWheelEvent -= HandleMouseWheelEvent;
+			overlay.MouseLeaveEvent -= HandleMouseLeaveEvent;
 			overlay.KeyEvent -= HandleKeyEvent;
 			sizeObservableSub?.Dispose();
 
@@ -124,36 +131,70 @@ namespace NextUIBrowser.OverlayWindow {
 			}
 		}
 
-		protected void HandleMouseEvent(object? sender, MouseEventRequest request) {
-			// If the browser isn't ready yet, noop
-			if (browser == null || !browser.IsBrowserInitialized || browser.IsLoading) {
+		protected void HandleMouseMoveEvent(object? sender, MouseMoveEventRequest request) {
+			if (BrowserLoading) {
 				return;
 			}
 
 			var cursorX = (int)request.x;
 			var cursorY = (int)request.y;
 
-			// Update the renderer's concept of the mouse cursor
 			renderHandler.SetMousePosition(cursorX, cursorY);
 
-			MouseEvent evt = new(cursorX, cursorY, DecodeInputModifier(request.modifier));
-
-			var host = browser.GetBrowserHost();
+			var evt = new MouseEvent(cursorX, cursorY, DecodeInputModifier(request.modifier));
 
 			// Ensure the mouse position is up to date
-			host.SendMouseMoveEvent(evt, request.leaving);
+			browser.GetBrowserHost().SendMouseMoveEvent(evt, false);
+		}
 
-			// Fire any relevant click events
-			List<MouseButtonType> doubleClicks = DecodeMouseButtons(request.mouseDouble);
-			DecodeMouseButtons(request.mouseDown)
-				.ForEach(button =>
-					host.SendMouseClickEvent(evt, button, false, doubleClicks.Contains(button) ? 2 : 1)
-				);
-			DecodeMouseButtons(request.mouseUp).ForEach(button => host.SendMouseClickEvent(evt, button, true, 1));
+		protected void HandleMouseClickEvent(object? sender, MouseClickEventRequest request) {
+			if (BrowserLoading) {
+				return;
+			}
+
+			var cursorX = (int)request.x;
+			var cursorY = (int)request.y;
+
+			var evt = new MouseEvent(cursorX, cursorY, DecodeInputModifier(request.modifier));
+
+			browser.GetBrowserHost().SendMouseClickEvent(
+				evt,
+				DecodeButtonType(request.mouseButtonType),
+				request.isUp,
+				request.clickCount
+			);
+		}
+
+		protected void HandleMouseWheelEvent(object? sender, MouseWheelEventRequest request) {
+			if (BrowserLoading) {
+				return;
+			}
+
+			var cursorX = (int)request.x;
+			var cursorY = (int)request.y;
+
+			var evt = new MouseEvent(cursorX, cursorY, DecodeInputModifier(request.modifier));
 
 			// CEF treats the wheel delta as mode 0, pixels. Bump up the numbers to match typical in-browser experience.
-			var deltaMult = 100;
-			host.SendMouseWheelEvent(evt, (int)request.wheelX * deltaMult, (int)request.wheelY * deltaMult);
+			const int deltaMult = 100;
+			browser.GetBrowserHost().SendMouseWheelEvent(
+				evt,
+				(int)request.wheelX * deltaMult,
+				(int)request.wheelY * deltaMult
+			);
+		}
+
+		protected void HandleMouseLeaveEvent(object? sender, MouseLeaveEventRequest request) {
+			if (BrowserLoading) {
+				return;
+			}
+
+			var cursorX = (int)request.x;
+			var cursorY = (int)request.y;
+
+			var evt = new MouseEvent(cursorX, cursorY, CefEventFlags.None);
+
+			browser.GetBrowserHost().SendMouseMoveEvent(evt, true);
 		}
 
 		public void HandleKeyEvent(object? sender, KeyEventRequest request) {
@@ -177,24 +218,7 @@ namespace NextUIBrowser.OverlayWindow {
 			});
 		}
 
-		protected List<MouseButtonType> DecodeMouseButtons(MouseButton buttons) {
-			List<MouseButtonType> result = new();
-			if ((buttons & MouseButton.Primary) == MouseButton.Primary) {
-				result.Add(MouseButtonType.Left);
-			}
-
-			if ((buttons & MouseButton.Secondary) == MouseButton.Secondary) {
-				result.Add(MouseButtonType.Right);
-			}
-
-			if ((buttons & MouseButton.Tertiary) == MouseButton.Tertiary) {
-				result.Add(MouseButtonType.Middle);
-			}
-
-			return result;
-		}
-
-		protected CefEventFlags DecodeInputModifier(InputModifier modifier) {
+		protected static CefEventFlags DecodeInputModifier(InputModifier modifier) {
 			var result = CefEventFlags.None;
 			if ((modifier & InputModifier.Shift) == InputModifier.Shift) {
 				result |= CefEventFlags.ShiftDown;
@@ -208,7 +232,27 @@ namespace NextUIBrowser.OverlayWindow {
 				result |= CefEventFlags.AltDown;
 			}
 
+			if ((modifier & InputModifier.MouseLeft) == InputModifier.MouseLeft) {
+				result |= CefEventFlags.LeftMouseButton;
+			}
+
+			if ((modifier & InputModifier.MouseRight) == InputModifier.MouseRight) {
+				result |= CefEventFlags.RightMouseButton;
+			}
+
+			if ((modifier & InputModifier.MouseMiddle) == InputModifier.MouseMiddle) {
+				result |= CefEventFlags.MiddleMouseButton;
+			}
+
 			return result;
+		}
+
+		protected static CefSharp.MouseButtonType DecodeButtonType(MouseButtonType buttonType) {
+			switch (buttonType) {
+				case MouseButtonType.Middle: return CefSharp.MouseButtonType.Middle;
+				case MouseButtonType.Right: return CefSharp.MouseButtonType.Right;
+				default: return CefSharp.MouseButtonType.Left;
+			}
 		}
 	}
 }

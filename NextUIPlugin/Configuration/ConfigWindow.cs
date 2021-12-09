@@ -33,13 +33,13 @@ namespace NextUIPlugin.Configuration {
 			ImGui.SetCursorPos(new Vector2(8, 450));
 
 			if (ImGui.Button("Save")) {
-				NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager!.SaveOverlays();
+				NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager.SaveOverlays();
 				NextUIPlugin.pluginInterface.SavePluginConfig(NextUIPlugin.configuration);
 			}
 
 			ImGui.SameLine();
 			if (ImGui.Button("Save and Close")) {
-				NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager!.SaveOverlays();
+				NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager.SaveOverlays();
 				NextUIPlugin.pluginInterface.SavePluginConfig(NextUIPlugin.configuration);
 				isConfigOpen = false;
 			}
@@ -58,7 +58,7 @@ namespace NextUIPlugin.Configuration {
 			ImGui.BeginChild("panes", new Vector2(selectorWidth, 300), true);
 
 			// Inlay selector list
-			foreach (var overlay in NextUIPlugin.guiManager!.overlays) {
+			foreach (var overlay in NextUIPlugin.guiManager.overlays) {
 				if (ImGui.Selectable(
 					$"{overlay.overlay.Name}##{overlay.overlay.Guid.ToString()}",
 					selectedOverlay == overlay

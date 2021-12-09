@@ -49,7 +49,7 @@ namespace NextUIPlugin {
 
 		protected readonly DataHandler dataHandler;
 		protected readonly NetworkHandler networkHandler;
-		public static GuiManager? guiManager;
+		public static GuiManager guiManager = null!;
 
 		public NextUIPlugin() {
 			pluginInterface.UiBuilder.DisableCutsceneUiHide = true;

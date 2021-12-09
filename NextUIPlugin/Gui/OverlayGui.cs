@@ -105,7 +105,7 @@ namespace NextUIPlugin.Gui {
 			texture?.Dispose();
 			PluginLog.Log("Disposed overlay GUI");
 
-			NextUIPlugin.guiManager!.RemoveOverlay(this);
+			NextUIPlugin.guiManager.RemoveOverlay(this);
 
 			// After gui has been disposed, dispose browser
 			overlay.BrowserDisposeRequest();
@@ -266,7 +266,7 @@ namespace NextUIPlugin.Gui {
 			ImGui.Begin($"NUOverlay-{overlay.Guid}", GetWindowFlags());
 
 			RenderBuffer();
-			HandleMouseEvent();
+			HandleMouseEvents();
 
 			// Handle dynamic resize, if size is the same value won't change
 			var wSize = ImGui.GetWindowSize();
@@ -361,7 +361,7 @@ namespace NextUIPlugin.Gui {
 			return flags;
 		}
 
-		protected void HandleMouseEvent() {
+		protected void HandleMouseEvents() {
 			// Totally skip mouse handling for click through inlays, as well
 			if (overlay.ClickThrough) {
 				return;
@@ -371,51 +371,23 @@ namespace NextUIPlugin.Gui {
 			var windowPos = ImGui.GetWindowPos();
 			var mousePos = io.MousePos - windowPos - ImGui.GetWindowContentRegionMin();
 
-			// Generally we want to use IsWindowHovered for hit checking, as it takes z-stacking into account -
-			// but when cursor isn't being actively captured, imgui will always return false - so fall back
-			// so a slightly more naive hover check, just to maintain a bit of flood prevention.
-			// TODO: Need to test how this will handle overlaps... fully transparent _shouldn't_ be accepting
-			//       clicks so shouuulllddd beee fineee???
-			var hovered = captureCursor
-				? ImGui.IsWindowHovered()
-				: ImGui.IsMouseHoveringRect(windowPos, windowPos + ImGui.GetWindowSize());
+			var hovered = HandleMouseLeave(windowPos, mousePos);
 
-			// If the cursor is outside the window, send a final mouse leave then noop
+			// If we are outside of window do not process other events
 			if (!hovered) {
-				if (mouseInWindow) {
-					mouseInWindow = false;
-					overlay.RequestMouseEvent(new MouseEventRequest {
-						x = mousePos.X,
-						y = mousePos.Y,
-						leaving = true,
-					});
-				}
-
 				return;
 			}
-
-			mouseInWindow = true;
 
 			ImGui.SetMouseCursor(cursor);
 
-			var mouseDown = EncodeMouseButtons(io.MouseClicked);
-			var mouseDouble = EncodeMouseButtons(io.MouseDoubleClicked);
-			var mouseUp = EncodeMouseButtons(io.MouseReleased);
-			var wheelX = io.MouseWheelH;
-			var wheelY = io.MouseWheel;
+			var inputModifier = GetInputModifier(io);
 
-			// If the event boils down to no change, bail before sending
-			if (
-				io.MouseDelta == Vector2.Zero &&
-				mouseDown == MouseButton.None &&
-				mouseDouble == MouseButton.None &&
-				mouseUp == MouseButton.None &&
-				wheelX == 0 &&
-				wheelY == 0
-			) {
-				return;
-			}
+			HandleMouseMoveEvent(io, mousePos, inputModifier);
+			HandleMouseWheelEvent(io, mousePos, inputModifier);
+			HandleMouseClickEvent(io, mousePos, inputModifier);
+		}
 
+		protected static InputModifier GetInputModifier(ImGuiIOPtr io) {
 			var inputModifier = InputModifier.None;
 			if (io.KeyShift) {
 				inputModifier |= InputModifier.Shift;
@@ -429,18 +401,90 @@ namespace NextUIPlugin.Gui {
 				inputModifier |= InputModifier.Alt;
 			}
 
-			// TODO: Either this or the entire handler function should be asynchronous so we're not blocking the entire draw thread
-			overlay.RequestMouseEvent(new MouseEventRequest() {
+			if (io.MouseDown[0]) {
+				inputModifier |= InputModifier.MouseLeft;
+			}
+
+			if (io.MouseDown[1]) {
+				inputModifier |= InputModifier.MouseRight;
+			}
+
+			if (io.MouseDown[2]) {
+				inputModifier |= InputModifier.MouseMiddle;
+			}
+
+			return inputModifier;
+		}
+
+		protected void HandleMouseMoveEvent(ImGuiIOPtr io, Vector2 mousePos, InputModifier inputModifier) {
+			if (io.MouseDelta == Vector2.Zero) {
+				return;
+			}
+			PluginLog.Log($"REM, x:{mousePos.X}, y: ${mousePos.Y}");
+			overlay.RequestMouseMoveEvent(new MouseMoveEventRequest {
 				x = mousePos.X,
 				y = mousePos.Y,
-				mouseDown = mouseDown,
-				mouseDouble = mouseDouble,
-				mouseUp = mouseUp,
-				wheelX = wheelX,
-				wheelY = wheelY,
 				modifier = inputModifier,
 			});
 		}
+
+		protected readonly bool[] prevMouseState = new bool[3];
+		protected void HandleMouseClickEvent(ImGuiIOPtr io, Vector2 mousePos, InputModifier inputModifier) {
+			for (var i = 0; i < 3; i++) {
+				var stateChanged = io.MouseDown[i] != prevMouseState[i];
+				var isUp = !io.MouseDown[i];
+
+				if (!stateChanged) {
+					continue;
+				}
+
+				overlay.RequestMouseClickEvent(new MouseClickEventRequest {
+					x = mousePos.X,
+					y = mousePos.Y,
+					mouseButtonType = (MouseButtonType)i,
+					isUp = isUp,
+					clickCount = io.MouseDoubleClicked[i] ? 2 : 1,
+					modifier = inputModifier
+				});
+
+				prevMouseState[i] = io.MouseDown[i];
+			}
+		}
+
+		protected bool HandleMouseLeave(Vector2 windowPos, Vector2 mousePos) {
+			var hovered = captureCursor
+				? ImGui.IsWindowHovered()
+				: ImGui.IsMouseHoveringRect(windowPos, windowPos + ImGui.GetWindowSize());
+
+			// If the cursor is outside the window, send a final mouse leave then noop
+			if (!hovered && mouseInWindow) {
+				overlay.RequestMouseLeaveEvent(new MouseLeaveEventRequest {
+					x = mousePos.X,
+					y = mousePos.Y,
+				});
+			}
+
+			mouseInWindow = hovered;
+			return hovered;
+		}
+
+		protected void HandleMouseWheelEvent(ImGuiIOPtr io, Vector2 mousePos, InputModifier inputModifier) {
+			var wheelX = io.MouseWheelH;
+			var wheelY = io.MouseWheel;
+
+			if (wheelX == 0 && wheelY == 0) {
+				return;
+			}
+
+			overlay.RequestMouseWheelEvent(new MouseWheelEventRequest {
+				x = mousePos.X,
+				y = mousePos.Y,
+				wheelX = wheelX,
+				wheelY = wheelY,
+				modifier = inputModifier
+			});
+		}
+
 
 		#region serde
 

@@ -55,7 +55,7 @@ namespace NextUIPlugin.Service {
 		public static void LoadMicroPlugin() {
 #endif
 			// This shouldn't realistically ever occur
-			if (pluginDir == null || configDir == null || NextUIPlugin.guiManager == null) {
+			if (pluginDir == null || configDir == null) {
 				PluginLog.Error("Unable to load MicroPlugin, unexpected error");
 				return;
 			}
