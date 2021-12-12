@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Dynamic;
 using Dalamud.Game.Network;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Logging;
@@ -7,15 +9,16 @@ using System.IO;
 using System.Runtime.InteropServices;
 using Newtonsoft.Json;
 using NextUIPlugin.NetworkStructures.Client;
+using NextUIPlugin.NetworkStructures.Server;
 
 namespace NextUIPlugin.Data {
 	public class NetworkHandler : IDisposable {
 #if DEBUG
 		protected string logDir;
-#endif
+
 		public NetworkHandler() {
 			NextUIPlugin.gameNetwork.NetworkMessage += GameNetworkOnNetworkMessage;
-#if DEBUG
+
 			logDir = Path.Combine(
 				NextUIPlugin.pluginInterface.GetPluginConfigDirectory(),
 				"NetworkLogs"
@@ -24,8 +27,12 @@ namespace NextUIPlugin.Data {
 			if (!Directory.Exists(logDir)) {
 				Directory.CreateDirectory(logDir);
 			}
-#endif
 		}
+#else
+		public NetworkHandler() {
+			NextUIPlugin.gameNetwork.NetworkMessage += GameNetworkOnNetworkMessage;
+		}
+#endif
 
 		protected unsafe void GameNetworkOnNetworkMessage(
 			IntPtr dataPtr,
@@ -45,13 +52,26 @@ namespace NextUIPlugin.Data {
 			reader.Close();
 			stream.Close();
 			// PluginLog.Log(Convert.ToHexString(raw));
-
+			string targName = "";
 			var opcodeFileName = Path.Combine(logDir, dir + "_0x" + opcode.ToString("X4") + ".txt");
 			if (File.Exists(opcodeFileName) && new FileInfo(opcodeFileName).Length > 10 * 1024 * 1024) {
 
 			}
 			else {
-				File.AppendAllText(opcodeFileName, Convert.ToHexString(raw) + Environment.NewLine + Environment.NewLine);
+				File.AppendAllText(opcodeFileName,
+					$"T: {targetActorId} {targName}" + Environment.NewLine +
+					Convert.ToHexString(raw) + Environment.NewLine + Environment.NewLine
+				);
+			}
+
+			var (dyn, eventName) = NetworkBinding.Convert(opcode, dataPtr, targetActorId);
+			if (dyn != null) {
+				NextUIPlugin.socketServer.Broadcast(new {
+					@event = eventName,
+					opcode,
+					dir,
+					data = dyn
+				});
 			}
 #endif
 

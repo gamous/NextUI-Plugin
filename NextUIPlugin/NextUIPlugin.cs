@@ -5,6 +5,7 @@ using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Command;
+using Dalamud.Game.Gui;
 using Dalamud.Game.Network;
 using Dalamud.IoC;
 using Dalamud.Logging;
@@ -38,6 +39,7 @@ namespace NextUIPlugin {
 		[PluginService] public static Condition condition { get; set; } = null!;
 		[PluginService] public static PartyList partyList { get; set; } = null!;
 		[PluginService] public static SigScanner sigScanner { get; set; } = null!;
+		[PluginService] public static ChatGui chatGui { get; set; } = null!;
 		// ReSharper enable InconsistentNaming
 		// ReSharper enable ReplaceAutoPropertyWithComputedProperty
 
@@ -47,8 +49,8 @@ namespace NextUIPlugin {
 		// ReSharper disable once InconsistentNaming
 		public static NextUISocket socketServer = null!;
 
-		protected readonly DataHandler dataHandler;
-		protected readonly NetworkHandler networkHandler;
+		public readonly DataHandler dataHandler;
+		public readonly NetworkHandler networkHandler;
 		public static GuiManager guiManager = null!;
 
 		public NextUIPlugin() {

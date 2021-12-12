@@ -9,13 +9,12 @@ using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.Types;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using Lumina.Excel.GeneratedSheets;
-using BattleChara = FFXIVClientStructs.FFXIV.Client.Game.Character.BattleChara;
 
 namespace NextUIPlugin.Service {
-	public class ActionService {
-		public static string GetActionNameFromCastInfo(GameObject? target, BattleChara.CastInfo castInfo) {
-			ObjectKind? targetKind = target?.ObjectKind;
-
+	public static class ActionService {
+		public static string GetActionNameFromBattleChara(BattleChara battleChara) {
+			var target = battleChara.TargetObject;
+			var targetKind = target?.ObjectKind;
 
 			switch (targetKind) {
 				case null:
@@ -27,34 +26,34 @@ namespace NextUIPlugin.Service {
 					return "Interacting...";
 			}
 
-			if (castInfo.ActionID == 1 && castInfo.ActionType != ActionType.Mount) {
+			if (battleChara.CastActionId == 1 && battleChara.CastActionType != (byte)ActionType.Mount) {
 				return "Interacting...";
 			}
 
-			if (castInfo.CastTargetID == 0xE0000000) {
+			if (battleChara.CastTargetObjectId == 0xE0000000) {
 				return "Interacting...";
 			}
 
-			switch (castInfo.ActionType) {
+			switch ((ActionType)battleChara.CastActionType) {
 				case ActionType.PetAction:
 				case ActionType.Spell:
 				case ActionType.SquadronAction:
 				case ActionType.PvPAction:
 				case ActionType.CraftAction:
 				case ActionType.Ability:
-					Action? action = NextUIPlugin.dataManager.GetExcelSheet<Action>()?.GetRow(castInfo.ActionID);
+					var action = NextUIPlugin.dataManager.GetExcelSheet<Action>()?.GetRow(battleChara.CastActionId);
 					return action?.Name.ToString() ?? "";
 				case ActionType.Mount:
-					Mount? mount = NextUIPlugin.dataManager.GetExcelSheet<Mount>()?.GetRow(castInfo.ActionID);
+					var mount = NextUIPlugin.dataManager.GetExcelSheet<Mount>()?.GetRow(battleChara.CastActionId);
 					return mount?.Singular.ToString() ?? "";
 				case ActionType.KeyItem:
 				case ActionType.Item:
-					Item? item = NextUIPlugin.dataManager.GetExcelSheet<Item>()?.GetRow(castInfo.ActionID);
+					var item = NextUIPlugin.dataManager.GetExcelSheet<Item>()?.GetRow(battleChara.CastActionId);
 					return item?.Name.ToString() ?? "Using item...";
 
 				case ActionType.Companion:
-					Companion? companion =
-						NextUIPlugin.dataManager.GetExcelSheet<Companion>()?.GetRow(castInfo.ActionID);
+					var companion =
+						NextUIPlugin.dataManager.GetExcelSheet<Companion>()?.GetRow(battleChara.CastActionId);
 					return companion?.Singular.ToString() ?? "";
 				case ActionType.None:
 				case ActionType.General:

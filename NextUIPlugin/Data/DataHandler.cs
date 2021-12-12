@@ -2,9 +2,12 @@
 using System.Collections.Generic;
 using Dalamud.Game;
 using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Game.Text;
+using Dalamud.Game.Text.SeStringHandling;
+using Fleck;
 using NextUIPlugin.Service;
+using NextUIPlugin.Socket;
 using SpellAction = Lumina.Excel.GeneratedSheets.Action;
-using BattleChara = FFXIVClientStructs.FFXIV.Client.Game.Character.BattleChara;
 
 namespace NextUIPlugin.Data {
 	public class DataHandler : IDisposable {
@@ -14,11 +17,31 @@ namespace NextUIPlugin.Data {
 
 		public DataHandler() {
 			NextUIPlugin.framework.Update += FrameworkOnUpdate;
+			NextUIPlugin.chatGui.ChatMessage += ChatGuiOnChatMessage;
+		}
+
+		protected void ChatGuiOnChatMessage(
+			XivChatType type,
+			uint senderId,
+			ref SeString sender,
+			ref SeString message,
+			ref bool isHandled
+		) {
+			var sockets = NextUIPlugin.socketServer.GetEventSubscriptions("chatMessage");
+			if (sockets != null && sockets.Count > 0) {
+				NextUIPlugin.socketServer.BroadcastTo(new {
+					@event = "chatMessage",
+					senderId,
+					sender = sender.TextValue,
+					message = message.TextValue,
+				}, sockets);
+			}
 		}
 
 		protected void FrameworkOnUpdate(Framework framework) {
 			WatchCasts();
 			WatchTargets();
+			WatchBattleChara();
 
 			// List<int> currentParty = NextUIPlugin.clientState.
 			// 	.Select(partyMember => partyMember.Actor.ActorId).ToList();
@@ -36,6 +59,25 @@ namespace NextUIPlugin.Data {
 			// 		party = currentParty;
 			// 	}
 			// }
+		}
+
+		/**
+		 * Watch common differences on battle actors and report any changes to it (ignores position and rotation)
+		 */
+		protected void WatchBattleChara() {
+			foreach (var (charaCopy, socketList) in NextUIPlugin.socketServer.savedChara) {
+				var obj = NextUIPlugin.objectTable.SearchById(charaCopy.ObjectId);
+				if (obj is BattleChara chara) {
+					if (charaCopy.HasChanged(chara, false, false)) {
+						BroadcastActorChanged(charaCopy.ObjectId, false, socketList, chara);
+					}
+				}
+				else {
+					BroadcastActorChanged(charaCopy.ObjectId, true, socketList);
+					// Chara no longer exists in game memory, no need to watch it
+					NextUIPlugin.socketServer.savedChara.Remove(charaCopy);
+				}
+			}
 		}
 
 		protected void WatchTargets() {
@@ -66,7 +108,7 @@ namespace NextUIPlugin.Data {
 			}
 		}
 
-		protected unsafe void WatchCasts() {
+		protected void WatchCasts() {
 			Dictionary<string, GameObject?> actorsCasts = new() {
 				{ "player", NextUIPlugin.clientState.LocalPlayer },
 				{ "target", NextUIPlugin.targetManager.Target },
@@ -75,7 +117,7 @@ namespace NextUIPlugin.Data {
 			};
 
 			foreach ((string key, var actor) in actorsCasts) {
-				if (actor == null) {
+				if (actor == null || actor is not BattleChara battleChara) {
 					continue;
 				}
 
@@ -83,25 +125,21 @@ namespace NextUIPlugin.Data {
 					casts[key] = false;
 				}
 
-				var battleChara = (BattleChara*)actor.Address;
-				var castInfo = battleChara->SpellCastInfo;
-
-				var isCasting = castInfo.IsCasting > 0;
 				var targetIsCasting = casts[key];
 
-				if (isCasting != targetIsCasting && isCasting) {
-					string castName = ActionService.GetActionNameFromCastInfo(actor.TargetObject, castInfo);
+				if (battleChara.IsCasting != targetIsCasting && battleChara.IsCasting) {
+					string castName = ActionService.GetActionNameFromBattleChara(battleChara);
 					BroadcastCastStart(
 						key,
-						castInfo.ActionID,
+						battleChara.CastActionId,
 						castName,
-						castInfo.CurrentCastTime,
-						castInfo.TotalCastTime,
-						castInfo.CastTargetID
+						battleChara.CurrentCastTime,
+						battleChara.TotalCastTime,
+						battleChara.CastTargetObjectId
 					);
 				}
 
-				casts[key] = isCasting;
+				casts[key] = battleChara.IsCasting;
 			}
 		}
 
@@ -136,6 +174,20 @@ namespace NextUIPlugin.Data {
 			});
 		}
 
+		protected static void BroadcastActorChanged(
+			uint actorId,
+			bool removed,
+			List<IWebSocketConnection> sockets,
+			BattleChara? chara = null
+		) {
+			NextUIPlugin.socketServer.BroadcastTo(new {
+				@event = "actorChanged",
+				actorId,
+				removed,
+				actor = chara != null ? NextUISocket.ActorToObject(chara) : null
+			}, sockets);
+		}
+
 		protected static void BroadcastCastStart(
 			string target,
 			uint actionId,
@@ -159,6 +211,7 @@ namespace NextUIPlugin.Data {
 
 		public void Dispose() {
 			NextUIPlugin.framework.Update -= FrameworkOnUpdate;
+			NextUIPlugin.chatGui.ChatMessage -= ChatGuiOnChatMessage;
 		}
 	}
 }

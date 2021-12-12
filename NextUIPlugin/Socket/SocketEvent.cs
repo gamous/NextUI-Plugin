@@ -4,6 +4,7 @@ namespace NextUIPlugin.Socket {
 	[Serializable]
 	public class SocketRequest {
 		public uint requestFor;
+		public string[] events;
 	}
 
 	[Serializable]

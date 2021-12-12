@@ -420,7 +420,7 @@ namespace NextUIPlugin.Gui {
 			if (io.MouseDelta == Vector2.Zero) {
 				return;
 			}
-			PluginLog.Log($"REM, x:{mousePos.X}, y: ${mousePos.Y}");
+
 			overlay.RequestMouseMoveEvent(new MouseMoveEventRequest {
 				x = mousePos.X,
 				y = mousePos.Y,

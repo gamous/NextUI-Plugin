@@ -1,17 +1,22 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using Newtonsoft.Json;
+using NextUIPlugin.NetworkStructures.Common;
 
 namespace NextUIPlugin.NetworkStructures.Server {
 	[Serializable]
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
 	public struct XivIpcActorCast {
 		public ushort actionId;
-		public byte skillType;
+
+		public byte actionType;
+
 		[JsonIgnore]
 		public byte unknown1;
+
 		[JsonIgnore]
 		public uint unknown2; // action id or mount id
+
 		public float castTime;
 		public uint targetId;
 
@@ -19,12 +24,15 @@ namespace NextUIPlugin.NetworkStructures.Server {
 
 		// TODO: No idea about this
 		public ushort flag; // 1 = interruptible blinking cast bar
+
 		[JsonIgnore]
 		public ushort unknown3;
 
-		public ushort posX;
-		public ushort posY;
-		public ushort posZ;
+		public ShortPosition position;
+
+		// public ushort posX;
+		// public ushort posY;
+		// public ushort posZ;
 		[JsonIgnore]
 		public ushort unknown4;
 	}

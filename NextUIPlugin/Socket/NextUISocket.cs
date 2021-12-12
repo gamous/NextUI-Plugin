@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Types;
@@ -7,15 +8,17 @@ using Dalamud.Game.ClientState.Statuses;
 using Dalamud.Logging;
 using Fleck;
 using Newtonsoft.Json;
-// using BattleChara = FFXIVClientStructs.FFXIV.Client.Game.Character.BattleChara;
-// ReSharper disable UnusedMember.Global
+using NextUIPlugin.Data;
 
+// ReSharper disable UnusedMember.Global
+// ReSharper disable InconsistentNaming
 namespace NextUIPlugin.Socket {
-	// ReSharper disable once InconsistentNaming
 	public class NextUISocket : IDisposable {
 		public int Port { get; set; }
 		protected WebSocketServer? server;
 		protected readonly List<IWebSocketConnection> sockets = new();
+		protected readonly Dictionary<string, List<IWebSocketConnection>> eventSubscriptions = new();
+		public readonly Dictionary<BattleCharaCopy, List<IWebSocketConnection>> savedChara = new();
 
 		protected readonly ObjectTable objectTable;
 		protected readonly TargetManager targetManager;
@@ -37,7 +40,14 @@ namespace NextUIPlugin.Socket {
 
 			server.Start(socket => {
 				socket.OnOpen = () => { sockets.Add(socket); };
-				socket.OnClose = () => { sockets.Remove(socket); };
+				socket.OnClose = () => {
+					sockets.Remove(socket);
+					foreach (var (_, connections) in eventSubscriptions) {
+						if (connections.Contains(socket)) {
+							connections.Remove(socket);
+						}
+					}
+				};
 				socket.OnMessage = message => { OnMessage(message, socket); };
 			});
 		}
@@ -67,6 +77,138 @@ namespace NextUIPlugin.Socket {
 			catch (Exception err) {
 				socket.Send(JsonResponse(false, "", "Unrecognized data: " + data + " " + err));
 			}
+		}
+
+		#region Event Subscription
+
+		public void XivSubscribeEvents(IWebSocketConnection socket, SocketEvent ev) {
+			var events = ev.request.events;
+			if (events.Length == 0) {
+				socket.Send(JsonResponse(false, "", "Invalid events"));
+			}
+
+			foreach (var eventName in events) {
+				if (!eventSubscriptions.ContainsKey(eventName)) {
+					eventSubscriptions.Add(eventName, new List<IWebSocketConnection>());
+				}
+
+				if (eventSubscriptions[eventName].Contains(socket)) {
+					continue;
+				}
+
+				eventSubscriptions[eventName].Add(socket);
+			}
+		}
+
+		public void XivUnsubscribeEvents(IWebSocketConnection socket, SocketEvent ev) {
+			var events = ev.request.events;
+			if (events.Length == 0) {
+				socket.Send(JsonResponse(false, "", "Invalid events"));
+			}
+
+			foreach (var eventName in events) {
+				if (!eventSubscriptions.ContainsKey(eventName)) {
+					continue;
+				}
+
+				if (!eventSubscriptions[eventName].Contains(socket)) {
+					continue;
+				}
+
+				eventSubscriptions[eventName].Remove(socket);
+			}
+		}
+
+		public List<IWebSocketConnection>? GetEventSubscriptions(string eventName) {
+			eventSubscriptions.TryGetValue(eventName, out var socketConnections);
+			return socketConnections;
+		}
+
+		#endregion
+
+		#region Actor Watch
+
+		public void XivWatchActor(IWebSocketConnection socket, SocketEvent ev) {
+			var objectId = ev.request.requestFor;
+			var obj = NextUIPlugin.objectTable.SearchById(objectId);
+
+			if (obj is not BattleChara chara) {
+				Send(socket, new {
+					@event = "watchActor",
+					ev.guid,
+					success = false
+				});
+				return;
+			}
+
+			var foundChara = savedChara.Keys.FirstOrDefault(c => c.ObjectId == objectId);
+			if (foundChara == null) {
+				// we did not found chara as key
+				foundChara = BattleCharaCopy.FromBattleChara(chara);
+				savedChara.Add(foundChara, new List<IWebSocketConnection> { socket });
+				return;
+			}
+
+			// someone else is already watching
+			if (!savedChara[foundChara].Contains(socket)) {
+				savedChara[foundChara].Add(socket);
+			}
+
+			Send(socket, new {
+				@event = "watchActor",
+				ev.guid,
+				success = true
+			});
+		}
+
+		public void XivUnwatchActor(IWebSocketConnection socket, SocketEvent ev) {
+			var objectId = ev.request.requestFor;
+			var foundChara = savedChara.Keys.FirstOrDefault(c => c.ObjectId == objectId);
+			if (foundChara == null) {
+				Send(socket, new {
+					@event = "unwatchActor",
+					ev.guid,
+					success = false
+				});
+				return;
+			}
+
+			// This socket was indeed watching, removing it
+			if (savedChara[foundChara].Contains(socket)) {
+				savedChara[foundChara].Remove(socket);
+			}
+
+			// No one else watching, removing empty socket list
+			if (savedChara[foundChara].Count == 0) {
+				savedChara.Remove(foundChara);
+			}
+
+			Send(socket, new {
+				@event = "watchActor",
+				ev.guid,
+				success = true
+			});
+		}
+
+		#endregion
+
+		public void XivGetPlayer(IWebSocketConnection socket, SocketEvent ev) {
+			var player = NextUIPlugin.clientState.LocalPlayer;
+			if (player == null) {
+				Send(socket, new {
+					@event = "getPlayer",
+					ev.guid,
+					player = (object)null!
+				});
+				return;
+			}
+
+			var actor = (BattleChara)NextUIPlugin.objectTable.SearchById(player.ObjectId)!;
+			Send(socket, new {
+				@event = "getPlayer",
+				ev.guid,
+				player = ActorToObject(actor)
+			});
 		}
 
 		public void XivGetActors(IWebSocketConnection socket, SocketEvent ev) {
@@ -122,7 +264,6 @@ namespace NextUIPlugin.Socket {
 			});
 		}
 
-		// ReSharper disable once UnusedMember.Global
 		public void XivSetAcceptFocus(IWebSocketConnection socket, SocketEvent ev) {
 			string msg = "AcceptFocus Changed " + ev.accept;
 			foreach (var ov in NextUIPlugin.guiManager.overlays) {
@@ -133,17 +274,14 @@ namespace NextUIPlugin.Socket {
 			PluginLog.Log(msg);
 		}
 
-		// ReSharper disable once UnusedMember.Global
 		public void XivSetTarget(IWebSocketConnection socket, SocketEvent ev) {
 			SetTarget(socket, ev, "target");
 		}
 
-		// ReSharper disable once UnusedMember.Global
 		public void XivSetFocus(IWebSocketConnection socket, SocketEvent ev) {
 			SetTarget(socket, ev, "focus");
 		}
 
-		// ReSharper disable once UnusedMember.Global
 		public void XivSetMouseOver(IWebSocketConnection socket, SocketEvent ev) {
 			SetTarget(socket, ev, "mouseOver");
 		}
@@ -176,12 +314,10 @@ namespace NextUIPlugin.Socket {
 			}
 		}
 
-		// ReSharper disable once UnusedMember.Global
 		public void XivClearMouseOverEx(IWebSocketConnection socket, SocketEvent ev) {
 			SetMouseOverEx(socket, ev, false);
 		}
 
-		// ReSharper disable once UnusedMember.Global
 		public void XivSetMouseOverEx(IWebSocketConnection socket, SocketEvent ev) {
 			SetMouseOverEx(socket, ev);
 		}
@@ -217,8 +353,14 @@ namespace NextUIPlugin.Socket {
 				hpMax = actor.MaxHp,
 				mana = actor.CurrentMp,
 				manaMax = actor.MaxMp,
+				gp = actor.CurrentGp,
+				gpMax = actor.MaxGp,
+				cp = actor.CurrentCp,
+				cpMax = actor.MaxCp,
 				jobId = actor.ClassJob.Id,
 				level = actor.Level,
+				rotation = actor.Rotation,
+				companyTag = actor.CompanyTag.TextValue,
 			};
 		}
 
@@ -248,6 +390,12 @@ namespace NextUIPlugin.Socket {
 
 		public void Broadcast(object message) {
 			Broadcast(JsonConvert.SerializeObject(message));
+		}
+
+		public void BroadcastTo(object data, List<IWebSocketConnection> socketConnections) {
+			foreach (var connection in socketConnections) {
+				connection.Send(JsonConvert.SerializeObject(data));
+			}
 		}
 
 		public void Send(IWebSocketConnection socket, object message) {
