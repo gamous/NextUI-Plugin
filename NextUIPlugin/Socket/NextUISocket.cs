@@ -16,6 +16,7 @@ namespace NextUIPlugin.Socket {
 	public class NextUISocket : IDisposable {
 		public int Port { get; set; }
 		protected WebSocketServer? server;
+
 		protected readonly List<IWebSocketConnection> sockets = new();
 		protected readonly Dictionary<string, List<IWebSocketConnection>> eventSubscriptions = new();
 		public readonly Dictionary<BattleCharaCopy, List<IWebSocketConnection>> savedChara = new();
