@@ -11,13 +11,29 @@ using SpellAction = Lumina.Excel.GeneratedSheets.Action;
 
 namespace NextUIPlugin.Data {
 	public class DataHandler : IDisposable {
-		protected readonly Dictionary<string, uint?> targets = new();
+		protected readonly Dictionary<string, (uint?, string?)> targets = new();
 		protected readonly Dictionary<string, bool> casts = new();
 		protected List<uint> party = new List<uint>();
 
 		public DataHandler() {
 			NextUIPlugin.framework.Update += FrameworkOnUpdate;
 			NextUIPlugin.chatGui.ChatMessage += ChatGuiOnChatMessage;
+			NextUIPlugin.clientState.Login += ClientStateOnLogin;
+			NextUIPlugin.clientState.Logout += ClientStateOnLogout;
+		}
+
+		protected void ClientStateOnLogout(object? sender, EventArgs e) {
+			NextUIPlugin.socketServer.Broadcast(new {
+				@event = "playerLogout",
+			});
+		}
+
+		protected void ClientStateOnLogin(object? sender, EventArgs e) {
+			var player = NextUIPlugin.clientState.LocalPlayer;
+			NextUIPlugin.socketServer.Broadcast(new {
+				@event = "playerLogin",
+				player = player != null ? NextUISocket.ActorToObject(player) : null
+			});
 		}
 
 		protected void ChatGuiOnChatMessage(
@@ -69,6 +85,7 @@ namespace NextUIPlugin.Data {
 				var obj = NextUIPlugin.objectTable.SearchById(charaCopy.ObjectId);
 				if (obj is BattleChara chara) {
 					if (charaCopy.HasChanged(chara, false, false)) {
+						charaCopy.UpdateFromBattleChara(chara);
 						BroadcastActorChanged(charaCopy.ObjectId, false, socketList, chara);
 					}
 				}
@@ -90,18 +107,19 @@ namespace NextUIPlugin.Data {
 
 			foreach ((string key, var value) in currentTargets) {
 				if (!targets.ContainsKey(key)) {
-					targets[key] = null;
+					targets[key] = (null, null);
 				}
 
+				var (targetId, targetName) = targets[key];
 				if (value != null) {
-					if (targets[key] != value.ObjectId) {
-						targets[key] = value.ObjectId;
-						BroadcastTargetChanged(key, value.ObjectId, value.Name.TextValue);
+					if (targetId != value.ObjectId || targetName != value.Name.TextValue) {
+						targets[key] = (value.ObjectId, value.Name.TextValue);
+						BroadcastTargetChanged(key, value);
 					}
 				}
 				else {
-					if (targets[key] != null) {
-						targets[key] = null;
+					if (targetId != null) {
+						targets[key] = (null, null);
 						BroadcastTargetChanged(key);
 					}
 				}
@@ -163,14 +181,14 @@ namespace NextUIPlugin.Data {
 
 		protected static void BroadcastTargetChanged(
 			string targetType,
-			uint? actorId = null,
-			string? actorName = null
+			GameObject? actor = null
 		) {
 			NextUIPlugin.socketServer.Broadcast(new {
 				@event = "targetChanged",
 				targetType,
-				actorId,
-				actorName
+				actorId = actor?.ObjectId,
+				actorName = actor?.Name.TextValue,
+				actor = actor == null ? null : (actor is BattleChara chara ? NextUISocket.ActorToObject(chara) : null),
 			});
 		}
 
@@ -212,6 +230,8 @@ namespace NextUIPlugin.Data {
 		public void Dispose() {
 			NextUIPlugin.framework.Update -= FrameworkOnUpdate;
 			NextUIPlugin.chatGui.ChatMessage -= ChatGuiOnChatMessage;
+			NextUIPlugin.clientState.Login -= ClientStateOnLogin;
+			NextUIPlugin.clientState.Logout -= ClientStateOnLogout;
 		}
 	}
 }

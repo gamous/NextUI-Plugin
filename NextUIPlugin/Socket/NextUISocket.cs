@@ -39,10 +39,29 @@ namespace NextUIPlugin.Socket {
 			server.RestartAfterListenError = true;
 
 			server.Start(socket => {
-				socket.OnOpen = () => { sockets.Add(socket); };
+				socket.OnOpen = () => {
+					sockets.Add(socket);
+
+					// Sending initial player if socket connected after player has logged in
+					var player = NextUIPlugin.clientState.LocalPlayer;
+					if (player != null) {
+						socket.Send(JsonConvert.SerializeObject(new {
+							@event = "playerLogin",
+							player = ActorToObject(player)
+						}));
+					}
+				};
 				socket.OnClose = () => {
 					sockets.Remove(socket);
+					// Remove socket from event subscriptions once disconnected
 					foreach (var (_, connections) in eventSubscriptions) {
+						if (connections.Contains(socket)) {
+							connections.Remove(socket);
+						}
+					}
+
+					// Remove socket from chara watch once disconnected
+					foreach (var (_, connections) in savedChara) {
 						if (connections.Contains(socket)) {
 							connections.Remove(socket);
 						}
