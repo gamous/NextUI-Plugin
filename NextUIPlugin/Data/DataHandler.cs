@@ -47,6 +47,7 @@ namespace NextUIPlugin.Data {
 			if (sockets != null && sockets.Count > 0) {
 				NextUIPlugin.socketServer.BroadcastTo(new {
 					@event = "chatMessage",
+					typeId = (ushort)type,
 					senderId,
 					sender = sender.TextValue,
 					message = message.TextValue,

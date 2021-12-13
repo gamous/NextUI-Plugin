@@ -87,7 +87,7 @@ namespace NextUIPlugin.Socket {
 				var thisType = GetType();
 				var method = thisType.GetMethod(methodName);
 				if (method == null) {
-					socket.Send(JsonResponse(false, "", "Unrecognized command: " + ev.type));
+					socket.Send(JsonResponse(false, ev.guid, "Unrecognized command: " + ev.type));
 					return;
 				}
 
@@ -103,7 +103,7 @@ namespace NextUIPlugin.Socket {
 		public void XivSubscribeEvents(IWebSocketConnection socket, SocketEvent ev) {
 			var events = ev.request.events;
 			if (events.Length == 0) {
-				socket.Send(JsonResponse(false, "", "Invalid events"));
+				socket.Send(JsonResponse(false, ev.guid, "Invalid events"));
 			}
 
 			foreach (var eventName in events) {
@@ -117,6 +117,8 @@ namespace NextUIPlugin.Socket {
 
 				eventSubscriptions[eventName].Add(socket);
 			}
+
+			socket.Send(JsonResponse(true, ev.guid, "Subscribed to: " + string.Join(", ", events)));
 		}
 
 		public void XivUnsubscribeEvents(IWebSocketConnection socket, SocketEvent ev) {
@@ -136,6 +138,8 @@ namespace NextUIPlugin.Socket {
 
 				eventSubscriptions[eventName].Remove(socket);
 			}
+
+			socket.Send(JsonResponse(true, ev.guid, "Unsubscribed from: " + string.Join(", ", events)));
 		}
 
 		public List<IWebSocketConnection>? GetEventSubscriptions(string eventName) {
