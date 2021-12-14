@@ -9,7 +9,7 @@ using NextUIPlugin.NetworkStructures.Server;
 namespace NextUIPlugin.Data {
 	public static class NetworkBinding {
 		public static readonly Dictionary<ushort, string> binding = new() {
-			{ (ushort)ServerZoneIpcType.ActorCast, "castStartEx" },
+			{ (ushort)ServerZoneIpcType.ActorCast, "actorCast" },
 			{ (ushort)ServerZoneIpcType.ActorMove, "actorMove" },
 			{ (ushort)ServerZoneIpcType.ActorGauge, "actorGauge" },
 			{ (ushort)ServerZoneIpcType.ActorControl, "actorControl" },
@@ -22,6 +22,9 @@ namespace NextUIPlugin.Data {
 			{ (ushort)ServerZoneIpcType.ActionEffect24, "actionEffect24" },
 			{ (ushort)ServerZoneIpcType.ActionEffect32, "actionEffect32" },
 			{ (ushort)ServerZoneIpcType.EffectResult, "effectResult" },
+			{ (ushort)ServerZoneIpcType.UpdateHpMpTp, "updateHpMpTp" },
+			{ (ushort)ServerZoneIpcType.NpcSpawn, "npcSpawn" },
+			{ (ushort)ServerZoneIpcType.PlayerSpawn, "playerSpawn" },
 		};
 
 		public static dynamic ToDynamic(object obj) {
@@ -39,7 +42,7 @@ namespace NextUIPlugin.Data {
 			return (ExpandoObject)expando;
 		}
 
-		public static (dynamic?, string?) Convert(ushort opcode, IntPtr dataPtr, uint targetActorId) {
+		public static dynamic? Convert(ushort opcode, IntPtr dataPtr, uint targetActorId) {
 			object strObj;
 			switch (opcode) {
 				case (ushort)ServerZoneIpcType.ActorCast:
@@ -81,8 +84,17 @@ namespace NextUIPlugin.Data {
 				case (ushort)ServerZoneIpcType.EffectResult:
 					strObj = Marshal.PtrToStructure<XivIpcEffectResult>(dataPtr);
 					break;
+				case (ushort)ServerZoneIpcType.UpdateHpMpTp:
+					strObj = Marshal.PtrToStructure<XivIpcUpdateHpMpTp>(dataPtr);
+					break;
+				case (ushort)ServerZoneIpcType.NpcSpawn:
+					strObj = Marshal.PtrToStructure<XivIpcNpcSpawn>(dataPtr);
+					break;
+				case (ushort)ServerZoneIpcType.PlayerSpawn:
+					strObj = Marshal.PtrToStructure<XivIpcPlayerSpawn>(dataPtr);
+					break;
 				default:
-					return (null, null);
+					return null;
 			}
 
 			var dyn = ToDynamic(strObj);
@@ -90,7 +102,7 @@ namespace NextUIPlugin.Data {
 			dyn.targetActorId = targetActorId;
 			dyn.targetActorName = NextUIPlugin.objectTable.SearchById(targetActorId)?.Name.TextValue ?? "";
 
-			return (dyn, binding[opcode] ?? "unknown");
+			return dyn;
 		}
 	}
 }

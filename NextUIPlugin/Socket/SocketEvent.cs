@@ -4,7 +4,7 @@ namespace NextUIPlugin.Socket {
 	[Serializable]
 	public class SocketRequest {
 		public uint requestFor;
-		public string[] events;
+		public string[]? events;
 	}
 
 	[Serializable]
@@ -13,15 +13,7 @@ namespace NextUIPlugin.Socket {
 		public string type = "";
 		public string target = "";
 		public string message = "";
-		public SocketRequest request;
+		public SocketRequest? request;
 		public bool accept = false;
-	}
-
-	public class SocketEventPartyChanged: SocketEvent {
-		public int[] party;
-
-		public SocketEventPartyChanged(int[] party) {
-			this.party = party;
-		}
 	}
 }

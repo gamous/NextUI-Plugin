@@ -1,15 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Dynamic;
 using Dalamud.Game.Network;
-using Dalamud.Game.Text.SeStringHandling;
-using Dalamud.Logging;
-using NextUIPlugin.NetworkStructures;
 using System.IO;
-using System.Runtime.InteropServices;
-using Newtonsoft.Json;
-using NextUIPlugin.NetworkStructures.Client;
-using NextUIPlugin.NetworkStructures.Server;
+using Dalamud.Logging;
 
 namespace NextUIPlugin.Data {
 	public class NetworkHandler : IDisposable {
@@ -43,7 +35,7 @@ namespace NextUIPlugin.Data {
 		) {
 			string dir = direction == NetworkMessageDirection.ZoneDown ? "Down" : "Up";
 #if DEBUG
-			// PluginLog.Log("NETWORK 0x" + opcode.ToString("X4") + " " + dir);
+			PluginLog.Log($"NETWORK 0x{opcode:X4}: {dir} - {targetActorId}");
 			var wholePtr = dataPtr - 0x20;
 
 			using var stream = new UnmanagedMemoryStream((byte*)wholePtr.ToPointer(), 1544);
@@ -63,45 +55,28 @@ namespace NextUIPlugin.Data {
 					Convert.ToHexString(raw) + Environment.NewLine + Environment.NewLine
 				);
 			}
+#endif
 
-			var (dyn, eventName) = NetworkBinding.Convert(opcode, dataPtr, targetActorId);
+			NetworkBinding.binding.TryGetValue(opcode, out var eventName);
+			if (eventName == null) {
+				return;
+			}
+
+			var sockets = NextUIPlugin.socketServer.GetEventSubscriptions(eventName);
+			if (sockets == null || sockets.Count == 0) {
+				return;
+			}
+
+			var dyn = NetworkBinding.Convert(opcode, dataPtr, targetActorId);
 			if (dyn != null) {
-				NextUIPlugin.socketServer.Broadcast(new {
+				NextUIPlugin.socketServer.BroadcastTo(new {
 					@event = eventName,
 					opcode,
 					dir,
 					data = dyn
-				});
+				}, sockets);
 			}
-#endif
-
-			// switch (opcode) {
-			// 	case (ushort)ClientZoneIpcType.ChatHandler:
-			// 		var dec = Marshal.PtrToStructure<XIVIpcChatHandler>(dataPtr);
-			// 		// var serialized = JsonConvert.SerializeObject(dec);
-			// 		NextUIPlugin.socketServer.Broadcast(new {
-			// 			@event = "chatMessage",
-			// 			opcode,
-			// 			dir,
-			// 			data = dec
-			// 		});
-			// 		break;
-			// }
-
-			// using UnmanagedMemoryStream stream = new((byte*)dataPtr.ToPointer(), 1544);
-			// using BinaryReader reader = new(stream);
-			// if (opcode == 0x03B0) {
-			// 	// (ushort)ServerZoneIpcType.Chat
-			// 	XivIpcChat chat = Marshal.PtrToStructure<XivIpcChat>(dataPtr);
-			// 	// var sn = Marshal.PtrToStringUTF8(new IntPtr(chat.name));
-			// 	// var sv = Marshal.PtrToStringUTF8(new IntPtr(chat.msg));
-			// 	var sn = SeString.Parse(chat.msg, 32);
-			// 	var sv = SeString.Parse(chat.msg, 1012);
-			// 	PluginLog.Log("MSG FROM: " + sn.TextValue);
-			// 	PluginLog.Log("MSG: " + sv.TextValue);
-			// }
 		}
-
 
 		public void Dispose() {
 			NextUIPlugin.gameNetwork.NetworkMessage -= GameNetworkOnNetworkMessage;

@@ -2,13 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Types;
-using Dalamud.Game.ClientState.Statuses;
 using Dalamud.Logging;
 using Fleck;
+using Lumina.Excel;
 using Newtonsoft.Json;
 using NextUIPlugin.Data;
+using Action = Lumina.Excel.GeneratedSheets.Action;
+using Status = Lumina.Excel.GeneratedSheets.Status;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable InconsistentNaming
@@ -21,17 +22,13 @@ namespace NextUIPlugin.Socket {
 		protected readonly Dictionary<string, List<IWebSocketConnection>> eventSubscriptions = new();
 		public readonly Dictionary<BattleCharaCopy, List<IWebSocketConnection>> savedChara = new();
 
-		protected readonly ObjectTable objectTable;
-		protected readonly TargetManager targetManager;
+		protected readonly ExcelSheet<Action>? actionSheet;
+		protected readonly ExcelSheet<Status>? statusSheet;
 
-		public NextUISocket(
-			ObjectTable objectTable,
-			TargetManager targetManager,
-			int port
-		) {
-			this.objectTable = objectTable;
-			this.targetManager = targetManager;
+		public NextUISocket(int port) {
 			Port = port;
+			actionSheet = NextUIPlugin.dataManager.GetExcelSheet<Action>();
+			statusSheet = NextUIPlugin.dataManager.GetExcelSheet<Status>();
 		}
 
 		public void Start() {
@@ -48,10 +45,11 @@ namespace NextUIPlugin.Socket {
 					if (player != null) {
 						socket.Send(JsonConvert.SerializeObject(new {
 							@event = "playerLogin",
-							player = ActorToObject(player)
+							player = DataConverter.ActorToObject(player)
 						}));
 					}
 				};
+
 				socket.OnClose = () => {
 					sockets.Remove(socket);
 					// Remove socket from event subscriptions once disconnected
@@ -68,17 +66,19 @@ namespace NextUIPlugin.Socket {
 						}
 					}
 				};
+
 				socket.OnMessage = message => { OnMessage(message, socket); };
 			});
 		}
 
 		protected void OnMessage(string data, IWebSocketConnection socket) {
-			try {
-				var ev = JsonConvert.DeserializeObject<SocketEvent>(data);
-				if (ev == null) {
-					return;
-				}
+			var ev = JsonConvert.DeserializeObject<SocketEvent>(data);
+			if (ev == null) {
+				// Do not respond to malformed requests
+				return;
+			}
 
+			try {
 				var methodName = string.Concat(
 					"Xiv",
 					ev.type[0].ToString().ToUpper(),
@@ -88,23 +88,24 @@ namespace NextUIPlugin.Socket {
 				var thisType = GetType();
 				var method = thisType.GetMethod(methodName);
 				if (method == null) {
-					socket.Send(JsonResponse(false, ev.guid, "Unrecognized command: " + ev.type));
+					Respond(socket, ev, new { success = false, message = "Unrecognized command: " + ev.type });
 					return;
 				}
 
 				method.Invoke(this, new object[] { socket, ev });
 			}
 			catch (Exception err) {
-				socket.Send(JsonResponse(false, "", "Unrecognized data: " + data + " " + err));
+				Respond(socket, ev, new { success = false, message = $"Unrecognized data: {data} {err}" });
 			}
 		}
 
 		#region Event Subscription
 
-		public void XivSubscribeEvents(IWebSocketConnection socket, SocketEvent ev) {
-			var events = ev.request.events;
-			if (events.Length == 0) {
-				socket.Send(JsonResponse(false, ev.guid, "Invalid events"));
+		public void XivSubscribeTo(IWebSocketConnection socket, SocketEvent ev) {
+			var events = ev.request?.events;
+			if (events == null || events.Length == 0) {
+				Respond(socket, ev, new { success = false, message = "Invalid events" });
+				return;
 			}
 
 			foreach (var eventName in events) {
@@ -119,13 +120,14 @@ namespace NextUIPlugin.Socket {
 				eventSubscriptions[eventName].Add(socket);
 			}
 
-			socket.Send(JsonResponse(true, ev.guid, "Subscribed to: " + string.Join(", ", events)));
+			Respond(socket, ev, new { success = true, message = $"Subscribed to: {string.Join(", ", events)}" });
 		}
 
-		public void XivUnsubscribeEvents(IWebSocketConnection socket, SocketEvent ev) {
-			var events = ev.request.events;
-			if (events.Length == 0) {
-				socket.Send(JsonResponse(false, "", "Invalid events"));
+		public void XivUnsubscribeFrom(IWebSocketConnection socket, SocketEvent ev) {
+			var events = ev.request?.events;
+			if (events == null || events.Length == 0) {
+				Respond(socket, ev, new { success = false, message = "Invalid events" });
+				return;
 			}
 
 			foreach (var eventName in events) {
@@ -140,7 +142,7 @@ namespace NextUIPlugin.Socket {
 				eventSubscriptions[eventName].Remove(socket);
 			}
 
-			socket.Send(JsonResponse(true, ev.guid, "Unsubscribed from: " + string.Join(", ", events)));
+			Respond(socket, ev, new { success = true, message = $"Unsubscribed to: {string.Join(", ", events)}" });
 		}
 
 		public List<IWebSocketConnection>? GetEventSubscriptions(string eventName) {
@@ -148,12 +150,21 @@ namespace NextUIPlugin.Socket {
 			return socketConnections;
 		}
 
+		public bool HasEventSubscriptions(string eventName) {
+			var socketConnections = GetEventSubscriptions(eventName);
+			return socketConnections != null && socketConnections.Count > 0;
+		}
+
 		#endregion
 
 		#region Actor Watch
 
 		public void XivWatchActor(IWebSocketConnection socket, SocketEvent ev) {
-			var objectId = ev.request.requestFor;
+			uint objectId = ev.request?.requestFor ?? 0;
+			if (objectId == 0) {
+				return;
+			}
+
 			var obj = NextUIPlugin.objectTable.SearchById(objectId);
 
 			if (obj is not BattleChara chara) {
@@ -186,7 +197,11 @@ namespace NextUIPlugin.Socket {
 		}
 
 		public void XivUnwatchActor(IWebSocketConnection socket, SocketEvent ev) {
-			var objectId = ev.request.requestFor;
+			var objectId = ev.request?.requestFor ?? 0;
+			if (objectId == 0) {
+				return;
+			}
+
 			var foundChara = savedChara.Keys.FirstOrDefault(c => c.ObjectId == objectId);
 			if (foundChara == null) {
 				Send(socket, new {
@@ -216,76 +231,80 @@ namespace NextUIPlugin.Socket {
 
 		#endregion
 
+		public void XivGetAction(IWebSocketConnection socket, SocketEvent ev) {
+			var objectId = ev.request?.requestFor ?? 0;
+			if (objectId == 0) {
+				return;
+			}
+
+			var action = actionSheet?.GetRow(objectId);
+			Respond(socket, ev, action == null ? null : DataConverter.ActionToObject(action));
+		}
+
+		public void XivGetStatus(IWebSocketConnection socket, SocketEvent ev) {
+			var objectId = ev.request?.requestFor ?? 0;
+			if (objectId == 0) {
+				return;
+			}
+
+			var status = statusSheet?.GetRow(objectId);
+			Respond(socket, ev, status == null ? null : DataConverter.LuminaStatusToObject(status));
+		}
+
 		public void XivGetPlayer(IWebSocketConnection socket, SocketEvent ev) {
 			var player = NextUIPlugin.clientState.LocalPlayer;
 			if (player == null) {
-				Send(socket, new {
-					@event = "getPlayer",
-					ev.guid,
-					player = (object)null!
-				});
+				Respond(socket, ev, null);
 				return;
 			}
 
 			var actor = (BattleChara)NextUIPlugin.objectTable.SearchById(player.ObjectId)!;
-			Send(socket, new {
-				@event = "getPlayer",
-				ev.guid,
-				player = ActorToObject(actor)
-			});
+			Respond(socket, ev, DataConverter.ActorToObject(actor));
 		}
 
 		public void XivGetActors(IWebSocketConnection socket, SocketEvent ev) {
 			var actors = new List<object>();
 			foreach (var actor in NextUIPlugin.objectTable) {
 				if (actor is BattleChara chara) {
-					actors.Add(ActorToObject(chara));
+					actors.Add(DataConverter.ActorToObject(chara));
 				}
 			}
 
-			Send(socket, new {
-				@event = "actors",
-				ev.guid,
-				actors
-			});
+			Respond(socket, ev, actors);
 		}
 
 		public void XivGetActor(IWebSocketConnection socket, SocketEvent ev) {
-			var objectId = ev.request.requestFor;
-			var actor = NextUIPlugin.objectTable.SearchById(objectId);
-
-			if (actor != null && actor is BattleChara chara) {
-				Send(socket, new {
-					@event = "actor",
-					ev.guid,
-					actor = ActorToObject(chara)
-				});
+			var objectId = ev.request?.requestFor ?? 0;
+			if (objectId == 0) {
 				return;
 			}
 
-			Send(socket, new {
-				@event = "actor",
-				ev.guid,
-				actor = (object)null!
-			});
+			var actor = NextUIPlugin.objectTable.SearchById(objectId);
+
+			if (actor != null && actor is BattleChara chara) {
+				Respond(socket, ev, DataConverter.ActorToObject(chara));
+				return;
+			}
+
+			Respond(socket, ev, null);
 		}
 
 		public void XivGetActorStatuses(IWebSocketConnection socket, SocketEvent ev) {
-			var objectId = ev.request.requestFor;
+			var objectId = ev.request?.requestFor ?? 0;
+			if (objectId == 0) {
+				return;
+			}
+
 			var actor = NextUIPlugin.objectTable.SearchById(objectId);
 
 			var statusList = new List<object>();
 			if (actor != null && actor is BattleChara chara) {
 				foreach (var status in chara.StatusList) {
-					statusList.Add(StatusToObject(status));
+					statusList.Add(DataConverter.StatusToObject(status));
 				}
 			}
 
-			Send(socket, new {
-				@event = "statuses",
-				ev.guid,
-				statuses = statusList
-			});
+			Respond(socket, ev, statusList);
 		}
 
 		public void XivSetAcceptFocus(IWebSocketConnection socket, SocketEvent ev) {
@@ -294,7 +313,7 @@ namespace NextUIPlugin.Socket {
 				ov.acceptFocus = ev.accept;
 			}
 
-			socket.Send(JsonResponse(true, ev.guid, msg));
+			Respond(socket, ev, new { success = false, message = msg });
 			PluginLog.Log(msg);
 		}
 
@@ -313,28 +332,28 @@ namespace NextUIPlugin.Socket {
 		public void SetTarget(IWebSocketConnection socket, SocketEvent ev, string type) {
 			try {
 				var targetId = uint.Parse(ev.target);
-				var target = objectTable.SearchById(targetId);
+				var target = NextUIPlugin.objectTable.SearchById(targetId);
 				if (target == null) {
-					socket.Send(JsonResponse(false, ev.guid, "Invalid object ID", ev.target));
+					Respond(socket, ev, new { success = false, message = "Invalid object ID" });
 					return;
 				}
 
 				switch (type) {
 					case "target":
-						targetManager.SetTarget(target);
+						NextUIPlugin.targetManager.SetTarget(target);
 						break;
 					case "focus":
-						targetManager.SetFocusTarget(target);
+						NextUIPlugin.targetManager.SetFocusTarget(target);
 						break;
 					case "mouseOver":
-						targetManager.SetMouseOverTarget(target);
+						NextUIPlugin.targetManager.SetMouseOverTarget(target);
 						break;
 				}
 
-				socket.Send(JsonResponse(true, ev.guid, "", ev.target));
+				Respond(socket, ev, new { success = true });
 			}
 			catch (Exception err) {
-				socket.Send(JsonResponse(false, ev.guid, err.ToString(), ev.target));
+				Respond(socket, ev, new { success = false, message = err.ToString() });
 			}
 		}
 
@@ -349,9 +368,9 @@ namespace NextUIPlugin.Socket {
 		public void SetMouseOverEx(IWebSocketConnection socket, SocketEvent ev, bool set = true) {
 			try {
 				var targetId = uint.Parse(ev.target);
-				var target = objectTable.SearchById(targetId);
+				var target = NextUIPlugin.objectTable.SearchById(targetId);
 				if (target == null) {
-					socket.Send(JsonResponse(false, ev.guid, "Invalid object ID", ev.target));
+					Respond(socket, ev, new { success = false, message = "Invalid object ID" });
 					return;
 				}
 
@@ -359,54 +378,14 @@ namespace NextUIPlugin.Socket {
 					NextUIPlugin.mouseOverService.Target = set ? target : null;
 				}
 
-				socket.Send(JsonResponse(true, ev.guid, "Mouse over set: " + target.Name.TextValue, ev.target));
+				Respond(socket, ev, new { success = true });
 			}
 			catch (Exception err) {
-				socket.Send(JsonResponse(false, ev.guid, err.ToString(), ev.target));
+				Respond(socket, ev, new { success = false, message = err.ToString() });
 			}
 		}
 
-		#region Data Helpers
-
-		public static object ActorToObject(BattleChara actor) {
-			return new {
-				id = actor.ObjectId,
-				name = actor.Name.TextValue,
-				position = actor.Position,
-				hp = actor.CurrentHp,
-				hpMax = actor.MaxHp,
-				mana = actor.CurrentMp,
-				manaMax = actor.MaxMp,
-				gp = actor.CurrentGp,
-				gpMax = actor.MaxGp,
-				cp = actor.CurrentCp,
-				cpMax = actor.MaxCp,
-				jobId = actor.ClassJob.Id,
-				level = actor.Level,
-				rotation = actor.Rotation,
-				companyTag = actor.CompanyTag.TextValue,
-			};
-		}
-
-		public static object StatusToObject(Status status) {
-			return new {
-				id = status.StatusId,
-				name = status.GameData.Name.ToString(),
-				remains = status.RemainingTime,
-				sourceId = status.SourceID,
-				stack = status.StackCount
-			};
-		}
-
-		#endregion
-
 		#region Internal methods
-
-		public static string JsonResponse(bool success, string guid, string message, string target = "") {
-			return JsonConvert.SerializeObject(new SocketResponse {
-				guid = guid, success = success, message = message, target = target
-			});
-		}
 
 		public void Broadcast(string message) {
 			sockets.ForEach(s => s.Send(message));
@@ -424,6 +403,14 @@ namespace NextUIPlugin.Socket {
 
 		public void Send(IWebSocketConnection socket, object message) {
 			socket.Send(JsonConvert.SerializeObject(message));
+		}
+
+		public void Respond(IWebSocketConnection socket, SocketEvent ev, object? data) {
+			Send(socket, new {
+				@event = ev.type,
+				ev.guid,
+				data
+			});
 		}
 
 		public void Stop() {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Dalamud.Game;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Text;
@@ -13,13 +14,21 @@ namespace NextUIPlugin.Data {
 	public class DataHandler : IDisposable {
 		protected readonly Dictionary<string, (uint?, string?)> targets = new();
 		protected readonly Dictionary<string, bool> casts = new();
-		protected List<uint> party = new List<uint>();
+		protected List<uint> party = new();
 
 		public DataHandler() {
 			NextUIPlugin.framework.Update += FrameworkOnUpdate;
 			NextUIPlugin.chatGui.ChatMessage += ChatGuiOnChatMessage;
 			NextUIPlugin.clientState.Login += ClientStateOnLogin;
 			NextUIPlugin.clientState.Logout += ClientStateOnLogout;
+			NextUIPlugin.clientState.TerritoryChanged += ClientStateOnTerritoryChanged;
+		}
+
+		protected void ClientStateOnTerritoryChanged(object? sender, ushort e) {
+			NextUIPlugin.socketServer.Broadcast(new {
+				@event = "zoneChanged",
+				zone = e
+			});
 		}
 
 		protected void ClientStateOnLogout(object? sender, EventArgs e) {
@@ -32,7 +41,7 @@ namespace NextUIPlugin.Data {
 			var player = NextUIPlugin.clientState.LocalPlayer;
 			NextUIPlugin.socketServer.Broadcast(new {
 				@event = "playerLogin",
-				player = player != null ? NextUISocket.ActorToObject(player) : null
+				player = player != null ? DataConverter.ActorToObject(player) : null
 			});
 		}
 
@@ -47,10 +56,12 @@ namespace NextUIPlugin.Data {
 			if (sockets != null && sockets.Count > 0) {
 				NextUIPlugin.socketServer.BroadcastTo(new {
 					@event = "chatMessage",
-					typeId = (ushort)type,
-					senderId,
-					sender = sender.TextValue,
-					message = message.TextValue,
+					data = new {
+						typeId = (ushort)type,
+						senderId,
+						sender = sender.TextValue,
+						message = message.TextValue,
+					}
 				}, sockets);
 			}
 		}
@@ -59,23 +70,34 @@ namespace NextUIPlugin.Data {
 			WatchCasts();
 			WatchTargets();
 			WatchBattleChara();
+			WatchParty();
+		}
 
-			// List<int> currentParty = NextUIPlugin.clientState.
-			// 	.Select(partyMember => partyMember.Actor.ActorId).ToList();
-			//
-			// if (party.Count != currentParty.Count) {
-			// 	onPartyChanged?.Invoke(currentParty);
-			// }
-			// else {
-			// 	List<int> firstNotSecond = party.Except(currentParty).ToList();
-			// 	List<int> secondNotFirst = currentParty.Except(party).ToList();
-			//
-			// 	bool eq = !firstNotSecond.Any() && !secondNotFirst.Any();
-			// 	if (!eq) {
-			// 		onPartyChanged?.Invoke(currentParty);
-			// 		party = currentParty;
-			// 	}
-			// }
+		protected void WatchParty() {
+			var sockets = NextUIPlugin.socketServer.GetEventSubscriptions("partyChanged");
+			if (sockets == null || sockets.Count == 0) {
+				return;
+			}
+
+			var currentParty = NextUIPlugin.partyList
+				.Select(partyMember => partyMember.ObjectId).ToList();
+
+			if (party.Count != currentParty.Count) {
+				BroadcastPartyChanged(sockets);
+				party = currentParty;
+				return;
+			}
+
+			var firstNotSecond = party.Except(currentParty).ToList();
+			var secondNotFirst = currentParty.Except(party).ToList();
+
+			var eq = !firstNotSecond.Any() && !secondNotFirst.Any();
+			if (eq) {
+				return;
+			}
+
+			BroadcastPartyChanged(sockets);
+			party = currentParty;
 		}
 
 		/**
@@ -99,6 +121,11 @@ namespace NextUIPlugin.Data {
 		}
 
 		protected void WatchTargets() {
+			var sockets = NextUIPlugin.socketServer.GetEventSubscriptions("targetChanged");
+			if (sockets == null || sockets.Count == 0) {
+				return;
+			}
+
 			Dictionary<string, GameObject?> currentTargets = new() {
 				{ "target", NextUIPlugin.targetManager.Target },
 				{ "targetOfTarget", NextUIPlugin.targetManager.Target?.TargetObject },
@@ -115,19 +142,20 @@ namespace NextUIPlugin.Data {
 				if (value != null) {
 					if (targetId != value.ObjectId || targetName != value.Name.TextValue) {
 						targets[key] = (value.ObjectId, value.Name.TextValue);
-						BroadcastTargetChanged(key, value);
+						BroadcastTargetChanged(sockets, key, value);
 					}
 				}
 				else {
 					if (targetId != null) {
 						targets[key] = (null, null);
-						BroadcastTargetChanged(key);
+						BroadcastTargetChanged(sockets, key);
 					}
 				}
 			}
 		}
 
 		protected void WatchCasts() {
+			return;
 			Dictionary<string, GameObject?> actorsCasts = new() {
 				{ "player", NextUIPlugin.clientState.LocalPlayer },
 				{ "target", NextUIPlugin.targetManager.Target },
@@ -162,35 +190,36 @@ namespace NextUIPlugin.Data {
 			}
 		}
 
-		/*
-		protected void PartyChanged(List<int> party) {
-			socketServer.Broadcast(JsonConvert.SerializeObject(new SocketEventPartyChanged {
-				guid = Guid.NewGuid().ToString(),
-				type = "partyChanged",
-				party = party.ToArray()
-			}));
-		}
-
-		protected void NameChanged(string name) {
-			socketServer.Broadcast("player name: " + name);
-		}
-
-
-		*/
-
 		#region Broadcasters
 
 		protected static void BroadcastTargetChanged(
+			List<IWebSocketConnection> sockets,
 			string targetType,
 			GameObject? actor = null
 		) {
-			NextUIPlugin.socketServer.Broadcast(new {
+			NextUIPlugin.socketServer.BroadcastTo(new {
 				@event = "targetChanged",
-				targetType,
-				actorId = actor?.ObjectId,
-				actorName = actor?.Name.TextValue,
-				actor = actor == null ? null : (actor is BattleChara chara ? NextUISocket.ActorToObject(chara) : null),
-			});
+				data = new {
+					targetType,
+					actorId = actor?.ObjectId,
+					actorName = actor?.Name.TextValue,
+					actor = actor == null
+						? null
+						: (actor is BattleChara chara ? DataConverter.ActorToObject(chara) : null),
+				}
+			}, sockets);
+		}
+
+		protected static void BroadcastPartyChanged(List<IWebSocketConnection> sockets) {
+			var currentParty = new List<object>();
+			foreach (var partyMember in NextUIPlugin.partyList) {
+				currentParty.Add(DataConverter.PartyMemberToObject(partyMember));
+			}
+
+			NextUIPlugin.socketServer.BroadcastTo(new {
+				@event = "partyChanged",
+				data = currentParty,
+			}, sockets);
 		}
 
 		protected static void BroadcastActorChanged(
@@ -201,9 +230,11 @@ namespace NextUIPlugin.Data {
 		) {
 			NextUIPlugin.socketServer.BroadcastTo(new {
 				@event = "actorChanged",
-				actorId,
-				removed,
-				actor = chara != null ? NextUISocket.ActorToObject(chara) : null
+				data = new {
+					actorId,
+					removed,
+					actor = chara != null ? DataConverter.ActorToObject(chara) : null
+				}
 			}, sockets);
 		}
 
@@ -233,6 +264,7 @@ namespace NextUIPlugin.Data {
 			NextUIPlugin.chatGui.ChatMessage -= ChatGuiOnChatMessage;
 			NextUIPlugin.clientState.Login -= ClientStateOnLogin;
 			NextUIPlugin.clientState.Logout -= ClientStateOnLogout;
+			NextUIPlugin.clientState.TerritoryChanged -= ClientStateOnTerritoryChanged;
 		}
 	}
 }
