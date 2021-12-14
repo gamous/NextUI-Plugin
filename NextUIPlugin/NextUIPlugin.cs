@@ -65,7 +65,7 @@ namespace NextUIPlugin {
 			pluginInterface.UiBuilder.OpenConfigUi += OnOpenConfigUi;
 			pluginInterface.UiBuilder.Draw += Render;
 
-			socketServer = new NextUISocket(objectTable, targetManager, configuration.socketPort);
+			socketServer = new NextUISocket(configuration.socketPort);
 			socketServer.Start();
 
 			dataHandler = new DataHandler();
