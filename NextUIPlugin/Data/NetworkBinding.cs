@@ -24,6 +24,7 @@ namespace NextUIPlugin.Data {
 			{ (ushort)ServerZoneIpcType.ActionEffect24, "actionEffect24" },
 			{ (ushort)ServerZoneIpcType.ActionEffect32, "actionEffect32" },
 			{ (ushort)ServerZoneIpcType.EffectResult, "effectResult" },
+			{ (ushort)ServerZoneIpcType.EffectResultBasic, "effectResultBasic" },
 			{ (ushort)ServerZoneIpcType.UpdateHpMpTp, "updateHpMpTp" },
 			{ (ushort)ServerZoneIpcType.NpcSpawn, "npcSpawn" },
 			{ (ushort)ServerZoneIpcType.PlayerSpawn, "playerSpawn" },
@@ -86,6 +87,9 @@ namespace NextUIPlugin.Data {
 					break;
 				case (ushort)ServerZoneIpcType.EffectResult:
 					strObj = Marshal.PtrToStructure<XivIpcEffectResult>(dataPtr);
+					break;
+				case (ushort)ServerZoneIpcType.EffectResultBasic:
+					strObj = Marshal.PtrToStructure<XivIpcEffectResultBasic>(dataPtr);
 					break;
 				case (ushort)ServerZoneIpcType.UpdateHpMpTp:
 					strObj = Marshal.PtrToStructure<XivIpcUpdateHpMpTp>(dataPtr);

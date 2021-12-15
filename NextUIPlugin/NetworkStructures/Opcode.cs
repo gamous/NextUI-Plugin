@@ -31,6 +31,7 @@
 		CurrencyCrystalInfo = 0x0258, // updated 6.0
 		InitZone = 0x02C4, // updated 6.0
 		EffectResult = 0x0196, // updated 6.0
+		EffectResultBasic = 0x02D8, // updated 6.0
 		EventStart = 0x0334, // updated 6.0
 		EventFinish = 0x01B8, // updated 6.0
 		SomeDirectorUnk4 = 0x0164, // updated 6.0
