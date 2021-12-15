@@ -1,12 +1,15 @@
 ﻿using System;
 using Dalamud.Game.Network;
 using System.IO;
+using System.Linq;
 using Dalamud.Logging;
+using NextUIPlugin.NetworkStructures;
 
 namespace NextUIPlugin.Data {
 	public class NetworkHandler : IDisposable {
 #if DEBUG
 		protected string logDir;
+		protected uint[] ignoredOpcodes = new[] { 0x0296u, 0x0097u, 0x02E6u };
 
 		public NetworkHandler() {
 			NextUIPlugin.gameNetwork.NetworkMessage += GameNetworkOnNetworkMessage;
@@ -35,9 +38,19 @@ namespace NextUIPlugin.Data {
 		) {
 			string dir = direction == NetworkMessageDirection.ZoneDown ? "Down" : "Up";
 #if DEBUG
-			PluginLog.Log($"NETWORK 0x{opcode:X4}: {dir} - {targetActorId}");
-			var wholePtr = dataPtr - 0x20;
+			string opcName;
+			try {
+				opcName = ((ServerZoneIpcType)opcode).ToString("G");
+			}
+			catch (Exception e) {
+				opcName = "unk";
+			}
 
+			if (!ignoredOpcodes.Contains(opcode)) {
+				PluginLog.Log($"NETWORK 0x{opcode:X4}: {opcName} - {dir} - {targetActorId}");
+			}
+
+			var wholePtr = dataPtr - 0x20;
 			using var stream = new UnmanagedMemoryStream((byte*)wholePtr.ToPointer(), 1544);
 			using var reader = new BinaryReader(stream);
 			var raw = reader.ReadBytes(1540);

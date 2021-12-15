@@ -46,6 +46,11 @@
 		PlaceFieldMarkerPreset = 0x01CF, // updated 6.0
 		ObjectSpawn = 0x0319, // updated 6.0
 
+		// CHANGED sapphire
+		CreateObject = 0x019D,
+		DeleteObject = 0x019E,
+		ObjectDespawn = 0x018A,
+
 		// CHANGED based on machina
 		ActionEffect1 = 0x035A, // updated 6.0
 		ActionEffect8 = 0x01BA, // updated 6.0

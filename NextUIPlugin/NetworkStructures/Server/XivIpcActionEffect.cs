@@ -18,7 +18,7 @@ namespace NextUIPlugin.NetworkStructures.Server {
 		public uint actionId; // what the casting player casts, shown in battle log / ui
 		public uint globalEffectCounter;
 		public float animationLockTime;
-		public uint SomeTargetID;
+		public uint someTargetId;
 		public ushort hiddenAnimation; // 0 = show animation, otherwise hide animation.
 		public ushort rotation;
 		public ushort actionAnimationId;

@@ -67,7 +67,6 @@ namespace NextUIPlugin.Data {
 		}
 
 		protected void FrameworkOnUpdate(Framework framework) {
-			WatchCasts();
 			WatchTargets();
 			WatchBattleChara();
 			WatchParty();
@@ -154,42 +153,6 @@ namespace NextUIPlugin.Data {
 			}
 		}
 
-		protected void WatchCasts() {
-			return;
-			Dictionary<string, GameObject?> actorsCasts = new() {
-				{ "player", NextUIPlugin.clientState.LocalPlayer },
-				{ "target", NextUIPlugin.targetManager.Target },
-				{ "targetOfTarget", NextUIPlugin.targetManager.Target?.TargetObject },
-				{ "focus", NextUIPlugin.targetManager.FocusTarget },
-			};
-
-			foreach ((string key, var actor) in actorsCasts) {
-				if (actor == null || actor is not BattleChara battleChara) {
-					continue;
-				}
-
-				if (!casts.ContainsKey(key)) {
-					casts[key] = false;
-				}
-
-				var targetIsCasting = casts[key];
-
-				if (battleChara.IsCasting != targetIsCasting && battleChara.IsCasting) {
-					string castName = ActionService.GetActionNameFromBattleChara(battleChara);
-					BroadcastCastStart(
-						key,
-						battleChara.CastActionId,
-						castName,
-						battleChara.CurrentCastTime,
-						battleChara.TotalCastTime,
-						battleChara.CastTargetObjectId
-					);
-				}
-
-				casts[key] = battleChara.IsCasting;
-			}
-		}
-
 		#region Broadcasters
 
 		protected static void BroadcastTargetChanged(
@@ -236,25 +199,6 @@ namespace NextUIPlugin.Data {
 					actor = chara != null ? DataConverter.ActorToObject(chara) : null
 				}
 			}, sockets);
-		}
-
-		protected static void BroadcastCastStart(
-			string target,
-			uint actionId,
-			string actionName,
-			float currentTime,
-			float totalTime,
-			uint targetId
-		) {
-			NextUIPlugin.socketServer.Broadcast(new {
-				@event = "castStart",
-				target,
-				actionId,
-				actionName,
-				currentTime,
-				totalTime,
-				targetId,
-			});
 		}
 
 		#endregion
