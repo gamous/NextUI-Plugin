@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Dynamic;
 using System.Runtime.InteropServices;
 using Dalamud.Logging;
+using Dalamud.Utility;
+using Lumina.Excel.GeneratedSheets;
 using NextUIPlugin.NetworkStructures;
 using NextUIPlugin.NetworkStructures.Server;
 
@@ -25,6 +27,7 @@ namespace NextUIPlugin.Data {
 			{ (ushort)ServerZoneIpcType.UpdateHpMpTp, "updateHpMpTp" },
 			{ (ushort)ServerZoneIpcType.NpcSpawn, "npcSpawn" },
 			{ (ushort)ServerZoneIpcType.PlayerSpawn, "playerSpawn" },
+			{ (ushort)ServerZoneIpcType.ObjectDespawn, "objectDespawn" },
 		};
 
 		public static dynamic ToDynamic(object obj) {
@@ -93,6 +96,9 @@ namespace NextUIPlugin.Data {
 				case (ushort)ServerZoneIpcType.PlayerSpawn:
 					strObj = Marshal.PtrToStructure<XivIpcPlayerSpawn>(dataPtr);
 					break;
+				case (ushort)ServerZoneIpcType.ObjectDespawn:
+					strObj = Marshal.PtrToStructure<XivIpcObjectDespawn>(dataPtr);
+					break;
 				default:
 					return null;
 			}
@@ -101,6 +107,16 @@ namespace NextUIPlugin.Data {
 
 			dyn.targetActorId = targetActorId;
 			dyn.targetActorName = NextUIPlugin.objectTable.SearchById(targetActorId)?.Name.TextValue ?? "";
+
+			if (opcode == (ushort)ServerZoneIpcType.NpcSpawn) {
+				var bNpcName = NextUIPlugin.dataManager.GetExcelSheet<BNpcName>()?.GetRow(
+					((XivIpcNpcSpawn)strObj).bNPCName
+				);
+
+				if (bNpcName != null) {
+					dyn.name = bNpcName.Singular.ToDalamudString().TextValue;
+				}
+			}
 
 			return dyn;
 		}

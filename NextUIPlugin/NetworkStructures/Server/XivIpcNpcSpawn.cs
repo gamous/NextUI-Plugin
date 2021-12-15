@@ -37,10 +37,10 @@ namespace NextUIPlugin.NetworkStructures.Server {
 		public uint directorId;
 		public uint spawnerId;
 		public uint parentActorId;
-		public uint hPMax;
-		public uint hPCurr;
+		public uint hpMax;
+		public uint hp;
 		public uint displayFlags;
-		public ushort fateID;
+		public ushort fateId;
 		public ushort mPCurr;
 
 		[JsonIgnore]
@@ -74,13 +74,14 @@ namespace NextUIPlugin.NetworkStructures.Server {
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 6)]
 		public byte[] elementData;
 
+		[JsonIgnore]
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
 		public byte[] unknown5;
 
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 30)]
-		public StatusEffect[] effect;
+		public StatusEffect[] effects;
 
-		public Position pos;
+		public Position position;
 
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)]
 		public uint[] models;

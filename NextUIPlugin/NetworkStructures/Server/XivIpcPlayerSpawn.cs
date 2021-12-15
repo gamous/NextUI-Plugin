@@ -38,12 +38,12 @@ namespace NextUIPlugin.NetworkStructures.Server {
 		public uint directorId;
 		public uint ownerId;
 		public uint u22;
-		public uint hPMax;
-		public uint hPCurr;
+		public uint hpMax;
+		public uint hp;
 		public uint displayFlags;
-		public ushort fateID;
-		public ushort mPCurr;
-		public ushort mPMax;
+		public ushort fateId;
+		public ushort mana;
+		public ushort manaMax;
 		public ushort unk; // == 0
 		public ushort modelChara;
 		public ushort rotation;
@@ -66,22 +66,22 @@ namespace NextUIPlugin.NetworkStructures.Server {
 		public byte mountFeet;
 		public byte mountColor;
 		public byte scale;
-		
+
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 6)]
 		public byte[] elementData;
-		
+
 		[JsonIgnore]
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
 		public byte[] unknown5;
-		
+
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 30)]
 		public StatusEffect[] effects;
-		
-		public Position pos;
-		
+
+		public Position position;
+
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)]
 		public uint[] models;
-		
+
 		[JsonIgnore]
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
 		public byte[] nameRaw;
@@ -90,10 +90,10 @@ namespace NextUIPlugin.NetworkStructures.Server {
 		public string name {
 			get { return StructUtil.FixedUTF8String(nameRaw); }
 		}
-		
+
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 26)]
 		public byte[] look;
-		
+
 		[JsonIgnore]
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 6)]
 		public byte[] fcTagRaw;
