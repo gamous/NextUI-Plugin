@@ -31,22 +31,27 @@ namespace NextUIPlugin.NetworkStructures.Server {
 
 	[Serializable]
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
-	public unsafe struct XivIpcActionEffect1 {
-		public XivIpcActionEffectHeader Header;
+	public struct XivIpcActionEffect1 {
+		public XivIpcActionEffectHeader header;
 		public uint padding1;
 		public ushort padding2;
-		[MarshalAs(UnmanagedType.ByValArray, SizeConst=16)]
-		public uint[] Effects;
+
+		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+		public uint[] effects;
+
 		public ushort padding3;
 		public uint padding4;
-		public ulong targetId;
+
+		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 1)]
+		public ulong[] targetIds;
+
 		public uint padding5;
 	}
 
 	[Serializable]
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
-	public unsafe struct XivIpcActionEffect8 {
-		public XivIpcActionEffectHeader Header;
+	public struct XivIpcActionEffect8 {
+		public XivIpcActionEffectHeader header;
 		public uint padding1;
 		public ushort padding2;
 
@@ -57,31 +62,29 @@ namespace NextUIPlugin.NetworkStructures.Server {
 		public uint padding4;
 
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
-		public ulong[] targetId;
+		public ulong[] targetIds;
 
 		public uint effectFlags1;
 		public ushort effectFlags2;
 		public ushort padding5;
 		public uint padding6;
-
-		// public ulong[] targetIds {
-		// 	get { return StructUtil.FixedArray(targetId, 8); }
-		// }
 	}
 
 	[Serializable]
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
 	public struct XivIpcActionEffect16 {
-		public XivIpcActionEffectHeader Header;
+		public XivIpcActionEffectHeader header;
 		public uint padding1;
 		public ushort padding2;
+
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
 		public uint[] effects;
+
 		public ushort padding3;
 		public uint padding4;
 
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-		public ulong[] targetId;
+		public ulong[] targetIds;
 
 		public uint effectFlags1;
 		public ushort effectFlags2;
@@ -91,16 +94,19 @@ namespace NextUIPlugin.NetworkStructures.Server {
 
 	[Serializable]
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
-	public unsafe struct XivIpcActionEffect24 {
-		public XivIpcActionEffectHeader Header;
+	public struct XivIpcActionEffect24 {
+		public XivIpcActionEffectHeader header;
 		public uint padding1;
 		public ushort padding2;
-		public fixed uint Effects[384];
+
+		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 384)]
+		public uint[] effects;
+
 		public ushort padding3;
 		public uint padding4;
 
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 24)]
-		public ulong[] targetId;
+		public ulong[] targetIds;
 
 		public uint effectFlags1;
 		public ushort effectFlags2;
@@ -110,16 +116,19 @@ namespace NextUIPlugin.NetworkStructures.Server {
 
 	[Serializable]
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
-	public unsafe struct XivIpcActionEffect32 {
+	public struct XivIpcActionEffect32 {
 		public XivIpcActionEffectHeader Header;
 		public uint padding1;
 		public ushort padding2;
-		public fixed uint Effects[512];
+
+		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 512)]
+		public uint[] effects;
+
 		public ushort padding3;
 		public uint padding4;
 
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
-		public ulong[] targetId;
+		public ulong[] targetIds;
 
 		public uint effectFlags1;
 		public ushort effectFlags2;

@@ -8,25 +8,15 @@ namespace NextUIPlugin.Data {
 		public Vector3 Position;
 		public float Rotation;
 		public uint CurrentHp;
-
 		public uint MaxHp;
-
 		public uint CurrentMp;
-
 		public uint MaxMp;
-
 		public uint CurrentGp;
-
 		public uint MaxGp;
-
 		public uint CurrentCp;
-
 		public uint MaxCp;
-
 		public byte Level;
-
 		public string CompanyTag;
-
 		public uint TargetObjectId;
 
 		public static BattleCharaCopy FromBattleChara(BattleChara chara) {

@@ -140,11 +140,6 @@ namespace NextUIShared.Model {
 			Guid = Guid.NewGuid();
 			Url = url;
 			size = newSize;
-			VisibilityShow =
-				OverlayVisibility.InCombat |
-				OverlayVisibility.InGroup |
-				OverlayVisibility.InDeepDungeon |
-				OverlayVisibility.InPVP;
 			if (size.Width != 0 && size.Height != 0) {
 				return;
 			}

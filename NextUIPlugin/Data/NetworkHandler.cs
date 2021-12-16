@@ -40,9 +40,9 @@ namespace NextUIPlugin.Data {
 #if DEBUG
 			string opcName;
 			try {
-				opcName = ((ServerZoneIpcType)opcode).ToString("G");
+				opcName = ((ServerZoneIpcType)opcode).ToString("F");
 			}
-			catch (Exception e) {
+			catch (Exception) {
 				opcName = "unk";
 			}
 

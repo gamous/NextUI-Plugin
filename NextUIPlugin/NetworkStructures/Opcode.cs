@@ -60,6 +60,9 @@
 		ActionEffect32 = 0x023A, // updated 6.0
 
 		StatusEffectList = 0x02C5, // updated 6.0
+		StatusEffectList2 = 0x013E, // updated 6.0
+		StatusEffectList3 = 0x007A, // updated 6.0
+
 		ActorGauge = 0x0283, // updated 6.0
 		FreeCompanyInfo = 0x031C, // updated 6.0
 		FreeCompanyDialog = 0x036E, // updated 6.0
@@ -92,7 +95,7 @@
     * Client IPC Zone Type Codes.
     */
 	enum ClientZoneIpcType : ushort {
-		UpdatePositionHandler = 0x0346, // updated 6.0
+		UpdatePosition = 0x0346, // updated 6.0
 		ClientTrigger = 0x03AC, // updated 6.0
 		ChatHandler = 0x01CC, // updated 6.0
 		SetSearchInfoHandler = 0x03B1, // updated 6.0

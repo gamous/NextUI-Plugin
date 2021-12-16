@@ -22,7 +22,7 @@ namespace NextUIPlugin.Data {
 			return new {
 				id = actor.ObjectId,
 				name = actor.Name.TextValue,
-				position = actor.Position,
+				position = new { x = actor.Position.X, y = actor.Position.Y, z = actor.Position.Z },
 				hp = actor.CurrentHp,
 				hpMax = actor.MaxHp,
 				mana = actor.CurrentMp,
@@ -42,7 +42,7 @@ namespace NextUIPlugin.Data {
 			return new {
 				id = actor.ObjectId,
 				name = actor.Name.TextValue,
-				position = actor.Position,
+				position = new { x = actor.Position.X, y = actor.Position.Y, z = actor.Position.Z },
 				hp = actor.CurrentHP,
 				hpMax = actor.MaxHP,
 				mana = actor.CurrentMP,
@@ -50,7 +50,7 @@ namespace NextUIPlugin.Data {
 				jobId = actor.ClassJob.Id,
 				level = actor.Level,
 				worldId = actor.World.Id,
-				worldName = actor.World.GameData.Name.ToDalamudString(),
+				worldName = actor.World.GameData.Name.ToDalamudString().TextValue,
 				territoryId = actor.Territory.Id
 			};
 		}

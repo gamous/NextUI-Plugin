@@ -231,6 +231,15 @@ namespace NextUIPlugin.Socket {
 
 		#endregion
 
+		public void XivGetParty(IWebSocketConnection socket, SocketEvent ev) {
+			var currentParty = new List<object>();
+			foreach (var partyMember in NextUIPlugin.partyList) {
+				currentParty.Add(DataConverter.PartyMemberToObject(partyMember));
+			}
+
+			Respond(socket, ev, currentParty);
+		}
+
 		public void XivGetAction(IWebSocketConnection socket, SocketEvent ev) {
 			var objectId = ev.request?.requestFor ?? 0;
 			if (objectId == 0) {

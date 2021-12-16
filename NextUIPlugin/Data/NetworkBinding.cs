@@ -6,6 +6,7 @@ using Dalamud.Logging;
 using Dalamud.Utility;
 using Lumina.Excel.GeneratedSheets;
 using NextUIPlugin.NetworkStructures;
+using NextUIPlugin.NetworkStructures.Client;
 using NextUIPlugin.NetworkStructures.Server;
 
 namespace NextUIPlugin.Data {
@@ -25,10 +26,16 @@ namespace NextUIPlugin.Data {
 			{ (ushort)ServerZoneIpcType.ActionEffect32, "actionEffect32" },
 			{ (ushort)ServerZoneIpcType.EffectResult, "effectResult" },
 			{ (ushort)ServerZoneIpcType.EffectResultBasic, "effectResultBasic" },
+			{ (ushort)ServerZoneIpcType.StatusEffectList, "statusEffectList" },
+			{ (ushort)ServerZoneIpcType.StatusEffectList2, "statusEffectList2" },
+			{ (ushort)ServerZoneIpcType.StatusEffectList3, "statusEffectList3" },
 			{ (ushort)ServerZoneIpcType.UpdateHpMpTp, "updateHpMpTp" },
 			{ (ushort)ServerZoneIpcType.NpcSpawn, "npcSpawn" },
 			{ (ushort)ServerZoneIpcType.PlayerSpawn, "playerSpawn" },
 			{ (ushort)ServerZoneIpcType.ObjectDespawn, "objectDespawn" },
+			// Client zone events
+			{ (ushort)ClientZoneIpcType.UpdatePosition, "updatePosition" },
+			{ (ushort)ClientZoneIpcType.UpdatePositionInstance, "updatePositionInstance" },
 		};
 
 		public static dynamic ToDynamic(object obj) {
@@ -91,6 +98,15 @@ namespace NextUIPlugin.Data {
 				case (ushort)ServerZoneIpcType.EffectResultBasic:
 					strObj = Marshal.PtrToStructure<XivIpcEffectResultBasic>(dataPtr);
 					break;
+				case (ushort)ServerZoneIpcType.StatusEffectList:
+					strObj = Marshal.PtrToStructure<XivIpcStatusEffectList>(dataPtr);
+					break;
+				case (ushort)ServerZoneIpcType.StatusEffectList2:
+					strObj = Marshal.PtrToStructure<XivIpcStatusEffectList2>(dataPtr);
+					break;
+				case (ushort)ServerZoneIpcType.StatusEffectList3:
+					strObj = Marshal.PtrToStructure<XivIpcStatusEffectList3>(dataPtr);
+					break;
 				case (ushort)ServerZoneIpcType.UpdateHpMpTp:
 					strObj = Marshal.PtrToStructure<XivIpcUpdateHpMpTp>(dataPtr);
 					break;
@@ -102,6 +118,13 @@ namespace NextUIPlugin.Data {
 					break;
 				case (ushort)ServerZoneIpcType.ObjectDespawn:
 					strObj = Marshal.PtrToStructure<XivIpcObjectDespawn>(dataPtr);
+					break;
+				// Client side
+				case (ushort)ClientZoneIpcType.UpdatePosition:
+					strObj = Marshal.PtrToStructure<XivIpcUpdatePosition>(dataPtr);
+					break;
+				case (ushort)ClientZoneIpcType.UpdatePositionInstance:
+					strObj = Marshal.PtrToStructure<XivIpcUpdatePositionInstance>(dataPtr);
 					break;
 				default:
 					return null;
