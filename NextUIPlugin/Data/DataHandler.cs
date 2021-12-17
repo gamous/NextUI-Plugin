@@ -179,6 +179,11 @@ namespace NextUIPlugin.Data {
 		 * Watch common differences on battle actors and report any changes to it (ignores position and rotation)
 		 */
 		protected void WatchBattleChara() {
+			// Do not process if player is not loaded
+			if (NextUIPlugin.clientState.LocalPlayer == null) {
+				return;
+			}
+
 			foreach (var (charaCopy, socketList) in NextUIPlugin.socketServer.savedChara) {
 				var obj = NextUIPlugin.objectTable.SearchById(charaCopy.ObjectId);
 				if (obj is BattleChara chara) {
