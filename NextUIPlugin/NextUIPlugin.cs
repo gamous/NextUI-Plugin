@@ -40,6 +40,7 @@ namespace NextUIPlugin {
 		[PluginService] public static PartyList partyList { get; set; } = null!;
 		[PluginService] public static SigScanner sigScanner { get; set; } = null!;
 		[PluginService] public static ChatGui chatGui { get; set; } = null!;
+		[PluginService] public static GameGui gameGui { get; set; } = null!;
 		// ReSharper enable InconsistentNaming
 		// ReSharper enable ReplaceAutoPropertyWithComputedProperty
 

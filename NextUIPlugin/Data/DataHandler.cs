@@ -1,22 +1,45 @@
-﻿using System;
+﻿/*
+Code regarding Enemy list borrowed from:
+
+Copyright(c) 2021 DevlUI (https://github.com/delvui/delvui)
+Modifications Copyright(c) 2021 NextUI
+
+Full License: https://github.com/DelvUI/DelvUI/blob/main/LICENSE
+*/
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Game;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Memory;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 using Fleck;
-using NextUIPlugin.Service;
-using NextUIPlugin.Socket;
 using SpellAction = Lumina.Excel.GeneratedSheets.Action;
 
 namespace NextUIPlugin.Data {
-	public class DataHandler : IDisposable {
+	public unsafe class DataHandler : IDisposable {
+		protected const int EnemyListInfoIndex = 19;
+		protected const int EnemyListNamesIndex = 17;
+
 		protected readonly Dictionary<string, (uint?, string?)> targets = new();
 		protected readonly Dictionary<string, bool> casts = new();
 		protected List<uint> party = new();
+		protected List<uint> enmity = new();
+		// protected AgentHUD* agentHud;
+		protected RaptureAtkModule* raptureAtkModule;
+		protected AtkUnitBase* enemyList;
 
 		public DataHandler() {
+			var uiModule = (UIModule*)NextUIPlugin.gameGui.GetUIModule();
+			// agentHud = uiModule->GetAgentModule()->GetAgentHUD();
+			raptureAtkModule = uiModule->GetRaptureAtkModule();
+			enemyList = (AtkUnitBase*)NextUIPlugin.gameGui.GetAddonByName("_EnemyList", 1);
+
 			NextUIPlugin.framework.Update += FrameworkOnUpdate;
 			NextUIPlugin.chatGui.ChatMessage += ChatGuiOnChatMessage;
 			NextUIPlugin.clientState.Login += ClientStateOnLogin;
@@ -24,53 +47,102 @@ namespace NextUIPlugin.Data {
 			NextUIPlugin.clientState.TerritoryChanged += ClientStateOnTerritoryChanged;
 		}
 
-		protected void ClientStateOnTerritoryChanged(object? sender, ushort e) {
-			NextUIPlugin.socketServer.Broadcast(new {
-				@event = "zoneChanged",
-				zone = e
-			});
-		}
-
-		protected void ClientStateOnLogout(object? sender, EventArgs e) {
-			NextUIPlugin.socketServer.Broadcast(new {
-				@event = "playerLogout",
-			});
-		}
-
-		protected void ClientStateOnLogin(object? sender, EventArgs e) {
-			var player = NextUIPlugin.clientState.LocalPlayer;
-			NextUIPlugin.socketServer.Broadcast(new {
-				@event = "playerLogin",
-				player = player != null ? DataConverter.ActorToObject(player) : null
-			});
-		}
-
-		protected void ChatGuiOnChatMessage(
-			XivChatType type,
-			uint senderId,
-			ref SeString sender,
-			ref SeString message,
-			ref bool isHandled
-		) {
-			var sockets = NextUIPlugin.socketServer.GetEventSubscriptions("chatMessage");
-			if (sockets != null && sockets.Count > 0) {
-				NextUIPlugin.socketServer.BroadcastTo(new {
-					@event = "chatMessage",
-					data = new {
-						typeId = (ushort)type,
-						senderId,
-						sender = sender.TextValue,
-						message = message.TextValue,
-					}
-				}, sockets);
-			}
-		}
-
 		protected void FrameworkOnUpdate(Framework framework) {
 			WatchTargets();
 			WatchBattleChara();
 			WatchParty();
+			WatchEnmityList();
 		}
+
+		#region Enmity
+
+		protected void WatchEnmityList() {
+			var sockets = NextUIPlugin.socketServer.GetEventSubscriptions("enmityListChanged");
+			if (sockets == null || sockets.Count == 0) {
+				return;
+			}
+
+			var enemyArray = GetEnemyArray();
+			var enemyCount = GetEnemyCount(enemyArray);
+
+			var currentEnmity = GetEnemyObjectList(enemyArray, enemyCount);
+			if (currentEnmity.Count != enmity.Count || !CompareList(enmity, currentEnmity)) {
+				enmity = currentEnmity;
+				BroadcastEnmityListChanged(sockets, enmity);
+			}
+
+			// For now we dont use that
+			// var letter = GetEnemyLetterForIndex(i);
+			// var enmityLevel = GetEnmityLevelForIndex(i);
+		}
+
+		protected NumberArrayData* GetEnemyArray() {
+			return raptureAtkModule->AtkModule.AtkArrayDataHolder.NumberArrays[EnemyListInfoIndex];
+		}
+
+		protected int GetEnemyCount(NumberArrayData* numberArrayData) {
+			return numberArrayData->AtkArrayData.Size < 2 ? 0 : numberArrayData->IntArray[1];
+		}
+
+		protected List<uint> GetEnemyObjectList(NumberArrayData* numberArrayData, int enemyCount) {
+			var output = new List<uint>();
+			for (var i = 0; i < enemyCount; i++) {
+				var index = 8 + (i * 6);
+				if (numberArrayData->AtkArrayData.Size <= index) {
+					break;
+				}
+
+				var objectId = (uint)numberArrayData->IntArray[index];
+				output.Add(objectId);
+			}
+
+			return output;
+		}
+
+		protected string? GetEnemyLetterForIndex(int index) {
+			if (raptureAtkModule == null ||
+			    raptureAtkModule->AtkModule.AtkArrayDataHolder.StringArrayCount <= EnemyListNamesIndex) {
+				return null;
+			}
+
+			var stringArrayData = raptureAtkModule->AtkModule.AtkArrayDataHolder.StringArrays[EnemyListNamesIndex];
+
+			var i = index * 2;
+			if (stringArrayData->AtkArrayData.Size <= i) {
+				return null;
+			}
+
+			string name = MemoryHelper
+				.ReadSeStringNullTerminated(new IntPtr(stringArrayData->StringArray[i]))
+				.ToString();
+
+			if (name.Length == 0) {
+				return null;
+			}
+
+			var letterSymbol = name[0];
+			var letter = (char)(65 + letterSymbol - 57457);
+			return letter.ToString();
+		}
+
+		protected int GetEnmityLevelForIndex(int index) {
+			// gets enmity level by checking texture in enemy list addon
+			if (enemyList == null || enemyList->RootNode == null) {
+				return 0;
+			}
+
+			var id = index == 0 ? 2 : 20000 + index; // makes no sense but it is what it is (blame SE)
+			var node = enemyList->GetNodeById((uint)id);
+			if (node == null || node->GetComponent() == null) {
+				return 0;
+			}
+
+			var imageNode = (AtkImageNode*)node->GetComponent()->UldManager.SearchNodeById(13);
+
+			return imageNode == null ? 0 : Math.Min(4, imageNode->PartId + 1);
+		}
+
+		#endregion
 
 		protected void WatchParty() {
 			var sockets = NextUIPlugin.socketServer.GetEventSubscriptions("partyChanged");
@@ -87,16 +159,20 @@ namespace NextUIPlugin.Data {
 				return;
 			}
 
-			var firstNotSecond = party.Except(currentParty).ToList();
-			var secondNotFirst = currentParty.Except(party).ToList();
-
-			var eq = !firstNotSecond.Any() && !secondNotFirst.Any();
+			var eq = CompareList(party, currentParty);
 			if (eq) {
 				return;
 			}
 
 			BroadcastPartyChanged(sockets);
 			party = currentParty;
+		}
+
+		protected static bool CompareList<T>(List<T> a, List<T> b) {
+			var firstNotSecond = a.Except(b).ToList();
+			var secondNotFirst = b.Except(a).ToList();
+
+			return !firstNotSecond.Any() && !secondNotFirst.Any();
 		}
 
 		/**
@@ -185,6 +261,22 @@ namespace NextUIPlugin.Data {
 			}, sockets);
 		}
 
+		protected static void BroadcastEnmityListChanged(List<IWebSocketConnection> sockets, List<uint> enmity) {
+			var currentEnmity = new List<object>();
+			foreach (var enemyId in enmity) {
+				var enemy = NextUIPlugin.objectTable.SearchById(enemyId);
+				if (enemy == null || enemy is not BattleChara chara) {
+					continue;
+				}
+				currentEnmity.Add(DataConverter.ActorToObject(chara));
+			}
+
+			NextUIPlugin.socketServer.BroadcastTo(new {
+				@event = "enmityListChanged",
+				data = currentEnmity,
+			}, sockets);
+		}
+
 		protected static void BroadcastActorChanged(
 			uint actorId,
 			bool removed,
@@ -199,6 +291,48 @@ namespace NextUIPlugin.Data {
 					actor = chara != null ? DataConverter.ActorToObject(chara) : null
 				}
 			}, sockets);
+		}
+
+		protected void ClientStateOnTerritoryChanged(object? sender, ushort e) {
+			NextUIPlugin.socketServer.Broadcast(new {
+				@event = "zoneChanged",
+				zone = e
+			});
+		}
+
+		protected void ClientStateOnLogout(object? sender, EventArgs e) {
+			NextUIPlugin.socketServer.Broadcast(new {
+				@event = "playerLogout",
+			});
+		}
+
+		protected void ClientStateOnLogin(object? sender, EventArgs e) {
+			var player = NextUIPlugin.clientState.LocalPlayer;
+			NextUIPlugin.socketServer.Broadcast(new {
+				@event = "playerLogin",
+				player = player != null ? DataConverter.ActorToObject(player) : null
+			});
+		}
+
+		protected void ChatGuiOnChatMessage(
+			XivChatType type,
+			uint senderId,
+			ref SeString sender,
+			ref SeString message,
+			ref bool isHandled
+		) {
+			var sockets = NextUIPlugin.socketServer.GetEventSubscriptions("chatMessage");
+			if (sockets != null && sockets.Count > 0) {
+				NextUIPlugin.socketServer.BroadcastTo(new {
+					@event = "chatMessage",
+					data = new {
+						typeId = (ushort)type,
+						senderId,
+						sender = sender.TextValue,
+						message = message.TextValue,
+					}
+				}, sockets);
+			}
 		}
 
 		#endregion
