@@ -16,9 +16,9 @@ using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Memory;
 using FFXIVClientStructs.FFXIV.Client.UI;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Fleck;
+using NextUIPlugin.Data.Handlers;
 using SpellAction = Lumina.Excel.GeneratedSheets.Action;
 
 namespace NextUIPlugin.Data {
@@ -27,9 +27,11 @@ namespace NextUIPlugin.Data {
 		protected const int EnemyListNamesIndex = 17;
 
 		protected readonly Dictionary<string, (uint?, string?)> targets = new();
-		protected readonly Dictionary<string, bool> casts = new();
 		protected List<uint> party = new();
+		protected uint partyLeader;
+
 		protected List<uint> enmity = new();
+
 		// protected AgentHUD* agentHud;
 		protected RaptureAtkModule* raptureAtkModule;
 		protected AtkUnitBase* enemyList;
@@ -52,6 +54,8 @@ namespace NextUIPlugin.Data {
 			WatchBattleChara();
 			WatchParty();
 			WatchEnmityList();
+			WatchEnmityList();
+			UiVisibility.Watch();
 		}
 
 		#region Enmity
@@ -63,6 +67,10 @@ namespace NextUIPlugin.Data {
 			}
 
 			var enemyArray = GetEnemyArray();
+			if (enemyArray == null) {
+				return;
+			}
+
 			var enemyCount = GetEnemyCount(enemyArray);
 
 			var currentEnmity = GetEnemyObjectList(enemyArray, enemyCount);
@@ -153,9 +161,10 @@ namespace NextUIPlugin.Data {
 			var currentParty = NextUIPlugin.partyList
 				.Select(partyMember => partyMember.ObjectId).ToList();
 
-			if (party.Count != currentParty.Count) {
-				BroadcastPartyChanged(sockets);
+			if (party.Count != currentParty.Count || partyLeader != NextUIPlugin.partyList.PartyLeaderIndex) {
+				partyLeader = NextUIPlugin.partyList.PartyLeaderIndex;
 				party = currentParty;
+				BroadcastPartyChanged(sockets, partyLeader);
 				return;
 			}
 
@@ -164,7 +173,7 @@ namespace NextUIPlugin.Data {
 				return;
 			}
 
-			BroadcastPartyChanged(sockets);
+			BroadcastPartyChanged(sockets, NextUIPlugin.partyList.PartyLeaderIndex);
 			party = currentParty;
 		}
 
@@ -254,7 +263,7 @@ namespace NextUIPlugin.Data {
 			}, sockets);
 		}
 
-		protected static void BroadcastPartyChanged(List<IWebSocketConnection> sockets) {
+		protected static void BroadcastPartyChanged(List<IWebSocketConnection> sockets, uint partyLeader) {
 			var currentParty = new List<object>();
 			foreach (var partyMember in NextUIPlugin.partyList) {
 				currentParty.Add(DataConverter.PartyMemberToObject(partyMember));
@@ -262,7 +271,7 @@ namespace NextUIPlugin.Data {
 
 			NextUIPlugin.socketServer.BroadcastTo(new {
 				@event = "partyChanged",
-				data = currentParty,
+				data = new { currentParty, partyLeader },
 			}, sockets);
 		}
 
@@ -273,6 +282,7 @@ namespace NextUIPlugin.Data {
 				if (enemy == null || enemy is not BattleChara chara) {
 					continue;
 				}
+
 				currentEnmity.Add(DataConverter.ActorToObject(chara));
 			}
 
@@ -317,6 +327,8 @@ namespace NextUIPlugin.Data {
 				@event = "playerLogin",
 				player = player != null ? DataConverter.ActorToObject(player) : null
 			});
+
+			UiVisibility.Initialize();
 		}
 
 		protected void ChatGuiOnChatMessage(

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Runtime.InteropServices;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Logging;
 using Dalamud.Utility;
 using Lumina.Excel.GeneratedSheets;
@@ -132,8 +133,13 @@ namespace NextUIPlugin.Data {
 
 			var dyn = ToDynamic(strObj);
 
+			var target = NextUIPlugin.objectTable.SearchById(targetActorId);
 			dyn.targetActorId = targetActorId;
-			dyn.targetActorName = NextUIPlugin.objectTable.SearchById(targetActorId)?.Name.TextValue ?? "";
+			if (target != null && target is BattleChara chara) {
+				dyn.targetActorName = target.Name.TextValue ?? "";
+				// dyn.effects = chara.StatusList[0].
+			}
+
 
 			if (opcode == (ushort)ServerZoneIpcType.NpcSpawn) {
 				var bNpcName = NextUIPlugin.dataManager.GetExcelSheet<BNpcName>()?.GetRow(

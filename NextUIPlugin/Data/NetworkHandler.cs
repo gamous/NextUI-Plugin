@@ -47,7 +47,7 @@ namespace NextUIPlugin.Data {
 			}
 
 			if (!ignoredOpcodes.Contains(opcode)) {
-				PluginLog.Log($"NETWORK 0x{opcode:X4}: {opcName} - {dir} - {targetActorId}");
+				//PluginLog.Log($"NETWORK 0x{opcode:X4}: {opcName} - {dir} - {targetActorId}");
 			}
 
 			var wholePtr = dataPtr - 0x20;
@@ -84,9 +84,11 @@ namespace NextUIPlugin.Data {
 			if (dyn != null) {
 				NextUIPlugin.socketServer.BroadcastTo(new {
 					@event = eventName,
-					opcode,
-					dir,
-					data = dyn
+					data = new {
+						opcode,
+						dir,
+						data = dyn
+					}
 				}, sockets);
 			}
 		}

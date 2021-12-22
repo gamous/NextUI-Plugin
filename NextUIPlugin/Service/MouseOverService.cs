@@ -21,8 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using Dalamud.Hooking;
 using Lumina.Excel;
 using System;
-using Dalamud.Data;
-using Dalamud.Game;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
@@ -38,9 +36,7 @@ namespace NextUIPlugin.Service {
 		long arg1, uint arg2, ulong arg3, long arg4, uint arg5, uint arg6, int arg7, void* arg8
 	);
 
-	public class MouseOverService {
-		protected SigScanner sigScanner;
-		protected DataManager dataManager;
+	public class MouseOverService : IDisposable {
 #if DEBUG
 		protected IntPtr setMouseOverActorId;
 		protected Hook<OnSetMouseoverActorId> mouseOverActorIdHook;
@@ -49,46 +45,44 @@ namespace NextUIPlugin.Service {
 		protected Hook<OnRequestAction> requestActionHook;
 
 		protected ExcelSheet<Action>? sheet;
-		public GameObject? Target = null;
+		public GameObject? target = null;
 
-		public unsafe MouseOverService(SigScanner sigScanner, DataManager dataManager) {
-			this.sigScanner = sigScanner;
-			this.dataManager = dataManager;
-
+		public unsafe MouseOverService() {
 #if DEBUG
-			setMouseOverActorId = sigScanner.ScanText(
+			setMouseOverActorId = NextUIPlugin.sigScanner.ScanText(
 				"48 89 91 ?? ?? ?? ?? C3 CC CC CC CC CC CC CC CC 48 89 5C 24 ?? 55 56 57 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 48 8D B1 ?? ?? ?? ?? 44 89 44 24 ?? 48 8B EA 48 8B D9 48 8B CE 48 8D 15 ?? ?? ?? ?? 41 B9 ?? ?? ?? ??"
 			);
-			mouseOverActorIdHook = new Hook<OnSetMouseoverActorId>(
-				setMouseOverActorId,
-				new OnSetMouseoverActorId(HandleMouseOverActorId)
-			);
+			mouseOverActorIdHook = new Hook<OnSetMouseoverActorId>(setMouseOverActorId, HandleMouseOverActorId);
 			mouseOverActorIdHook.Enable();
 #endif
-			requestAction = sigScanner.ScanText(
+			requestAction = NextUIPlugin.sigScanner.ScanText(
 				"E8 ?? ?? ?? ?? 89 9F ?? ?? ?? ?? EB 0A C7 87 ?? ?? ?? ?? ?? ?? ?? ??"
 			);
-			requestActionHook = new Hook<OnRequestAction>(requestAction, new OnRequestAction(HandleRequestAction));
+			requestActionHook = new Hook<OnRequestAction>(requestAction, HandleRequestAction);
 			requestActionHook.Enable();
 
-			sheet = dataManager.GetExcelSheet<Action>();
+			sheet = NextUIPlugin.dataManager.GetExcelSheet<Action>();
 		}
+
 #if DEBUG
 		protected void HandleMouseOverActorId(long arg1, long arg2) {
 			PluginLog.Log("MO: {0} - {1}", arg1, arg2);
 			mouseOverActorIdHook.Original(arg1, arg2);
 		}
 #endif
+
 		protected unsafe ulong HandleRequestAction(
 			long arg1, uint arg2, ulong arg3, long arg4, uint arg5, uint arg6, int arg7, void* arg8
 		) {
+#if DEBUG
 			PluginLog.Log(
 				"ACTION: {0} - {1} - {2} - {3} - {4} - {5} - {6}}",
 				arg1, arg2, arg3, arg4, arg5, arg6, arg7
 			);
+#endif
 
-			if (IsActionValid(arg3, Target)) {
-				return requestActionHook.Original(arg1, arg2, arg3, Target!.ObjectId, arg5, arg6, arg7, arg8);
+			if (IsActionValid(arg3, target)) {
+				return requestActionHook.Original(arg1, arg2, arg3, target!.ObjectId, arg5, arg6, arg7, arg8);
 			}
 
 			return requestActionHook.Original(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
@@ -117,6 +111,13 @@ namespace NextUIPlugin.Service {
 			}
 
 			return action.CanTargetHostile;
+		}
+
+		public void Dispose() {
+			requestActionHook?.Dispose();
+#if DEBUG
+			mouseOverActorIdHook?.Dispose();
+#endif
 		}
 	}
 }

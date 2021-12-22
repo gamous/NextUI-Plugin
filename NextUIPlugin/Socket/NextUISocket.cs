@@ -2,8 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
+using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Logging;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using Fleck;
 using Lumina.Excel;
 using Newtonsoft.Json;
@@ -14,7 +19,15 @@ using Status = Lumina.Excel.GeneratedSheets.Status;
 // ReSharper disable UnusedMember.Global
 // ReSharper disable InconsistentNaming
 namespace NextUIPlugin.Socket {
-	public class NextUISocket : IDisposable {
+	public unsafe class NextUISocket : IDisposable {
+		protected static class Signatures {
+			internal const string SendTellCommand = "E8 ?? ?? ?? ?? B3 01 48 8B 74 24 ??";
+		}
+
+		protected delegate void SendTellCommandDelegate(
+			long raptureModulePointer, char* characterName, ushort homeWorldId
+		);
+
 		public int Port { get; set; }
 		protected WebSocketServer? server;
 
@@ -24,11 +37,25 @@ namespace NextUIPlugin.Socket {
 
 		protected readonly ExcelSheet<Action>? actionSheet;
 		protected readonly ExcelSheet<Status>? statusSheet;
+		protected readonly ActionManager* actionManager;
+
+		protected SendTellCommandDelegate? SendTellCommand { get; }
+		protected readonly UIModule* uiModule;
 
 		public NextUISocket(int port) {
 			Port = port;
 			actionSheet = NextUIPlugin.dataManager.GetExcelSheet<Action>();
 			statusSheet = NextUIPlugin.dataManager.GetExcelSheet<Status>();
+			actionManager = ActionManager.Instance();
+			uiModule = (UIModule*)NextUIPlugin.gameGui.GetUIModule();
+
+			var sendTellPtr = NextUIPlugin.sigScanner.ScanText(Signatures.SendTellCommand);
+			if (sendTellPtr != IntPtr.Zero) {
+				SendTellCommand = Marshal.GetDelegateForFunctionPointer<SendTellCommandDelegate>(sendTellPtr);
+			}
+			else {
+				PluginLog.Warning("Signature for Send Tell Not found");
+			}
 		}
 
 		public void Start() {
@@ -98,6 +125,97 @@ namespace NextUIPlugin.Socket {
 				Respond(socket, ev, new { success = false, message = $"Unrecognized data: {data} {err}" });
 			}
 		}
+
+		#region ContextMenu Actions
+
+		public void XivExamine(IWebSocketConnection socket, SocketEvent ev) {
+			var objectId = ev.request?.requestFor ?? 0;
+			if (objectId == 0) {
+				return;
+			}
+
+			var obj = NextUIPlugin.objectTable.SearchById(objectId);
+			if (obj != null && obj.ObjectKind == ObjectKind.Player) {
+				NextUIPlugin.xivCommon.Functions.Examine.OpenExamineWindow(obj.ObjectId);
+
+				Respond(socket, ev, new { success = true });
+				return;
+			}
+
+			Respond(socket, ev, new { success = false, message = "Invalid object" });
+		}
+
+		public void XivLeaveParty(IWebSocketConnection socket, SocketEvent ev) {
+			if (NextUIPlugin.partyList.Length == 0) {
+				Respond(socket, ev, new { success = false, message = "Not in party" });
+				return;
+			}
+
+			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/leave");
+
+			Respond(socket, ev, new { success = true });
+		}
+
+		public void XivDisbandParty(IWebSocketConnection socket, SocketEvent ev) {
+			if (NextUIPlugin.partyList.Length == 0) {
+				Respond(socket, ev, new { success = false, message = "Not in party" });
+				return;
+			}
+
+			var partyLeaderIndex = (int)NextUIPlugin.partyList.PartyLeaderIndex;
+			var partyLeaderId = NextUIPlugin.partyList[partyLeaderIndex]?.ObjectId;
+			if (partyLeaderId != NextUIPlugin.clientState.LocalPlayer?.ObjectId) {
+				Respond(socket, ev, new { success = false, message = "Not a party leader" });
+				return;
+			}
+
+			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/partycmd breakup");
+
+			Respond(socket, ev, new { success = true });
+		}
+
+		/**
+		 * Open emote window (id: 17)
+		 * Ref: https://github.com/xivapi/ffxiv-datamining/blob/master/csv/MainCommand.csv
+		 */
+		public void XivShowEmoteWindow(IWebSocketConnection socket, SocketEvent ev) {
+			actionManager->UseAction(ActionType.MainCommand, 17);
+
+			Respond(socket, ev, new { success = true });
+		}
+
+		/**
+		 * Open signs window (id: 18)
+		 */
+		public void XivShowSignsWindow(IWebSocketConnection socket, SocketEvent ev) {
+			actionManager->UseAction(ActionType.MainCommand, 18);
+
+			Respond(socket, ev, new { success = true });
+		}
+
+		public void XivSendTell(IWebSocketConnection socket, SocketEvent ev) {
+			var objectId = ev.request?.requestFor ?? 0;
+			if (objectId == 0) {
+				return;
+			}
+
+			var obj = NextUIPlugin.objectTable.SearchById(objectId);
+
+			if (obj != null && SendTellCommand != null && obj is PlayerCharacter player) {
+				var raptureShellModulePointer = (IntPtr)uiModule->GetRaptureShellModule();
+				var rap = raptureShellModulePointer.ToInt64();
+
+				var gameObject = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)player.Address;
+				SendTellCommand(rap, (char*)gameObject->Name, (ushort)player.HomeWorld.Id);
+
+				Respond(socket, ev, new { success = true });
+				return;
+			}
+
+			Respond(socket, ev, new { success = false, message = "Invalid object" });
+		}
+
+		#endregion
 
 		#region Event Subscription
 
@@ -376,15 +494,18 @@ namespace NextUIPlugin.Socket {
 
 		public void SetMouseOverEx(IWebSocketConnection socket, SocketEvent ev, bool set = true) {
 			try {
-				var targetId = uint.Parse(ev.target);
-				var target = NextUIPlugin.objectTable.SearchById(targetId);
-				if (target == null) {
-					Respond(socket, ev, new { success = false, message = "Invalid object ID" });
-					return;
-				}
+				if (set) {
+					var targetId = uint.Parse(ev.target);
+					var target = NextUIPlugin.objectTable.SearchById(targetId);
+					if (target == null) {
+						Respond(socket, ev, new { success = false, message = "Invalid object ID" });
+						return;
+					}
 
-				if (NextUIPlugin.mouseOverService != null) {
-					NextUIPlugin.mouseOverService.Target = set ? target : null;
+					NextUIPlugin.mouseOverService.target = target;
+				}
+				else {
+					NextUIPlugin.mouseOverService.target = null;
 				}
 
 				Respond(socket, ev, new { success = true });

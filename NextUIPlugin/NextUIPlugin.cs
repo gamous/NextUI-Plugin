@@ -1,4 +1,5 @@
-﻿using Dalamud.Data;
+﻿using System.Security;
+using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
@@ -16,7 +17,9 @@ using NextUIPlugin.Data;
 using NextUIPlugin.Gui;
 using NextUIPlugin.Service;
 using NextUIPlugin.Socket;
+using XivCommon;
 
+[assembly:AllowPartiallyTrustedCallers]
 namespace NextUIPlugin {
 	// ReSharper disable once InconsistentNaming
 	// ReSharper disable once ClassNeverInstantiated.Global
@@ -45,19 +48,19 @@ namespace NextUIPlugin {
 		// ReSharper enable ReplaceAutoPropertyWithComputedProperty
 
 		/** Internal services */
-		public static MouseOverService? mouseOverService;
-
-		// ReSharper disable once InconsistentNaming
+		public static MouseOverService mouseOverService = null!;
+		public static GuiManager guiManager = null!;
 		public static NextUISocket socketServer = null!;
 
 		public readonly DataHandler dataHandler;
 		public readonly NetworkHandler networkHandler;
-		public static GuiManager guiManager = null!;
+		public static XivCommonBase xivCommon { get; set; } = null!;
 
 		public NextUIPlugin() {
 			pluginInterface.UiBuilder.DisableCutsceneUiHide = true;
 
-			mouseOverService = new MouseOverService(sigScanner, dataManager);
+			xivCommon = new XivCommonBase();
+			mouseOverService = new MouseOverService();
 
 			configuration = pluginInterface.GetPluginConfig() as NextUIConfiguration ?? new NextUIConfiguration();
 			configuration.PrepareConfiguration();
@@ -104,8 +107,10 @@ namespace NextUIPlugin {
 			dataHandler.Dispose();
 			socketServer.Dispose();
 			guiManager?.Dispose();
-
 			MicroPluginService.Shutdown();
+			mouseOverService.Dispose();
+
+			xivCommon?.Dispose();
 		}
 
 		protected void OnCommandDebugCombo(string command, string arguments) {
