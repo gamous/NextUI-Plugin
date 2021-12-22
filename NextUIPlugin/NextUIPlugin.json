@@ -7,7 +7,7 @@
     "Tags": [
         "UI"
     ],
-    "AssemblyVersion": "0.2.4.0",
+    "AssemblyVersion": "0.2.5.0",
     "ApplicableVersion": "any",
     "Punchline": "OverlayPlugin for Dalamud",
     "DalamudApiLevel": 5

@@ -7,7 +7,6 @@ using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Logging;
-using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using Fleck;
 using Lumina.Excel;
@@ -37,7 +36,6 @@ namespace NextUIPlugin.Socket {
 
 		protected readonly ExcelSheet<Action>? actionSheet;
 		protected readonly ExcelSheet<Status>? statusSheet;
-		protected readonly ActionManager* actionManager;
 
 		protected SendTellCommandDelegate? SendTellCommand { get; }
 		protected readonly UIModule* uiModule;
@@ -46,7 +44,6 @@ namespace NextUIPlugin.Socket {
 			Port = port;
 			actionSheet = NextUIPlugin.dataManager.GetExcelSheet<Action>();
 			statusSheet = NextUIPlugin.dataManager.GetExcelSheet<Status>();
-			actionManager = ActionManager.Instance();
 			uiModule = (UIModule*)NextUIPlugin.gameGui.GetUIModule();
 
 			var sendTellPtr = NextUIPlugin.sigScanner.ScanText(Signatures.SendTellCommand);
@@ -72,7 +69,7 @@ namespace NextUIPlugin.Socket {
 					if (player != null) {
 						socket.Send(JsonConvert.SerializeObject(new {
 							@event = "playerLogin",
-							player = DataConverter.ActorToObject(player)
+							data = DataConverter.ActorToObject(player)
 						}));
 					}
 				};
@@ -175,20 +172,20 @@ namespace NextUIPlugin.Socket {
 		}
 
 		/**
-		 * Open emote window (id: 17)
+		 * Open emote window
 		 * Ref: https://github.com/xivapi/ffxiv-datamining/blob/master/csv/MainCommand.csv
 		 */
 		public void XivShowEmoteWindow(IWebSocketConnection socket, SocketEvent ev) {
-			actionManager->UseAction(ActionType.MainCommand, 17);
+			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/emotelist");
 
 			Respond(socket, ev, new { success = true });
 		}
 
 		/**
-		 * Open signs window (id: 18)
+		 * Open signs window
 		 */
 		public void XivShowSignsWindow(IWebSocketConnection socket, SocketEvent ev) {
-			actionManager->UseAction(ActionType.MainCommand, 18);
+			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/enemysign");
 
 			Respond(socket, ev, new { success = true });
 		}
@@ -440,7 +437,7 @@ namespace NextUIPlugin.Socket {
 				ov.acceptFocus = ev.accept;
 			}
 
-			Respond(socket, ev, new { success = false, message = msg });
+			Respond(socket, ev, new { success = true, message = msg });
 			PluginLog.Log(msg);
 		}
 

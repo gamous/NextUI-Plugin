@@ -311,7 +311,7 @@ namespace NextUIPlugin.Data {
 		protected void ClientStateOnTerritoryChanged(object? sender, ushort e) {
 			NextUIPlugin.socketServer.Broadcast(new {
 				@event = "zoneChanged",
-				zone = e
+				data = e
 			});
 		}
 
@@ -325,7 +325,7 @@ namespace NextUIPlugin.Data {
 			var player = NextUIPlugin.clientState.LocalPlayer;
 			NextUIPlugin.socketServer.Broadcast(new {
 				@event = "playerLogin",
-				player = player != null ? DataConverter.ActorToObject(player) : null
+				data = player != null ? DataConverter.ActorToObject(player) : null
 			});
 
 			UiVisibility.Initialize();
