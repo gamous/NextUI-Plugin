@@ -3,16 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
+using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Logging;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Fleck;
 using Lumina.Excel;
 using Newtonsoft.Json;
 using NextUIPlugin.Data;
 using Action = Lumina.Excel.GeneratedSheets.Action;
+using BattleChara = Dalamud.Game.ClientState.Objects.Types.BattleChara;
 using Status = Lumina.Excel.GeneratedSheets.Status;
 
 // ReSharper disable UnusedMember.Global
@@ -142,8 +147,34 @@ namespace NextUIPlugin.Socket {
 			Respond(socket, ev, new { success = false, message = "Invalid object" });
 		}
 
+		protected bool IsInParty() {
+			return NextUIPlugin.partyList.Length > 0;
+		}
+
+		protected bool IsPartyLeader() {
+			var partyLeaderIndex = (int)NextUIPlugin.partyList.PartyLeaderIndex;
+			var partyLeaderId = NextUIPlugin.partyList[partyLeaderIndex]?.ObjectId;
+			return partyLeaderId != NextUIPlugin.clientState.LocalPlayer?.ObjectId;
+		}
+
+		protected int? GetPlayerPartyIndex(PlayerCharacter character) {
+			var agentHud = uiModule->GetAgentModule()->GetAgentHUD();
+			var list = (HudPartyMember*)agentHud->PartyMemberList;
+
+			for (var i = 0; i < (short)agentHud->PartyMemberCount; i++) {
+				var partyMember = list[i];
+				if (partyMember.ObjectId != character.ObjectId) {
+					continue;
+				}
+
+				return i + 1;
+			}
+
+			return null;
+		}
+
 		public void XivLeaveParty(IWebSocketConnection socket, SocketEvent ev) {
-			if (NextUIPlugin.partyList.Length == 0) {
+			if (!IsInParty()) {
 				Respond(socket, ev, new { success = false, message = "Not in party" });
 				return;
 			}
@@ -154,14 +185,12 @@ namespace NextUIPlugin.Socket {
 		}
 
 		public void XivDisbandParty(IWebSocketConnection socket, SocketEvent ev) {
-			if (NextUIPlugin.partyList.Length == 0) {
+			if (!IsInParty()) {
 				Respond(socket, ev, new { success = false, message = "Not in party" });
 				return;
 			}
 
-			var partyLeaderIndex = (int)NextUIPlugin.partyList.PartyLeaderIndex;
-			var partyLeaderId = NextUIPlugin.partyList[partyLeaderIndex]?.ObjectId;
-			if (partyLeaderId != NextUIPlugin.clientState.LocalPlayer?.ObjectId) {
+			if (IsPartyLeader()) {
 				Respond(socket, ev, new { success = false, message = "Not a party leader" });
 				return;
 			}
@@ -188,6 +217,67 @@ namespace NextUIPlugin.Socket {
 			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/enemysign");
 
 			Respond(socket, ev, new { success = true });
+		}
+
+		public void XivInviteToParty(IWebSocketConnection socket, SocketEvent ev) {
+			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/invite <target>");
+
+			Respond(socket, ev, new { success = true });
+		}
+
+		public void XivMeldRequest(IWebSocketConnection socket, SocketEvent ev) {
+			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/meldrequest");
+
+			Respond(socket, ev, new { success = true });
+		}
+
+		public void XivTradeRequest(IWebSocketConnection socket, SocketEvent ev) {
+			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/trade");
+
+			Respond(socket, ev, new { success = true });
+		}
+
+		public void XivFollowTarget(IWebSocketConnection socket, SocketEvent ev) {
+			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/follow");
+
+			Respond(socket, ev, new { success = true });
+		}
+
+		public void XivPromotePartyMember(IWebSocketConnection socket, SocketEvent ev) {
+			PartyLeaderOperation(socket, ev, "leader");
+		}
+
+		public void XivKickFromParty(IWebSocketConnection socket, SocketEvent ev) {
+			PartyLeaderOperation(socket, ev, "kick");
+		}
+
+		protected void PartyLeaderOperation(IWebSocketConnection socket, SocketEvent ev, string op) {
+			var objectId = ev.request?.requestFor ?? 0;
+			if (objectId == 0) {
+				return;
+			}
+
+			if (NextUIPlugin.partyList.Length == 0) {
+				Respond(socket, ev, new { success = false, message = "Not in party" });
+				return;
+			}
+
+			if (IsPartyLeader()) {
+				Respond(socket, ev, new { success = false, message = "Not a party leader" });
+				return;
+			}
+
+			var obj = NextUIPlugin.objectTable.SearchById(objectId);
+			if (obj != null && obj is PlayerCharacter character) {
+				var index = GetPlayerPartyIndex(character);
+				if (index is > 0 and < 9) {
+					NextUIPlugin.xivCommon.Functions.Chat.SendMessage($"/{op} <{index}>");
+					Respond(socket, ev, new { success = true });
+					return;
+				}
+			}
+
+			Respond(socket, ev, new { success = false });
 		}
 
 		public void XivSendTell(IWebSocketConnection socket, SocketEvent ev) {
@@ -352,7 +442,8 @@ namespace NextUIPlugin.Socket {
 				currentParty.Add(DataConverter.PartyMemberToObject(partyMember));
 			}
 
-			Respond(socket, ev, currentParty);
+			var partyLeader = NextUIPlugin.partyList.PartyLeaderIndex;
+			Respond(socket, ev, new { currentParty, partyLeader });
 		}
 
 		public void XivGetAction(IWebSocketConnection socket, SocketEvent ev) {
@@ -456,10 +547,13 @@ namespace NextUIPlugin.Socket {
 		public void SetTarget(IWebSocketConnection socket, SocketEvent ev, string type) {
 			try {
 				var targetId = uint.Parse(ev.target);
-				var target = NextUIPlugin.objectTable.SearchById(targetId);
-				if (target == null) {
-					Respond(socket, ev, new { success = false, message = "Invalid object ID" });
-					return;
+				GameObject? target = null;
+				if (targetId != 0) {
+					target = NextUIPlugin.objectTable.SearchById(targetId);
+					if (target == null) {
+						Respond(socket, ev, new { success = false, message = "Invalid object ID" });
+						return;
+					}
 				}
 
 				switch (type) {

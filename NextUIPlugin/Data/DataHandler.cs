@@ -32,13 +32,11 @@ namespace NextUIPlugin.Data {
 
 		protected List<uint> enmity = new();
 
-		// protected AgentHUD* agentHud;
 		protected RaptureAtkModule* raptureAtkModule;
 		protected AtkUnitBase* enemyList;
 
 		public DataHandler() {
 			var uiModule = (UIModule*)NextUIPlugin.gameGui.GetUIModule();
-			// agentHud = uiModule->GetAgentModule()->GetAgentHUD();
 			raptureAtkModule = uiModule->GetRaptureAtkModule();
 			enemyList = (AtkUnitBase*)NextUIPlugin.gameGui.GetAddonByName("_EnemyList", 1);
 
