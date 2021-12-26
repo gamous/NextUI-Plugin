@@ -120,6 +120,9 @@ namespace NextUIPlugin {
 				case "toggle":
 					guiManager!.ToggleOverlays();
 					break;
+				case "reload":
+					guiManager!.ReloadOverlays();
+					break;
 				default:
 					ConfigWindow.isConfigOpen = true;
 					break;

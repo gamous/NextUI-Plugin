@@ -3,7 +3,8 @@ using Dalamud.Game.ClientState.Objects.Types;
 
 namespace NextUIPlugin.Data {
 	public class BattleCharaCopy {
-		public string Name;
+		// ReSharper disable InconsistentNaming
+		public string Name = null!;
 		public uint ObjectId;
 		public Vector3 Position;
 		public float Rotation;
@@ -16,8 +17,9 @@ namespace NextUIPlugin.Data {
 		public uint CurrentCp;
 		public uint MaxCp;
 		public byte Level;
-		public string CompanyTag;
+		public string CompanyTag = null!;
 		public uint TargetObjectId;
+		// ReSharper enable InconsistentNaming
 
 		public static BattleCharaCopy FromBattleChara(BattleChara chara) {
 			var output = new BattleCharaCopy();

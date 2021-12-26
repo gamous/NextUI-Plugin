@@ -89,6 +89,12 @@ namespace NextUIPlugin.Gui {
 			}
 		}
 
+		public void ReloadOverlays() {
+			foreach (var ov in overlays) {
+				ov.overlay.Reload();
+			}
+		}
+
 		protected bool loadingOverlays;
 
 		public void LoadOverlays(List<OverlayConfig> newOverlays) {
