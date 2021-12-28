@@ -4,6 +4,7 @@ using Dalamud.Game;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using NextUIPlugin.Data.Handlers;
+using NextUIPlugin.Socket;
 using SpellAction = Lumina.Excel.GeneratedSheets.Action;
 
 namespace NextUIPlugin.Data {
@@ -18,14 +19,14 @@ namespace NextUIPlugin.Data {
 		}
 
 		protected void FrameworkOnUpdate(Framework framework) {
-			if (NextUIPlugin.clientState.LocalPlayer == null) {
+			if (NextUIPlugin.clientState.LocalPlayer == null || !NextUIPlugin.socketServer.IsRunning()) {
 				return;
 			}
 
-			TargetWatcher.Watch();
-			CharaWatcher.Watch();
-			PartyWatcher.Watch();
-			EnmityListWatcher.Watch();
+			TargetHandler.Watch();
+			ActorHandler.Watch();
+			PartyHandler.Watch();
+			EnmityListHandler.Watch();
 			UiVisibility.Watch();
 		}
 
@@ -70,7 +71,7 @@ namespace NextUIPlugin.Data {
 			});
 
 			UiVisibility.Initialize();
-			EnmityListWatcher.Initialize();
+			EnmityListHandler.Initialize();
 		}
 
 		protected void ChatGuiOnChatMessage(
@@ -82,7 +83,7 @@ namespace NextUIPlugin.Data {
 		) {
 			var sockets = NextUIPlugin.socketServer.GetEventSubscriptions("chatMessage");
 			if (sockets != null && sockets.Count > 0) {
-				NextUIPlugin.socketServer.BroadcastTo(new {
+				NextUISocket.BroadcastTo(new {
 					@event = "chatMessage",
 					data = new {
 						typeId = (ushort)type,

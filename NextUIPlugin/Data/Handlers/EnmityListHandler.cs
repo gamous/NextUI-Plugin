@@ -14,9 +14,10 @@ using Dalamud.Memory;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Fleck;
+using NextUIPlugin.Socket;
 
 namespace NextUIPlugin.Data.Handlers {
-	public static unsafe class EnmityListWatcher {
+	public static unsafe class EnmityListHandler {
 		internal const int EnemyListInfoIndex = 19;
 		internal const int EnemyListNamesIndex = 17;
 
@@ -25,6 +26,36 @@ namespace NextUIPlugin.Data.Handlers {
 
 		internal static RaptureAtkModule* raptureAtkModule;
 		internal static AtkUnitBase* enemyList;
+		
+		#region Commands
+
+		public static void RegisterCommands() {
+			NextUISocket.RegisterCommand("getEnmityList", GetEnmityList);
+		}
+
+		internal static void GetEnmityList(IWebSocketConnection socket, SocketEvent ev) {
+			var enemyArray = GetEnemyArray();
+			if (enemyArray == null) {
+				return;
+			}
+
+			var enemyCount = GetEnemyCount(enemyArray);
+			var currentEnmity = GetEnemyObjectList(enemyArray, enemyCount);
+
+			var enmityList = new List<object>();
+			foreach (var enemyId in currentEnmity) {
+				var enemy = NextUIPlugin.objectTable.SearchById(enemyId);
+				if (enemy == null || enemy is not BattleChara chara) {
+					continue;
+				}
+
+				enmityList.Add(DataConverter.ActorToObject(chara));
+			}
+
+			NextUISocket.Respond(socket, ev, enmityList);
+		}
+
+		#endregion
 
 		public static void Initialize() {
 			var uiModule = (UIModule*)NextUIPlugin.gameGui.GetUIModule();
@@ -133,7 +164,7 @@ namespace NextUIPlugin.Data.Handlers {
 				currentEnmity.Add(DataConverter.ActorToObject(chara));
 			}
 
-			NextUIPlugin.socketServer.BroadcastTo(new {
+			NextUISocket.BroadcastTo(new {
 				@event = "enmityListChanged",
 				data = currentEnmity,
 			}, sockets);

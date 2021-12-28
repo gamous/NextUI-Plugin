@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Dalamud.Game.ClientState.Objects.Types;
 using Fleck;
+using NextUIPlugin.Socket;
 
 namespace NextUIPlugin.Data.Handlers {
-	public static unsafe class TargetWatcher {
-		
+	public static unsafe class TargetHandler {
 		internal static readonly ReadOnlyCollection<string> targetTypes = new(
 			new[] { "target", "targetOfTarget", "hover", "focus" }
 		);
@@ -17,6 +17,56 @@ namespace NextUIPlugin.Data.Handlers {
 			{ "hover", null },
 			{ "focus", null },
 		};
+
+		#region Commands
+
+		public static void RegisterCommands() {
+			NextUISocket.RegisterCommand("setTarget", (socket, ev) => {
+				SetTargetInternal(socket, ev, "target");
+			});
+			NextUISocket.RegisterCommand("setFocus", (socket, ev) => {
+				SetTargetInternal(socket, ev, "focus");
+			});
+			NextUISocket.RegisterCommand("setMouseOver", (socket, ev) => {
+				SetTargetInternal(socket, ev, "mouseOver");
+			});
+		}
+
+		public static void SetTargetInternal(IWebSocketConnection socket, SocketEvent ev, string type) {
+			try {
+				var objectId = ev.request?.id ?? 0;
+
+				GameObject? target = null;
+				if (objectId != 0) {
+					target = NextUIPlugin.objectTable.SearchById(objectId);
+					if (target == null) {
+						NextUISocket.Respond(socket, ev, new { success = false, message = "Invalid object ID" });
+						return;
+					}
+				}
+
+				switch (type) {
+					case "target":
+						NextUIPlugin.targetManager.SetTarget(target);
+						break;
+					case "focus":
+						NextUIPlugin.targetManager.SetFocusTarget(target);
+						break;
+					case "mouseOver":
+						NextUIPlugin.targetManager.SetMouseOverTarget(target);
+						break;
+				}
+
+				NextUISocket.Respond(socket, ev, new { success = true });
+			}
+			catch (Exception err) {
+				NextUISocket.Respond(socket, ev, new { success = false, message = err.ToString() });
+			}
+		}
+
+		#endregion
+
+		#region Watchers
 
 		internal static (GameObject?, uint?) GetTargetObjectId(string targetType) {
 			var obj = targetType switch {
@@ -60,7 +110,7 @@ namespace NextUIPlugin.Data.Handlers {
 			string unitId,
 			GameObject? actor = null
 		) {
-			NextUIPlugin.socketServer.BroadcastTo(new {
+			NextUISocket.BroadcastTo(new {
 				@event = unitId + "Changed",
 				data = new {
 					actorId = actor?.ObjectId,
@@ -72,6 +122,8 @@ namespace NextUIPlugin.Data.Handlers {
 				}
 			}, sockets);
 		}
+
+		#endregion
 
 		// TODO: Think about migrating to FFXIVStructs instead
 		// private static GameObject* GetTargetOfTarget(GameObject* obj) {

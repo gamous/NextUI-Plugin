@@ -1,69 +1,48 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Runtime.InteropServices;
-using Dalamud.Game.ClientState.Objects;
-using Dalamud.Game.ClientState.Objects.Enums;
-using Dalamud.Game.ClientState.Objects.SubKinds;
-using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Logging;
-using FFXIVClientStructs.FFXIV.Client.Game.Character;
-using FFXIVClientStructs.FFXIV.Client.Game.Group;
-using FFXIVClientStructs.FFXIV.Client.UI;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Fleck;
 using Lumina.Excel;
 using Newtonsoft.Json;
 using NextUIPlugin.Data;
-using Action = Lumina.Excel.GeneratedSheets.Action;
+using NextUIPlugin.Data.Handlers;
 using BattleChara = Dalamud.Game.ClientState.Objects.Types.BattleChara;
 using Status = Lumina.Excel.GeneratedSheets.Status;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable InconsistentNaming
 namespace NextUIPlugin.Socket {
-	public unsafe class NextUISocket : IDisposable {
-		protected static class Signatures {
-			internal const string SendTellCommand = "E8 ?? ?? ?? ?? B3 01 48 8B 74 24 ??";
-		}
-
-		protected delegate void SendTellCommandDelegate(
-			long raptureModulePointer, char* characterName, ushort homeWorldId
-		);
-
+	public class NextUISocket : IDisposable {
 		public int Port { get; set; }
 		protected WebSocketServer? server;
 
 		protected readonly List<IWebSocketConnection> sockets = new();
 		protected readonly Dictionary<string, List<IWebSocketConnection>> eventSubscriptions = new();
-		public readonly Dictionary<BattleCharaCopy, List<IWebSocketConnection>> savedChara = new();
 
-		protected readonly ExcelSheet<Action>? actionSheet;
-		protected readonly ExcelSheet<Status>? statusSheet;
 
-		protected SendTellCommandDelegate? SendTellCommand { get; }
-		protected readonly UIModule* uiModule;
+		protected static Dictionary<string, Action<IWebSocketConnection, SocketEvent>> actions = new();
+
+		protected bool running;
 
 		public NextUISocket(int port) {
 			Port = port;
-			actionSheet = NextUIPlugin.dataManager.GetExcelSheet<Action>();
-			statusSheet = NextUIPlugin.dataManager.GetExcelSheet<Status>();
-			uiModule = (UIModule*)NextUIPlugin.gameGui.GetUIModule();
-
-			var sendTellPtr = NextUIPlugin.sigScanner.ScanText(Signatures.SendTellCommand);
-			if (sendTellPtr != IntPtr.Zero) {
-				SendTellCommand = Marshal.GetDelegateForFunctionPointer<SendTellCommandDelegate>(sendTellPtr);
-			}
-			else {
-				PluginLog.Warning("Signature for Send Tell Not found");
-			}
 		}
 
 		public void Start() {
 			server = new WebSocketServer("ws://" + IPAddress.Loopback + ":" + Port + "/ws");
 			server.ListenerSocket.NoDelay = true;
 			server.RestartAfterListenError = true;
+
+			// Register commands before starting server
+			TargetHandler.RegisterCommands();
+			ContextHandler.RegisterCommands();
+			PartyHandler.RegisterCommands();
+			EnmityListHandler.RegisterCommands();
+			ActorHandler.RegisterCommands();
+			ActionHandler.RegisterCommands();
+			StatusHandler.RegisterCommands();
+			MouseOverHandler.RegisterCommands();
 
 			server.Start(socket => {
 				socket.OnOpen = () => {
@@ -88,16 +67,24 @@ namespace NextUIPlugin.Socket {
 						}
 					}
 
-					// Remove socket from chara watch once disconnected
-					foreach (var (_, connections) in savedChara) {
-						if (connections.Contains(socket)) {
-							connections.Remove(socket);
-						}
-					}
+					ActorHandler.RemoveSocket(socket);
 				};
 
 				socket.OnMessage = message => { OnMessage(message, socket); };
 			});
+			running = true;
+		}
+
+		public bool IsRunning() {
+			return running;
+		}
+
+		public static void RegisterCommand(string commandName, Action<IWebSocketConnection, SocketEvent> command) {
+			if (actions.ContainsKey(commandName)) {
+				throw new Exception($"Socket Command already registered: {commandName}");
+			}
+
+			actions.Add(commandName, command);
 		}
 
 		protected void OnMessage(string data, IWebSocketConnection socket) {
@@ -108,6 +95,11 @@ namespace NextUIPlugin.Socket {
 			}
 
 			try {
+				if (actions.TryGetValue(ev.type, out var action)) {
+					action(socket, ev);
+					return;
+				}
+
 				var methodName = string.Concat(
 					"Xiv",
 					ev.type[0].ToString().ToUpper(),
@@ -128,181 +120,6 @@ namespace NextUIPlugin.Socket {
 			}
 		}
 
-		#region ContextMenu Actions
-
-		public void XivExamine(IWebSocketConnection socket, SocketEvent ev) {
-			var objectId = ev.request?.requestFor ?? 0;
-			if (objectId == 0) {
-				return;
-			}
-
-			var obj = NextUIPlugin.objectTable.SearchById(objectId);
-			if (obj != null && obj.ObjectKind == ObjectKind.Player) {
-				NextUIPlugin.xivCommon.Functions.Examine.OpenExamineWindow(obj.ObjectId);
-
-				Respond(socket, ev, new { success = true });
-				return;
-			}
-
-			Respond(socket, ev, new { success = false, message = "Invalid object" });
-		}
-
-		protected bool IsInParty() {
-			return NextUIPlugin.partyList.Length > 0;
-		}
-
-		protected bool IsPartyLeader() {
-			var partyLeaderIndex = (int)NextUIPlugin.partyList.PartyLeaderIndex;
-			var partyLeaderId = NextUIPlugin.partyList[partyLeaderIndex]?.ObjectId;
-			return partyLeaderId != NextUIPlugin.clientState.LocalPlayer?.ObjectId;
-		}
-
-		protected int? GetPlayerPartyIndex(PlayerCharacter character) {
-			var agentHud = uiModule->GetAgentModule()->GetAgentHUD();
-			var list = (HudPartyMember*)agentHud->PartyMemberList;
-
-			for (var i = 0; i < (short)agentHud->PartyMemberCount; i++) {
-				var partyMember = list[i];
-				if (partyMember.ObjectId != character.ObjectId) {
-					continue;
-				}
-
-				return i + 1;
-			}
-
-			return null;
-		}
-
-		public void XivLeaveParty(IWebSocketConnection socket, SocketEvent ev) {
-			if (!IsInParty()) {
-				Respond(socket, ev, new { success = false, message = "Not in party" });
-				return;
-			}
-
-			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/leave");
-
-			Respond(socket, ev, new { success = true });
-		}
-
-		public void XivDisbandParty(IWebSocketConnection socket, SocketEvent ev) {
-			if (!IsInParty()) {
-				Respond(socket, ev, new { success = false, message = "Not in party" });
-				return;
-			}
-
-			if (IsPartyLeader()) {
-				Respond(socket, ev, new { success = false, message = "Not a party leader" });
-				return;
-			}
-
-			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/partycmd breakup");
-
-			Respond(socket, ev, new { success = true });
-		}
-
-		/**
-		 * Open emote window
-		 * Ref: https://github.com/xivapi/ffxiv-datamining/blob/master/csv/MainCommand.csv
-		 */
-		public void XivShowEmoteWindow(IWebSocketConnection socket, SocketEvent ev) {
-			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/emotelist");
-
-			Respond(socket, ev, new { success = true });
-		}
-
-		/**
-		 * Open signs window
-		 */
-		public void XivShowSignsWindow(IWebSocketConnection socket, SocketEvent ev) {
-			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/enemysign");
-
-			Respond(socket, ev, new { success = true });
-		}
-
-		public void XivInviteToParty(IWebSocketConnection socket, SocketEvent ev) {
-			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/invite <target>");
-
-			Respond(socket, ev, new { success = true });
-		}
-
-		public void XivMeldRequest(IWebSocketConnection socket, SocketEvent ev) {
-			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/meldrequest");
-
-			Respond(socket, ev, new { success = true });
-		}
-
-		public void XivTradeRequest(IWebSocketConnection socket, SocketEvent ev) {
-			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/trade");
-
-			Respond(socket, ev, new { success = true });
-		}
-
-		public void XivFollowTarget(IWebSocketConnection socket, SocketEvent ev) {
-			NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/follow");
-
-			Respond(socket, ev, new { success = true });
-		}
-
-		public void XivPromotePartyMember(IWebSocketConnection socket, SocketEvent ev) {
-			PartyLeaderOperation(socket, ev, "leader");
-		}
-
-		public void XivKickFromParty(IWebSocketConnection socket, SocketEvent ev) {
-			PartyLeaderOperation(socket, ev, "kick");
-		}
-
-		protected void PartyLeaderOperation(IWebSocketConnection socket, SocketEvent ev, string op) {
-			var objectId = ev.request?.requestFor ?? 0;
-			if (objectId == 0) {
-				return;
-			}
-
-			if (NextUIPlugin.partyList.Length == 0) {
-				Respond(socket, ev, new { success = false, message = "Not in party" });
-				return;
-			}
-
-			if (IsPartyLeader()) {
-				Respond(socket, ev, new { success = false, message = "Not a party leader" });
-				return;
-			}
-
-			var obj = NextUIPlugin.objectTable.SearchById(objectId);
-			if (obj != null && obj is PlayerCharacter character) {
-				var index = GetPlayerPartyIndex(character);
-				if (index is > 0 and < 9) {
-					NextUIPlugin.xivCommon.Functions.Chat.SendMessage($"/{op} <{index}>");
-					Respond(socket, ev, new { success = true });
-					return;
-				}
-			}
-
-			Respond(socket, ev, new { success = false });
-		}
-
-		public void XivSendTell(IWebSocketConnection socket, SocketEvent ev) {
-			var objectId = ev.request?.requestFor ?? 0;
-			if (objectId == 0) {
-				return;
-			}
-
-			var obj = NextUIPlugin.objectTable.SearchById(objectId);
-
-			if (obj != null && SendTellCommand != null && obj is PlayerCharacter player) {
-				var raptureShellModulePointer = (IntPtr)uiModule->GetRaptureShellModule();
-				var rap = raptureShellModulePointer.ToInt64();
-
-				var gameObject = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)player.Address;
-				SendTellCommand(rap, (char*)gameObject->Name, (ushort)player.HomeWorld.Id);
-
-				Respond(socket, ev, new { success = true });
-				return;
-			}
-
-			Respond(socket, ev, new { success = false, message = "Invalid object" });
-		}
-
-		#endregion
 
 		#region Event Subscription
 
@@ -347,7 +164,7 @@ namespace NextUIPlugin.Socket {
 				eventSubscriptions[eventName].Remove(socket);
 			}
 
-			Respond(socket, ev, new { success = true, message = $"Unsubscribed to: {string.Join(", ", events)}" });
+			Respond(socket, ev, new { success = true, message = $"Unsubscribed from: {string.Join(", ", events)}" });
 		}
 
 		public List<IWebSocketConnection>? GetEventSubscriptions(string eventName) {
@@ -362,110 +179,6 @@ namespace NextUIPlugin.Socket {
 
 		#endregion
 
-		#region Actor Watch
-
-		public void XivWatchActor(IWebSocketConnection socket, SocketEvent ev) {
-			uint objectId = ev.request?.requestFor ?? 0;
-			if (objectId == 0) {
-				return;
-			}
-
-			var obj = NextUIPlugin.objectTable.SearchById(objectId);
-
-			if (obj is not BattleChara chara) {
-				Send(socket, new {
-					@event = "watchActor",
-					ev.guid,
-					success = false
-				});
-				return;
-			}
-
-			var foundChara = savedChara.Keys.FirstOrDefault(c => c.ObjectId == objectId);
-			if (foundChara == null) {
-				// we did not found chara as key
-				foundChara = BattleCharaCopy.FromBattleChara(chara);
-				savedChara.Add(foundChara, new List<IWebSocketConnection> { socket });
-				return;
-			}
-
-			// someone else is already watching
-			if (!savedChara[foundChara].Contains(socket)) {
-				savedChara[foundChara].Add(socket);
-			}
-
-			Send(socket, new {
-				@event = "watchActor",
-				ev.guid,
-				success = true
-			});
-		}
-
-		public void XivUnwatchActor(IWebSocketConnection socket, SocketEvent ev) {
-			var objectId = ev.request?.requestFor ?? 0;
-			if (objectId == 0) {
-				return;
-			}
-
-			var foundChara = savedChara.Keys.FirstOrDefault(c => c.ObjectId == objectId);
-			if (foundChara == null) {
-				Send(socket, new {
-					@event = "unwatchActor",
-					ev.guid,
-					success = false
-				});
-				return;
-			}
-
-			// This socket was indeed watching, removing it
-			if (savedChara[foundChara].Contains(socket)) {
-				savedChara[foundChara].Remove(socket);
-			}
-
-			// No one else watching, removing empty socket list
-			if (savedChara[foundChara].Count == 0) {
-				savedChara.Remove(foundChara);
-			}
-
-			Send(socket, new {
-				@event = "watchActor",
-				ev.guid,
-				success = true
-			});
-		}
-
-		#endregion
-
-		public void XivGetParty(IWebSocketConnection socket, SocketEvent ev) {
-			var currentParty = new List<object>();
-			foreach (var partyMember in NextUIPlugin.partyList) {
-				currentParty.Add(DataConverter.PartyMemberToObject(partyMember));
-			}
-
-			var partyLeader = NextUIPlugin.partyList.PartyLeaderIndex;
-			Respond(socket, ev, new { currentParty, partyLeader });
-		}
-
-		public void XivGetAction(IWebSocketConnection socket, SocketEvent ev) {
-			var objectId = ev.request?.requestFor ?? 0;
-			if (objectId == 0) {
-				return;
-			}
-
-			var action = actionSheet?.GetRow(objectId);
-			Respond(socket, ev, action == null ? null : DataConverter.ActionToObject(action));
-		}
-
-		public void XivGetStatus(IWebSocketConnection socket, SocketEvent ev) {
-			var objectId = ev.request?.requestFor ?? 0;
-			if (objectId == 0) {
-				return;
-			}
-
-			var status = statusSheet?.GetRow(objectId);
-			Respond(socket, ev, status == null ? null : DataConverter.LuminaStatusToObject(status));
-		}
-
 		public void XivGetPlayer(IWebSocketConnection socket, SocketEvent ev) {
 			var player = NextUIPlugin.clientState.LocalPlayer;
 			if (player == null) {
@@ -475,51 +188,6 @@ namespace NextUIPlugin.Socket {
 
 			var actor = (BattleChara)NextUIPlugin.objectTable.SearchById(player.ObjectId)!;
 			Respond(socket, ev, DataConverter.ActorToObject(actor));
-		}
-
-		public void XivGetActors(IWebSocketConnection socket, SocketEvent ev) {
-			var actors = new List<object>();
-			foreach (var actor in NextUIPlugin.objectTable) {
-				if (actor is BattleChara chara) {
-					actors.Add(DataConverter.ActorToObject(chara));
-				}
-			}
-
-			Respond(socket, ev, actors);
-		}
-
-		public void XivGetActor(IWebSocketConnection socket, SocketEvent ev) {
-			var objectId = ev.request?.requestFor ?? 0;
-			if (objectId == 0) {
-				return;
-			}
-
-			var actor = NextUIPlugin.objectTable.SearchById(objectId);
-
-			if (actor != null && actor is BattleChara chara) {
-				Respond(socket, ev, DataConverter.ActorToObject(chara));
-				return;
-			}
-
-			Respond(socket, ev, null);
-		}
-
-		public void XivGetActorStatuses(IWebSocketConnection socket, SocketEvent ev) {
-			var objectId = ev.request?.requestFor ?? 0;
-			if (objectId == 0) {
-				return;
-			}
-
-			var actor = NextUIPlugin.objectTable.SearchById(objectId);
-
-			var statusList = new List<object>();
-			if (actor != null && actor is BattleChara chara) {
-				foreach (var status in chara.StatusList) {
-					statusList.Add(DataConverter.StatusToObject(status));
-				}
-			}
-
-			Respond(socket, ev, statusList);
 		}
 
 		public void XivSetAcceptFocus(IWebSocketConnection socket, SocketEvent ev) {
@@ -532,80 +200,6 @@ namespace NextUIPlugin.Socket {
 			PluginLog.Log(msg);
 		}
 
-		public void XivSetTarget(IWebSocketConnection socket, SocketEvent ev) {
-			SetTarget(socket, ev, "target");
-		}
-
-		public void XivSetFocus(IWebSocketConnection socket, SocketEvent ev) {
-			SetTarget(socket, ev, "focus");
-		}
-
-		public void XivSetMouseOver(IWebSocketConnection socket, SocketEvent ev) {
-			SetTarget(socket, ev, "mouseOver");
-		}
-
-		public void SetTarget(IWebSocketConnection socket, SocketEvent ev, string type) {
-			try {
-				var targetId = uint.Parse(ev.target);
-				GameObject? target = null;
-				if (targetId != 0) {
-					target = NextUIPlugin.objectTable.SearchById(targetId);
-					if (target == null) {
-						Respond(socket, ev, new { success = false, message = "Invalid object ID" });
-						return;
-					}
-				}
-
-				switch (type) {
-					case "target":
-						NextUIPlugin.targetManager.SetTarget(target);
-						break;
-					case "focus":
-						NextUIPlugin.targetManager.SetFocusTarget(target);
-						break;
-					case "mouseOver":
-						NextUIPlugin.targetManager.SetMouseOverTarget(target);
-						break;
-				}
-
-				Respond(socket, ev, new { success = true });
-			}
-			catch (Exception err) {
-				Respond(socket, ev, new { success = false, message = err.ToString() });
-			}
-		}
-
-		public void XivClearMouseOverEx(IWebSocketConnection socket, SocketEvent ev) {
-			SetMouseOverEx(socket, ev, false);
-		}
-
-		public void XivSetMouseOverEx(IWebSocketConnection socket, SocketEvent ev) {
-			SetMouseOverEx(socket, ev);
-		}
-
-		public void SetMouseOverEx(IWebSocketConnection socket, SocketEvent ev, bool set = true) {
-			try {
-				if (set) {
-					var targetId = uint.Parse(ev.target);
-					var target = NextUIPlugin.objectTable.SearchById(targetId);
-					if (target == null) {
-						Respond(socket, ev, new { success = false, message = "Invalid object ID" });
-						return;
-					}
-
-					NextUIPlugin.mouseOverService.target = target;
-				}
-				else {
-					NextUIPlugin.mouseOverService.target = null;
-				}
-
-				Respond(socket, ev, new { success = true });
-			}
-			catch (Exception err) {
-				Respond(socket, ev, new { success = false, message = err.ToString() });
-			}
-		}
-
 		#region Internal methods
 
 		public void Broadcast(string message) {
@@ -616,17 +210,17 @@ namespace NextUIPlugin.Socket {
 			Broadcast(JsonConvert.SerializeObject(message));
 		}
 
-		public void BroadcastTo(object data, List<IWebSocketConnection> socketConnections) {
+		public static void BroadcastTo(object data, List<IWebSocketConnection> socketConnections) {
 			foreach (var connection in socketConnections) {
 				connection.Send(JsonConvert.SerializeObject(data));
 			}
 		}
 
-		public void Send(IWebSocketConnection socket, object message) {
+		public static void Send(IWebSocketConnection socket, object message) {
 			socket.Send(JsonConvert.SerializeObject(message));
 		}
 
-		public void Respond(IWebSocketConnection socket, SocketEvent ev, object? data) {
+		public static void Respond(IWebSocketConnection socket, SocketEvent ev, object? data) {
 			Send(socket, new {
 				@event = ev.type,
 				ev.guid,

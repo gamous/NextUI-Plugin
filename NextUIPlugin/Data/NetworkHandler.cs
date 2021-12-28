@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Dalamud.Logging;
 using NextUIPlugin.NetworkStructures;
+using NextUIPlugin.Socket;
 
 namespace NextUIPlugin.Data {
 	public class NetworkHandler : IDisposable {
@@ -82,7 +83,7 @@ namespace NextUIPlugin.Data {
 
 			var dyn = NetworkBinding.Convert(opcode, dataPtr, targetActorId);
 			if (dyn != null) {
-				NextUIPlugin.socketServer.BroadcastTo(new {
+				NextUISocket.BroadcastTo(new {
 					@event = eventName,
 					data = new {
 						opcode,

@@ -1,4 +1,5 @@
 ﻿using FFXIVClientStructs.FFXIV.Component.GUI;
+using NextUIPlugin.Socket;
 
 namespace NextUIPlugin.Data.Handlers {
 	public static unsafe class UiVisibility {
@@ -43,7 +44,7 @@ namespace NextUIPlugin.Data.Handlers {
 			}
 
 			uiVisible = currentUiVisibility;
-			NextUIPlugin.socketServer.BroadcastTo(new {
+			NextUISocket.BroadcastTo(new {
 				@event = EventName,
 				data = uiVisible,
 			}, sockets);

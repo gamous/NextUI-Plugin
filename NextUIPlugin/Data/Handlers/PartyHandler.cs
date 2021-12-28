@@ -1,11 +1,30 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Fleck;
+using NextUIPlugin.Socket;
 
 namespace NextUIPlugin.Data.Handlers {
-	public static class PartyWatcher {
+	public static class PartyHandler {
 		internal static List<uint> party = new();
 		internal static uint partyLeader;
+
+		#region Commands
+
+		public static void RegisterCommands() {
+			NextUISocket.RegisterCommand("getParty", GetParty);
+		}
+
+		internal static void GetParty(IWebSocketConnection socket, SocketEvent ev) {
+			var currentParty = new List<object>();
+			foreach (var partyMember in NextUIPlugin.partyList) {
+				currentParty.Add(DataConverter.PartyMemberToObject(partyMember));
+			}
+
+			var newPartyLeader = NextUIPlugin.partyList.PartyLeaderIndex;
+			NextUISocket.Respond(socket, ev, new { currentParty, partyLeader = newPartyLeader });
+		}
+
+		#endregion
 
 		public static void Watch() {
 			var sockets = NextUIPlugin.socketServer.GetEventSubscriptions("partyChanged");
@@ -38,7 +57,7 @@ namespace NextUIPlugin.Data.Handlers {
 				currentParty.Add(DataConverter.PartyMemberToObject(partyMember));
 			}
 
-			NextUIPlugin.socketServer.BroadcastTo(new {
+			NextUISocket.BroadcastTo(new {
 				@event = "partyChanged",
 				data = new { currentParty, newPartyLeader },
 			}, sockets);
