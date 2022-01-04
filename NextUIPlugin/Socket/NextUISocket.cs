@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using Dalamud.Logging;
 using Fleck;
@@ -238,7 +239,7 @@ namespace NextUIPlugin.Socket {
 		}
 
 		public void Dispose() {
-			sockets.ForEach(s => s.Close());
+			sockets.ToList().ForEach(s => s.Close());
 			server?.Dispose();
 		}
 

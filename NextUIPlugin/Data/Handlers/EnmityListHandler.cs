@@ -10,6 +10,7 @@ Full License: https://github.com/DelvUI/DelvUI/blob/main/LICENSE
 using System;
 using System.Collections.Generic;
 using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Logging;
 using Dalamud.Memory;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -88,6 +89,13 @@ namespace NextUIPlugin.Data.Handlers {
 		}
 		
 		internal static NumberArrayData* GetEnemyArray() {
+			if (raptureAtkModule == null) {
+				// PluginLog.Log("RPT IS NULL");
+				// Something broke, try to get it again
+				var uiModule = (UIModule*)NextUIPlugin.gameGui.GetUIModule();
+				raptureAtkModule = uiModule->GetRaptureAtkModule();
+				return null;
+			}
 			return raptureAtkModule->AtkModule.AtkArrayDataHolder.NumberArrays[EnemyListInfoIndex];
 		}
 
