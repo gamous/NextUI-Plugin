@@ -11,6 +11,7 @@ namespace NextUIPlugin.Data.Handlers {
 		public static void RegisterCommands() {
 			NextUISocket.RegisterCommand("watchActor", WatchActor);
 			NextUISocket.RegisterCommand("unwatchActor", UnwatchActor);
+			NextUISocket.RegisterCommand("unwatchAllActors", UnwatchAllActors);
 			NextUISocket.RegisterCommand("getActor", GetActor);
 			NextUISocket.RegisterCommand("getActors", GetActors);
 		}
@@ -82,6 +83,25 @@ namespace NextUIPlugin.Data.Handlers {
 			// someone else is already watching
 			if (!savedChara[foundChara].Contains(socket)) {
 				savedChara[foundChara].Add(socket);
+			}
+
+			NextUISocket.Respond(socket, ev, new { success = true });
+		}
+
+		internal static void UnwatchAllActors(IWebSocketConnection socket, SocketEvent ev) {
+			var toClean = new List<BattleCharaCopy>();
+			foreach (var (charaCopy, connections) in savedChara) {
+				if (connections.Contains(socket)) {
+					connections.Remove(socket);
+				}
+
+				if (connections.Count == 0) {
+					toClean.Add(charaCopy);
+				}
+			}
+
+			foreach (var charaCopy in toClean) {
+				savedChara.Remove(charaCopy);
 			}
 
 			NextUISocket.Respond(socket, ev, new { success = true });

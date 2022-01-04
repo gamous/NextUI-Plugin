@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Logging;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -12,13 +13,19 @@ namespace NextUIPlugin.Data.Handlers {
 	public static unsafe class ContextHandler {
 		internal static class Signatures {
 			internal const string SendTellCommandSig = "E8 ?? ?? ?? ?? B3 01 48 8B 74 24 ??";
+			internal const string ExecuteCommandSig = "E8 ?? ?? ?? ?? 8D 43 0A";
 		}
 
 		internal delegate void SendTellCommandDelegate(
 			long raptureModulePointer, char* characterName, ushort homeWorldId
 		);
 
+		internal delegate void ExecuteCommandDelegate(
+			int id, int a1, int a2, int a3, int a4
+		);
+
 		internal static SendTellCommandDelegate? SendTellCommand { get; set; }
+		internal static ExecuteCommandDelegate? ExecuteCommand { get; set; }
 		internal static UIModule* uiModule;
 
 		public static void RegisterCommands() {
@@ -31,10 +38,19 @@ namespace NextUIPlugin.Data.Handlers {
 				PluginLog.Warning("Signature for Send Tell Not found");
 			}
 
+			var execCommandPtr = NextUIPlugin.sigScanner.ScanText(Signatures.ExecuteCommandSig);
+			if (execCommandPtr != IntPtr.Zero) {
+				ExecuteCommand = Marshal.GetDelegateForFunctionPointer<ExecuteCommandDelegate>(execCommandPtr);
+			}
+			else {
+				PluginLog.Warning("Signature for Execute Command Not found");
+			}
+
 			NextUISocket.RegisterCommand("examine", Examine);
 			NextUISocket.RegisterCommand("leaveParty", LeaveParty);
 			NextUISocket.RegisterCommand("disbandParty", DisbandParty);
 			NextUISocket.RegisterCommand("sendTell", SendTell);
+			NextUISocket.RegisterCommand("resetEnmity", ResetEnmity);
 
 			NextUISocket.RegisterCommand("showEmoteWindow", (socket, ev) => {
 				NextUIPlugin.xivCommon.Functions.Chat.SendMessage("/emotelist");
@@ -162,6 +178,26 @@ namespace NextUIPlugin.Data.Handlers {
 
 				var gameObject = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)player.Address;
 				SendTellCommand(rap, (char*)gameObject->Name, (ushort)player.HomeWorld.Id);
+
+				NextUISocket.Respond(socket, ev, new { success = true });
+				return;
+			}
+
+			NextUISocket.Respond(socket, ev, new { success = false, message = "Invalid object" });
+		}
+
+		internal static void ResetEnmity(IWebSocketConnection socket, SocketEvent ev) {
+			var objectId = ev.request?.id ?? 0;
+			if (objectId == 0) {
+				return;
+			}
+
+			var obj = NextUIPlugin.objectTable.SearchById(objectId);
+
+			// 541 is target dummy
+			if (obj != null && ExecuteCommand != null && obj is BattleChara chara && chara.NameId == 541) {
+				PluginLog.Information($"Resetting enmity {chara.ObjectId:X}");
+				ExecuteCommand(0x140, (int)chara.ObjectId, 0, 0, 0);
 
 				NextUISocket.Respond(socket, ev, new { success = true });
 				return;

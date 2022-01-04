@@ -41,6 +41,7 @@ namespace NextUIPlugin.Data {
 		public static object PartyMemberToObject(PartyMember actor) {
 			return new {
 				id = actor.ObjectId,
+				contentId = actor.ContentId,
 				name = actor.Name.TextValue,
 				position = new { x = actor.Position.X, y = actor.Position.Y, z = actor.Position.Z },
 				hp = actor.CurrentHP,
