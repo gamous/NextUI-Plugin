@@ -26,6 +26,7 @@ namespace NextUIPlugin.Data {
 			TargetHandler.Watch();
 			ActorHandler.Watch();
 			PartyHandler.Watch();
+			XWorldPartyHandler.Watch();
 			EnmityListHandler.Watch();
 			UiVisibility.Watch();
 		}

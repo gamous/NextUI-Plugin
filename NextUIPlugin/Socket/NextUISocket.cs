@@ -39,6 +39,7 @@ namespace NextUIPlugin.Socket {
 			TargetHandler.RegisterCommands();
 			ContextHandler.RegisterCommands();
 			PartyHandler.RegisterCommands();
+			XWorldPartyHandler.RegisterCommands();
 			EnmityListHandler.RegisterCommands();
 			ActorHandler.RegisterCommands();
 			ActionHandler.RegisterCommands();
