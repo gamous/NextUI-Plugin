@@ -99,7 +99,7 @@ namespace NextUIPlugin.Data.Handlers {
 				return new {
 					id = objectId,
 					name = name.TextValue,
-					contentId = partyMember.ContentId,
+					contentId = partyMember.ContentId.ToString("X16"),
 					provisional = true
 				};
 			}
@@ -111,7 +111,7 @@ namespace NextUIPlugin.Data.Handlers {
 				id = objectId,
 				name = name.TextValue,
 				nameId = chara.NameID,
-				contentId = partyMember.ContentId,
+				contentId = partyMember.ContentId.ToString("X16"),
 				position = new { x = gameObject->Position.X, y = gameObject->Position.Y, z = gameObject->Position.Z },
 				hp = chara.Health,
 				hpMax = chara.MaxHealth,

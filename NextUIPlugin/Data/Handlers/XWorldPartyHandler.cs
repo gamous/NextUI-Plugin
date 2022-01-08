@@ -87,7 +87,7 @@ namespace NextUIPlugin.Data.Handlers {
 				var n = MemoryHelper.ReadStringNullTerminated((IntPtr)xwPm->Name);
 				output.Add(new {
 					name = n,
-					contentId = xwPm->ContentId,
+					contentId = xwPm->ContentId.ToString("X16"),
 					jobId = xwPm->JobId,
 					level = xwPm->Level,
 					homeWorld = xwPm->HomeWorld,

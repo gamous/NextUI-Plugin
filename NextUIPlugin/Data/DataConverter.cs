@@ -23,7 +23,7 @@ namespace NextUIPlugin.Data {
 		public static object ActorToObject(BattleChara actor, ulong? contentId = null) {
 			return new {
 				id = actor.ObjectId,
-				contentId,
+				contentId = contentId?.ToString("X16"),
 				name = actor.Name.TextValue,
 				nameId = actor.NameId,
 				position = new { x = actor.Position.X, y = actor.Position.Y, z = actor.Position.Z },
