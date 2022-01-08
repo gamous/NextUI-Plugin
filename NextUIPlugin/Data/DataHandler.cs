@@ -66,9 +66,15 @@ namespace NextUIPlugin.Data {
 
 		protected void ClientStateOnLogin(object? sender, EventArgs e) {
 			var player = NextUIPlugin.clientState.LocalPlayer;
+
+			object? data = null;
+			if (player != null) {
+				data = DataConverter.ActorToObject(player, NextUIPlugin.clientState.LocalContentId);
+			}
+
 			NextUIPlugin.socketServer.Broadcast(new {
 				@event = "playerLogin",
-				data = player != null ? DataConverter.ActorToObject(player) : null
+				data = data
 			});
 
 			UiVisibility.Initialize();

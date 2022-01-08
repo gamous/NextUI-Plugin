@@ -55,7 +55,7 @@ namespace NextUIPlugin.Socket {
 					if (player != null) {
 						socket.Send(JsonConvert.SerializeObject(new {
 							@event = "playerLogin",
-							data = DataConverter.ActorToObject(player)
+							data = DataConverter.ActorToObject(player, NextUIPlugin.clientState.LocalContentId)
 						}));
 					}
 				};

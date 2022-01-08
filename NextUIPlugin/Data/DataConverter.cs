@@ -1,4 +1,6 @@
-﻿using Dalamud.Game.ClientState.Objects.Types;
+﻿using System;
+using System.Runtime.InteropServices;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.ClientState.Statuses;
 using Dalamud.Utility;
@@ -18,10 +20,12 @@ namespace NextUIPlugin.Data {
 			};
 		}
 
-		public static object ActorToObject(BattleChara actor) {
+		public static object ActorToObject(BattleChara actor, ulong? contentId = null) {
 			return new {
 				id = actor.ObjectId,
+				contentId,
 				name = actor.Name.TextValue,
+				nameId = actor.NameId,
 				position = new { x = actor.Position.X, y = actor.Position.Y, z = actor.Position.Z },
 				hp = actor.CurrentHp,
 				hpMax = actor.MaxHp,
