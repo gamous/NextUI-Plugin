@@ -49,8 +49,11 @@ namespace NextUIPlugin.Configuration {
 
 		internal static void SaveConfig() {
 			NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager.SaveOverlays();
-			NextUIPlugin.socketServer.Port = NextUIPlugin.configuration.socketPort;
-			NextUIPlugin.socketServer.Restart();
+			if (NextUIPlugin.socketServer.Port != NextUIPlugin.configuration.socketPort) {
+				NextUIPlugin.socketServer.Port = NextUIPlugin.configuration.socketPort;
+				NextUIPlugin.socketServer.Restart();
+			}
+
 			NextUIPlugin.pluginInterface.SavePluginConfig(NextUIPlugin.configuration);
 		}
 
@@ -129,12 +132,14 @@ namespace NextUIPlugin.Configuration {
 			if (ImGui.DragInt("Position X", ref posX, 1f)) {
 				overlay.Position = new Point(posX, overlay.Position.Y);
 			}
+
 			ImGui.NextColumn();
 
 			var posY = overlay.Position.Y;
 			if (ImGui.DragInt("Position Y", ref posY, 1f)) {
 				overlay.Position = new Point(overlay.Position.X, posY);
 			}
+
 			ImGui.NextColumn();
 
 			// Size
@@ -142,12 +147,14 @@ namespace NextUIPlugin.Configuration {
 			if (ImGui.DragInt("Width", ref sizeW, 1f)) {
 				overlay.Size = new Size(sizeW, overlay.Size.Height);
 			}
+
 			ImGui.NextColumn();
 
 			var sizeH = overlay.Size.Height;
 			if (ImGui.DragInt("Height", ref sizeH, 1f)) {
 				overlay.Size = new Size(overlay.Size.Width, sizeH);
 			}
+
 			ImGui.NextColumn();
 
 			var ovLocked = overlay.Locked;
@@ -158,6 +165,7 @@ namespace NextUIPlugin.Configuration {
 			if (ImGui.IsItemHovered()) {
 				ImGui.SetTooltip("Prevent the overlay from being resized or moved.");
 			}
+
 			ImGui.NextColumn();
 
 			var ovHidden = overlay.Hidden;
@@ -168,6 +176,7 @@ namespace NextUIPlugin.Configuration {
 			if (ImGui.IsItemHovered()) {
 				ImGui.SetTooltip("This does not stop the overlay from executing, only from being displayed.");
 			}
+
 			ImGui.NextColumn();
 
 			var ovTypeThrough = overlay.TypeThrough;
@@ -178,6 +187,7 @@ namespace NextUIPlugin.Configuration {
 			if (ImGui.IsItemHovered()) {
 				ImGui.SetTooltip("Prevent the overlay from intercepting any keyboard events.");
 			}
+
 			ImGui.NextColumn();
 
 			var ovClickThrough = overlay.ClickThrough;
@@ -188,6 +198,7 @@ namespace NextUIPlugin.Configuration {
 			if (ImGui.IsItemHovered()) {
 				ImGui.SetTooltip("Prevent the inlay from intercepting any mouse events.");
 			}
+
 			ImGui.NextColumn();
 
 			var ovFullScreen = overlay.FullScreen;
@@ -254,6 +265,7 @@ namespace NextUIPlugin.Configuration {
 				PluginLog.Log("Start remove");
 				selectedOverlay.overlay.RemoveRequest();
 			}
+
 			ImGui.PopStyleColor();
 
 			ImGui.PopID();
