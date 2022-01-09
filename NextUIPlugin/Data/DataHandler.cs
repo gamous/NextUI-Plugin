@@ -68,7 +68,7 @@ namespace NextUIPlugin.Data {
 			var player = NextUIPlugin.clientState.LocalPlayer;
 
 			object? data = null;
-			if (player != null) {
+			if (player != null && NextUIPlugin.clientState.LocalContentId != 0) {
 				data = DataConverter.ActorToObject(player, NextUIPlugin.clientState.LocalContentId);
 			}
 
