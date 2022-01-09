@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using Dalamud.Logging;
 using Fleck;
-using Lumina.Excel;
 using Newtonsoft.Json;
 using NextUIPlugin.Data;
 using NextUIPlugin.Data.Handlers;
 using BattleChara = Dalamud.Game.ClientState.Objects.Types.BattleChara;
-using Status = Lumina.Excel.GeneratedSheets.Status;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable InconsistentNaming
@@ -20,61 +19,87 @@ namespace NextUIPlugin.Socket {
 
 		protected readonly List<IWebSocketConnection> sockets = new();
 		protected readonly Dictionary<string, List<IWebSocketConnection>> eventSubscriptions = new();
-
-
 		protected static Dictionary<string, Action<IWebSocketConnection, SocketEvent>> actions = new();
 
 		protected bool running;
+		protected bool commandsRegistered;
 
 		public NextUISocket(int port) {
 			Port = port;
 		}
 
+		protected static bool CheckIfPortAvailable(int portToCheck) {
+			var properties = IPGlobalProperties.GetIPGlobalProperties();
+			var endPoint = properties.GetActiveTcpListeners();
+			var ports = endPoint.Select(p => p.Port).ToList();
+
+			return !ports.Contains(portToCheck);
+		}
+
 		public void Start() {
+			if (!CheckIfPortAvailable(Port)) {
+				running = false;
+				PluginLog.Warning($"NUSocket is unable to launch server at port {Port}");
+				return;
+			}
+
 			server = new WebSocketServer("ws://" + IPAddress.Loopback + ":" + Port + "/ws");
 			server.ListenerSocket.NoDelay = true;
 			server.RestartAfterListenError = true;
 
 			// Register commands before starting server
-			TargetHandler.RegisterCommands();
-			ContextHandler.RegisterCommands();
-			PartyHandler.RegisterCommands();
-			XWorldPartyHandler.RegisterCommands();
-			EnmityListHandler.RegisterCommands();
-			ActorHandler.RegisterCommands();
-			ActionHandler.RegisterCommands();
-			StatusHandler.RegisterCommands();
-			MouseOverHandler.RegisterCommands();
+			if (!commandsRegistered) {
+				commandsRegistered = true;
+				TargetHandler.RegisterCommands();
+				ContextHandler.RegisterCommands();
+				PartyHandler.RegisterCommands();
+				XWorldPartyHandler.RegisterCommands();
+				EnmityListHandler.RegisterCommands();
+				ActorHandler.RegisterCommands();
+				ActionHandler.RegisterCommands();
+				StatusHandler.RegisterCommands();
+				MouseOverHandler.RegisterCommands();
+			}
 
 			server.Start(socket => {
-				socket.OnOpen = () => {
-					sockets.Add(socket);
-
-					// Sending initial player if socket connected after player has logged in
-					var player = NextUIPlugin.clientState.LocalPlayer;
-					if (player != null) {
-						socket.Send(JsonConvert.SerializeObject(new {
-							@event = "playerLogin",
-							data = DataConverter.ActorToObject(player, NextUIPlugin.clientState.LocalContentId)
-						}));
-					}
-				};
-
-				socket.OnClose = () => {
-					sockets.Remove(socket);
-					// Remove socket from event subscriptions once disconnected
-					foreach (var (_, connections) in eventSubscriptions) {
-						if (connections.Contains(socket)) {
-							connections.Remove(socket);
-						}
-					}
-
-					ActorHandler.RemoveSocket(socket);
-				};
-
+				socket.OnOpen = () => { OpenSocket(socket); };
+				socket.OnClose = () => { CloseSocket(socket); };
 				socket.OnMessage = message => { OnMessage(message, socket); };
 			});
+
 			running = true;
+			PluginLog.Information($"NUSocket server started at port {Port}");
+		}
+
+		protected void OpenSocket(IWebSocketConnection socket) {
+			sockets.Add(socket);
+
+			// Sending initial player if socket connected after player has logged in
+			var player = NextUIPlugin.clientState.LocalPlayer;
+			if (player != null) {
+				socket.Send(JsonConvert.SerializeObject(new {
+					@event = "playerLogin",
+					data = DataConverter.ActorToObject(player, NextUIPlugin.clientState.LocalContentId)
+				}));
+			}
+		}
+
+		protected void CloseSocket(IWebSocketConnection socket) {
+			sockets.Remove(socket);
+			// Remove socket from event subscriptions once disconnected
+			foreach (var (_, connections) in eventSubscriptions) {
+				if (connections.Contains(socket)) {
+					connections.Remove(socket);
+				}
+			}
+
+			ActorHandler.RemoveSocket(socket);
+			try {
+				socket.Close();
+			}
+			catch (Exception e) {
+				PluginLog.Log(e.Message);
+			}
 		}
 
 		public bool IsRunning() {
@@ -230,9 +255,15 @@ namespace NextUIPlugin.Socket {
 			});
 		}
 
+		public void Restart() {
+			PluginLog.Log("Restarting websocket server");
+			Stop();
+			Start();
+		}
+
 		public void Stop() {
 			try {
-				server?.Dispose();
+				Dispose();
 			}
 			catch (Exception e) {
 				PluginLog.Log(e.ToString());
@@ -240,7 +271,7 @@ namespace NextUIPlugin.Socket {
 		}
 
 		public void Dispose() {
-			sockets.ToList().ForEach(s => s.Close());
+			sockets.ToList().ForEach(CloseSocket);
 			server?.Dispose();
 		}
 

@@ -19,7 +19,9 @@ namespace NextUIPlugin.Configuration {
 				ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoScrollbar
 			);
 
-			ImGui.Text("Configure socket port in order to push game data into NextUI.");
+			ImGui.Text("Websocket Server Port");
+			ImGui.SameLine();
+			ImGui.TextColored(new Vector4(1f, 0f, 0f, 1f), "WARNING: Do not touch unless you know what you are doing");
 			ImGui.Separator();
 
 			ImGui.InputInt("Socket Port", ref NextUIPlugin.configuration.socketPort);
@@ -33,18 +35,23 @@ namespace NextUIPlugin.Configuration {
 			ImGui.SetCursorPos(new Vector2(8, 450));
 
 			if (ImGui.Button("Save")) {
-				NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager.SaveOverlays();
-				NextUIPlugin.pluginInterface.SavePluginConfig(NextUIPlugin.configuration);
+				SaveConfig();
 			}
 
 			ImGui.SameLine();
 			if (ImGui.Button("Save and Close")) {
-				NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager.SaveOverlays();
-				NextUIPlugin.pluginInterface.SavePluginConfig(NextUIPlugin.configuration);
+				SaveConfig();
 				isConfigOpen = false;
 			}
 
 			ImGui.End();
+		}
+
+		internal static void SaveConfig() {
+			NextUIPlugin.configuration.overlays = NextUIPlugin.guiManager.SaveOverlays();
+			NextUIPlugin.socketServer.Port = NextUIPlugin.configuration.socketPort;
+			NextUIPlugin.socketServer.Restart();
+			NextUIPlugin.pluginInterface.SavePluginConfig(NextUIPlugin.configuration);
 		}
 
 		internal static OverlayGui? selectedOverlay;
