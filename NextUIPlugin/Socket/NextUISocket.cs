@@ -59,6 +59,8 @@ namespace NextUIPlugin.Socket {
 				ActionHandler.RegisterCommands();
 				StatusHandler.RegisterCommands();
 				MouseOverHandler.RegisterCommands();
+				ConditionHandler.RegisterCommands();
+				StatusFlagsHandler.RegisterCommands();
 			}
 
 			server.Start(socket => {

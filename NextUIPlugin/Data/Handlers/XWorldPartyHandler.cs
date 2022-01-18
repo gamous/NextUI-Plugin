@@ -1,41 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using Dalamud.Logging;
 using Dalamud.Memory;
+using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using Fleck;
-using NextUIPlugin.Data.CrossWorld;
 using NextUIPlugin.Socket;
 
 namespace NextUIPlugin.Data.Handlers {
 	public static unsafe class XWorldPartyHandler {
 		internal static List<ulong> xwParty = new();
 
-		delegate IntPtr CrossRealmGetPtr();
-
-		static CrossRealmGetPtr? crossRealmGetPtrDelegate;
-
-		internal static CrossWorldParty* crossWorldParty;
+		internal static InfoProxyCrossRealm* infoProxyCrossRealm;
 
 		public static void RegisterCommands() {
-			var proxyCrossRealmPtr =
-				NextUIPlugin.sigScanner.ScanText("48 8B 05 ?? ?? ?? ?? C3 CC CC CC CC CC CC CC CC 40 53 41 57");
-
-			crossRealmGetPtrDelegate =
-				Marshal.GetDelegateForFunctionPointer<CrossRealmGetPtr>(proxyCrossRealmPtr);
-
-			PluginLog.Information("InfoProxyCrossRealm_GetPtr: 0x" + proxyCrossRealmPtr.ToString("X"));
-
-			var offset2 = crossRealmGetPtrDelegate() + 0x3A0;
-			crossWorldParty = (CrossWorldParty*)offset2;
-
+			infoProxyCrossRealm = InfoProxyCrossRealm.Instance();
+			
 			NextUISocket.RegisterCommand("getCrossWorldParty", GetXWorldParty);
 		}
 
 		internal static void GetXWorldParty(IWebSocketConnection socket, SocketEvent ev) {
-			if (crossRealmGetPtrDelegate == null) {
-				return;
-			}
 			var currentParty = GetCrossWorldParty();
 
 			NextUISocket.Respond(socket, ev, new { currentParty });
@@ -43,7 +25,7 @@ namespace NextUIPlugin.Data.Handlers {
 
 		public static void Watch() {
 			var sockets = NextUIPlugin.socketServer.GetEventSubscriptions("crossWorldPartyChanged");
-			if (sockets == null || sockets.Count == 0 || crossRealmGetPtrDelegate == null) {
+			if (sockets == null || sockets.Count == 0) {
 				return;
 			}
 
@@ -66,10 +48,14 @@ namespace NextUIPlugin.Data.Handlers {
 
 		internal static List<ulong> GetCrossWorldPartyIds() {
 			var output = new List<ulong>();
-			var xwSize = crossWorldParty->PartySize;
-			var xwList = crossWorldParty->PartyMemberList;
-			for (var i = 0; i < xwSize; i++) {
-				var xwPm = (CrossWorldPartyMember*)((IntPtr)xwList + i * 80);
+
+			var xwSize = InfoProxyCrossRealm.GetPartyMemberCount();
+			if (xwSize == 0) {
+				return output;
+			}
+
+			for (var i = 0u; i < xwSize; i++) {
+				var xwPm = InfoProxyCrossRealm.GetGroupMember(i);
 				output.Add(xwPm->ContentId);
 			}
 
@@ -79,19 +65,23 @@ namespace NextUIPlugin.Data.Handlers {
 		internal static List<object> GetCrossWorldParty() {
 			var output = new List<object>();
 
-			var xwSize = crossWorldParty->PartySize;
-			var xwList = crossWorldParty->PartyMemberList;
+			var xwSize = InfoProxyCrossRealm.GetPartyMemberCount();
+			if (xwSize == 0) {
+				return output;
+			}
 
-			for (var i = 0; i < xwSize; i++) {
-				var xwPm = (CrossWorldPartyMember*)((IntPtr)xwList + i * 80);
+			for (var i = 0u; i < xwSize; i++) {
+				var xwPm = InfoProxyCrossRealm.GetGroupMember(i, infoProxyCrossRealm->LocalPlayerGroupIndex);
 				var n = MemoryHelper.ReadStringNullTerminated((IntPtr)xwPm->Name);
 				output.Add(new {
 					name = n,
 					contentId = xwPm->ContentId.ToString("X16"),
-					jobId = xwPm->JobId,
+					jobId = xwPm->ClassJobId,
 					level = xwPm->Level,
 					homeWorld = xwPm->HomeWorld,
 					currentWorld = xwPm->CurrentWorld,
+					memberIndex = xwPm->MemberIndex,
+					isPartyLeader = xwPm->IsPartyLeader != 0,
 				});
 			}
 

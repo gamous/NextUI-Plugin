@@ -29,6 +29,7 @@ namespace NextUIPlugin.Data {
 			XWorldPartyHandler.Watch();
 			EnmityListHandler.Watch();
 			UiVisibility.Watch();
+			StatusFlagsHandler.Watch();
 		}
 
 		public static bool CompareList<T>(List<T> a, List<T> b) {
