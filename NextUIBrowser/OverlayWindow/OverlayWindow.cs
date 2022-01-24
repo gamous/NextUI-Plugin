@@ -1,76 +1,117 @@
-﻿using CefSharp;
-using CefSharp.OffScreen;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Reactive.Linq;
 using Dalamud.Logging;
-using NextUIBrowser.Cef;
-using NextUIBrowser.RenderHandlers;
+using NextUIBrowser.Cef.App;
 using NextUIShared.Data;
 using NextUIShared.Model;
 using NextUIShared.Request;
+using Xilium.CefGlue;
+using CefEventFlags = Xilium.CefGlue.CefEventFlags;
 using MouseButtonType = NextUIShared.Data.MouseButtonType;
 
 namespace NextUIBrowser.OverlayWindow {
 	public class OverlayWindow : IDisposable {
 		protected readonly Overlay overlay;
-		protected readonly TextureRenderHandler renderHandler;
+		protected NUCefClient client;
 
-		protected ChromiumWebBrowser? browser;
+		protected CefBrowser? browser;
 
 		protected IDisposable? sizeObservableSub;
 
-		protected bool BrowserLoading => browser == null || !browser.IsBrowserInitialized || browser.IsLoading;
+		protected bool BrowserLoading => browser == null || browser.IsLoading;
 
-		public OverlayWindow(Overlay overlay, TextureRenderHandler renderHandler) {
-			this.renderHandler = renderHandler;
+		public OverlayWindow(Overlay overlay) {
 			this.overlay = overlay;
+			client = new NUCefClient(overlay);
 		}
 
 		public void Initialize() {
-			browser = new ChromiumWebBrowser(overlay.Url, automaticallyCreateBrowser: false);
-			browser.RenderHandler = renderHandler;
-			browser.MenuHandler = new CustomMenuHandler();
-			var size = renderHandler.GetViewRect();
+			var windowInfo = CefWindowInfo.Create();
+			windowInfo.SetAsWindowless(IntPtr.Zero, true);
+			windowInfo.WindowlessRenderingEnabled = true;
+			PluginLog.Log($"WindowInfo {overlay.Size.Width}, {overlay.Size.Height}");
+			windowInfo.Bounds = new CefRectangle(0, 0, overlay.Size.Width, overlay.Size.Height);
+			windowInfo.Hidden = false;
 
-			// General browser config
-			var windowInfo = new WindowInfo() {
-				Width = size.Width,
-				Height = size.Height,
-			};
-			windowInfo.SetAsWindowless(IntPtr.Zero);
-
-			// WindowInfo gets ignored sometimes, be super sure:
-			browser.BrowserInitialized += (_, _) => { browser.Size = new Size(size.Width, size.Height); };
-
-			BrowserSettings browserSettings = new() {
+			var browserSettings = new CefBrowserSettings {
 				WindowlessFrameRate = 60,
 			};
 
-			// Ready, boot up the browser
-			browser.CreateBrowser(windowInfo, browserSettings);
+			client.AfterBrowserLoad += cefBrowser => {
+				this.browser = cefBrowser;
+				PluginLog.Log(
+					$"BR CREATED {browser.IsLoading} {browser.IsValid} " +
+					$"{browser.FrameCount} {browser.HasDocument} {browser?.GetMainFrame().Url}"
+				);
 
-			browserSettings.Dispose();
-			windowInfo.Dispose();
+				overlay.DebugRequest += Debug;
+				overlay.ReloadRequest += Reload;
+
+				overlay.UrlChange += Navigate;
+
+				overlay.MouseMoveEvent += HandleMouseMoveEvent;
+				overlay.MouseClickEvent += HandleMouseClickEvent;
+				overlay.MouseWheelEvent += HandleMouseWheelEvent;
+				overlay.MouseLeaveEvent += HandleMouseLeaveEvent;
+
+				overlay.KeyEvent += HandleKeyEvent;
+				sizeObservableSub = overlay.SizeChange.AsObservable()
+					.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
+
+				// Also request cursor if it changes
+				client.renderHandler.CursorChanged += RenderHandlerOnCursorChanged;
+			};
+
+			CefBrowserHost.CreateBrowser(
+				windowInfo,
+				client,
+				browserSettings,
+				overlay.Url
+			);
+
+			// browser = CefBrowserHost.CreateBrowserSync(
+			// 	windowInfo,
+			// 	client,
+			// 	browserSettings,
+			// 	overlay.Url
+			// );
+			
+			// PluginLog.Log(
+			// 	$"BR CREATED {browser.IsLoading} {browser.IsValid} " +
+			// 	$"{browser.FrameCount} {browser.HasDocument} {browser?.GetMainFrame().Url}"
+			// );
+			
+
+			
+			//browser = new ChromiumWebBrowser(overlay.Url, automaticallyCreateBrowser: false);
+			//browser.RenderHandler = renderHandler;
+			//browser.MenuHandler = new CustomMenuHandler();
+			//var size = renderHandler.GetViewRect();
+
+			// General browser config
+			// var windowInfo = new WindowInfo() {
+			// 	Width = size.Width,
+			// 	Height = size.Height,
+			// };
+			//windowInfo.SetAsWindowless(IntPtr.Zero);
+
+			// WindowInfo gets ignored sometimes, be super sure:
+			//browser.BrowserInitialized += (_, _) => { browser.Size = new Size(size.Width, size.Height); };
+
+			// BrowserSettings browserSettings = new() {
+			// 	WindowlessFrameRate = 60,
+			// };
+
+			// Ready, boot up the browser
+			//browser.CreateBrowser(windowInfo, browserSettings);
+
+			//browserSettings.Dispose();
+			//windowInfo.Dispose();
 
 			// Handle any changes done on overlay data
-			overlay.DebugRequest += Debug;
-			overlay.ReloadRequest += Reload;
-
-			overlay.UrlChange += Navigate;
-
-			overlay.MouseMoveEvent += HandleMouseMoveEvent;
-			overlay.MouseClickEvent += HandleMouseClickEvent;
-			overlay.MouseWheelEvent += HandleMouseWheelEvent;
-			overlay.MouseLeaveEvent += HandleMouseLeaveEvent;
-
-			overlay.KeyEvent += HandleKeyEvent;
-			sizeObservableSub = overlay.SizeChange.AsObservable()
-				.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
-
-			// Also request cursor if it changes
-			renderHandler.CursorChanged += RenderHandlerOnCursorChanged;
+			
 		}
 
 		protected void RenderHandlerOnCursorChanged(object? sender, Cursor cursor) {
@@ -84,7 +125,7 @@ namespace NextUIBrowser.OverlayWindow {
 
 			overlay.DebugRequest -= Debug;
 			overlay.ReloadRequest -= Reload;
-			renderHandler.CursorChanged -= RenderHandlerOnCursorChanged;
+			client.renderHandler.CursorChanged -= RenderHandlerOnCursorChanged;
 
 			overlay.UrlChange -= Navigate;
 			overlay.MouseMoveEvent -= HandleMouseMoveEvent;
@@ -94,8 +135,8 @@ namespace NextUIBrowser.OverlayWindow {
 			overlay.KeyEvent -= HandleKeyEvent;
 			sizeObservableSub?.Dispose();
 
-			browser.RenderHandler = null;
-			renderHandler.Dispose();
+			//browser.RenderHandler = null;
+			// renderHandler.Dispose();
 			browser.Dispose();
 			browser = null;
 			PluginLog.Log("Browser was disposed");
@@ -103,21 +144,41 @@ namespace NextUIBrowser.OverlayWindow {
 
 		public void Navigate(object? sender, string newUrl) {
 			// If navigating to the same url, force a clean reload
-			if (browser?.Address == newUrl) {
-				browser.Reload(true);
+			if (browser?.GetMainFrame().Url == newUrl) {
+				PluginLog.Log($"RELOAD {newUrl}");
+				browser.ReloadIgnoreCache();
 				return;
 			}
 
 			// Otherwise load regularly
-			browser?.Load(newUrl);
+			browser?.GetMainFrame().LoadUrl(newUrl);
+			PluginLog.Log($"LOAD {newUrl}");
 		}
 
 		protected void Reload() {
-			browser.Reload(true);
+			// browser?.ReloadIgnoreCache();
+			PluginLog.Log(
+				$"BR CREATED 1-{browser.IsLoading} 2-{browser.IsValid} " +
+				$"3-{browser.FrameCount} 4-{browser.HasDocument} 5-{browser?.GetMainFrame().Url} " +
+				$"6-{browser.GetMainFrame().IsValid}"
+			);
 		}
 
 		protected void Debug() {
-			browser.ShowDevTools();
+			ShowDevTools();
+		}
+
+		protected void ShowDevTools() {
+			PluginLog.Log("Dev tools");
+			if (browser == null) {
+				return;
+			}
+			PluginLog.Log("Dev tools browser exists");
+			var host = browser.GetHost();
+			var wi = CefWindowInfo.Create();
+			wi.SetAsPopup(IntPtr.Zero, "DevTools");
+
+			host.ShowDevTools(wi, new DevToolsWebClient(), new CefBrowserSettings(), new CefPoint(0, 0));
 		}
 
 		public void Resize(Size size) {
@@ -125,10 +186,10 @@ namespace NextUIBrowser.OverlayWindow {
 			overlay.Resizing = true;
 			// Need to resize renderer first, the browser will check it (and hence the texture) when browser.
 			// We are disregarding param as Size will adjust based on Fullscreen prop
-			renderHandler.Resize(overlay.Size);
-			if (browser != null) {
-				browser.Size = overlay.Size;
-			}
+			client.renderHandler.Resize(overlay.Size);
+			// if (browser != null) {
+				//browser.Size = overlay.Size;
+			// }
 		}
 
 		protected void HandleMouseMoveEvent(object? sender, MouseMoveEventRequest request) {
@@ -138,13 +199,13 @@ namespace NextUIBrowser.OverlayWindow {
 
 			var cursorX = (int)request.x;
 			var cursorY = (int)request.y;
+			
+			client.renderHandler.SetMousePosition(cursorX, cursorY);
 
-			renderHandler.SetMousePosition(cursorX, cursorY);
-
-			var evt = new MouseEvent(cursorX, cursorY, DecodeInputModifier(request.modifier));
+			var evt = new CefMouseEvent(cursorX, cursorY, DecodeInputModifier(request.modifier));
 
 			// Ensure the mouse position is up to date
-			browser.GetBrowserHost().SendMouseMoveEvent(evt, false);
+			browser?.GetHost().SendMouseMoveEvent(evt, false);
 		}
 
 		protected void HandleMouseClickEvent(object? sender, MouseClickEventRequest request) {
@@ -155,9 +216,9 @@ namespace NextUIBrowser.OverlayWindow {
 			var cursorX = (int)request.x;
 			var cursorY = (int)request.y;
 
-			var evt = new MouseEvent(cursorX, cursorY, DecodeInputModifier(request.modifier));
+			var evt = new CefMouseEvent(cursorX, cursorY, DecodeInputModifier(request.modifier));
 
-			browser.GetBrowserHost().SendMouseClickEvent(
+			browser?.GetHost().SendMouseClickEvent(
 				evt,
 				DecodeButtonType(request.mouseButtonType),
 				request.isUp,
@@ -173,11 +234,11 @@ namespace NextUIBrowser.OverlayWindow {
 			var cursorX = (int)request.x;
 			var cursorY = (int)request.y;
 
-			var evt = new MouseEvent(cursorX, cursorY, DecodeInputModifier(request.modifier));
+			var evt = new CefMouseEvent(cursorX, cursorY, DecodeInputModifier(request.modifier));
 
 			// CEF treats the wheel delta as mode 0, pixels. Bump up the numbers to match typical in-browser experience.
 			const int deltaMult = 100;
-			browser.GetBrowserHost().SendMouseWheelEvent(
+			browser?.GetHost().SendMouseWheelEvent(
 				evt,
 				(int)request.wheelX * deltaMult,
 				(int)request.wheelY * deltaMult
@@ -192,25 +253,25 @@ namespace NextUIBrowser.OverlayWindow {
 			var cursorX = (int)request.x;
 			var cursorY = (int)request.y;
 
-			var evt = new MouseEvent(cursorX, cursorY, CefEventFlags.None);
+			var evt = new CefMouseEvent(cursorX, cursorY, CefEventFlags.None);
 
-			browser.GetBrowserHost().SendMouseMoveEvent(evt, true);
+			browser?.GetHost().SendMouseMoveEvent(evt, true);
 		}
 
 		public void HandleKeyEvent(object? sender, KeyEventRequest request) {
-			if (browser == null || !browser.IsBrowserInitialized || browser.IsLoading) {
+			if (browser == null || browser.IsLoading) {
 				return;
 			}
 
 			var type = request.keyEventType switch {
-				NextUIShared.Data.KeyEventType.KeyDown => CefSharp.KeyEventType.RawKeyDown,
-				NextUIShared.Data.KeyEventType.KeyUp => CefSharp.KeyEventType.KeyUp,
-				NextUIShared.Data.KeyEventType.Character => CefSharp.KeyEventType.Char,
+				NextUIShared.Data.KeyEventType.KeyDown => CefKeyEventType.RawKeyDown,
+				NextUIShared.Data.KeyEventType.KeyUp => CefKeyEventType.KeyUp,
+				NextUIShared.Data.KeyEventType.Character => CefKeyEventType.Char,
 				_ => throw new ArgumentException($"Invalid KeyEventType {request.keyEventType}")
 			};
 
-			browser.GetBrowserHost().SendKeyEvent(new KeyEvent {
-				Type = type,
+			browser?.GetHost().SendKeyEvent(new CefKeyEvent {
+				EventType = type,
 				Modifiers = DecodeInputModifier(request.modifier),
 				WindowsKeyCode = request.userKeyCode,
 				NativeKeyCode = request.nativeKeyCode,
@@ -247,12 +308,16 @@ namespace NextUIBrowser.OverlayWindow {
 			return result;
 		}
 
-		protected static CefSharp.MouseButtonType DecodeButtonType(MouseButtonType buttonType) {
+		protected static CefMouseButtonType DecodeButtonType(MouseButtonType buttonType) {
 			switch (buttonType) {
-				case MouseButtonType.Middle: return CefSharp.MouseButtonType.Middle;
-				case MouseButtonType.Right: return CefSharp.MouseButtonType.Right;
-				default: return CefSharp.MouseButtonType.Left;
+				case MouseButtonType.Middle: return CefMouseButtonType.Middle;
+				case MouseButtonType.Right: return CefMouseButtonType.Right;
+				default: return CefMouseButtonType.Left;
 			}
 		}
 	}
+	
+	public class DevToolsWebClient : CefClient {
+	}
+
 }

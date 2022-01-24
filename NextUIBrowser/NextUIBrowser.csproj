@@ -28,12 +28,13 @@
 		<Nullable>enable</Nullable>
 		<ProduceReferenceAssembly>false</ProduceReferenceAssembly>
 		<Prefer32Bit>false</Prefer32Bit>
-		<CefSharpAnyCpuSupport>false</CefSharpAnyCpuSupport>
-		<CefSharpPlatformTarget>x64</CefSharpPlatformTarget>
+<!--		<CefSharpAnyCpuSupport>false</CefSharpAnyCpuSupport>-->
+<!--		<CefSharpPlatformTarget>x64</CefSharpPlatformTarget>-->
 		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 
 		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
 		<OutputPath>bin\$(Configuration)</OutputPath>
+		<SelfContained>false</SelfContained>
 	</PropertyGroup>
 
 	<!-- Release Configuration -->
@@ -66,34 +67,56 @@
 		<Reference Include="ImGuiScene">
 			<Private>false</Private>
 		</Reference>
+		<Reference Include="Xilium.CefGlue, Version=96.0.18.0, Culture=neutral, PublicKeyToken=null">
+			<HintPath>..\cefglue\Xilium.CefGlue.dll</HintPath>
+		</Reference>
 	</ItemGroup>
 
 	<!-- NuGet Packages -->
 	<ItemGroup>
-		<PackageReference Include="CefSharp.OffScreen" Version="94.4.110" />
-		<PackageReference Include="System.Reactive" Version="5.0.0"/>
+		<PackageReference Include="cef.redist.x64" Version="96.0.18" />
+		<PackageReference Include="System.Reactive" Version="5.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\NextUIShared\NextUIShared.csproj"/>
+		<ProjectReference Include="..\NextUIShared\NextUIShared.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="app.config"/>
+		<None Include="app.config" />
 	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="obj" />
+	</ItemGroup>
+
+	<Target Name="CopyCEF" AfterTargets="Build">
+		<CallTarget Targets="CefRedist64CopyResources" />
+		<Message Text="Copied CEF files" Importance="High" />
+	</Target>
+
+	<!-- Copy custom sub process -->
+	<Target Name="CopySubProcess" AfterTargets="Build">
+		<ItemGroup>
+			<CustomSubProcessFiles Include="$(SolutionDir)CustomSubProcess\bin\$(Configuration)\**\*.*" />
+		</ItemGroup>
+		<Copy SourceFiles="@(CustomSubProcessFiles)" DestinationFolder="$(TargetDir)" />
+
+		<Message Text="Copied sub process files" Importance="High" />
+	</Target>
 
 	<!-- Hot reload for dev version -->
 	<Target Name="CopyMicroPlugin" AfterTargets="Build" Condition="'$(Configuration)'=='Debug'">
 		<ItemGroup>
-			<MicroPluginFiles Include="$(TargetDir)**\*.*"/>
+			<MicroPluginFiles Include="$(TargetDir)**\*.*" />
 		</ItemGroup>
-		<Copy SourceFiles="@(MicroPluginFiles)" DestinationFolder="$(SolutionDir)NextUIPlugin\bin\$(Configuration)\MicroPlugin\%(RecursiveDir)"/>
+		<Copy SourceFiles="@(MicroPluginFiles)" DestinationFolder="$(SolutionDir)NextUIPlugin\bin\$(Configuration)\MicroPlugin\%(RecursiveDir)" />
 
-		<Message Text="Copied microplugin files" Importance="High"/>
+		<Message Text="Copied microplugin files" Importance="High" />
 	</Target>
 
 	<!-- Zip for release -->
 	<Target Name="ZipOutputPath" AfterTargets="Build" Condition="'$(Configuration)'=='Release'">
-		<ZipDirectory Overwrite="true" SourceDirectory="$(OutputPath)" DestinationFile="$(MSBuildProjectDirectory)\bin\latest.zip"/>
+		<ZipDirectory Overwrite="true" SourceDirectory="$(OutputPath)" DestinationFile="$(MSBuildProjectDirectory)\bin\latest.zip" />
 	</Target>
 </Project>
