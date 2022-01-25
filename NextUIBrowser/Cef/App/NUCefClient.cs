@@ -7,15 +7,14 @@ namespace NextUIBrowser.Cef.App {
 	public class NUCefClient : CefClient {
 		public readonly NUCefLoadHandler loadHandler;
 		public readonly NUCefRenderHandler renderHandler;
-
-		public event Action<CefBrowser>? AfterBrowserLoad;
+		public readonly NUCefLifeSpanHandler lifeSpanHandler;
+		public readonly NUCefDisplayHandler displayHandler;
 
 		public NUCefClient(Overlay overlay) {
 			loadHandler = new NUCefLoadHandler();
 			renderHandler = new NUCefRenderHandler(overlay);
-			loadHandler.AfterBrowserLoad += browser => {
-				AfterBrowserLoad?.Invoke(browser);
-			};
+			displayHandler = new NUCefDisplayHandler(renderHandler);
+			lifeSpanHandler = new NUCefLifeSpanHandler();
 		}
 
 		protected override CefRenderHandler GetRenderHandler() {
@@ -24,6 +23,14 @@ namespace NextUIBrowser.Cef.App {
 
 		protected override CefLoadHandler GetLoadHandler() {
 			return loadHandler;
+		}
+
+		protected override CefLifeSpanHandler GetLifeSpanHandler() {
+			return lifeSpanHandler;
+		}
+
+		protected override CefDisplayHandler GetDisplayHandler() {
+			return displayHandler;
 		}
 	}
 }

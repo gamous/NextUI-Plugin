@@ -98,7 +98,7 @@
 	<!-- Copy custom sub process -->
 	<Target Name="CopySubProcess" AfterTargets="Build">
 		<ItemGroup>
-			<CustomSubProcessFiles Include="$(SolutionDir)CustomSubProcess\bin\$(Configuration)\**\*.*" />
+			<CustomSubProcessFiles Include="$(SolutionDir)CustomSubProcess\bin\$(Configuration)\win-x64\publish\**\*.*" />
 		</ItemGroup>
 		<Copy SourceFiles="@(CustomSubProcessFiles)" DestinationFolder="$(TargetDir)" />
 

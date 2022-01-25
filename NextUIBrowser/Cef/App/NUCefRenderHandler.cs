@@ -23,12 +23,6 @@ namespace NextUIBrowser.Cef.App {
 
 		protected int width;
 		protected int height;
-		
-		public event EventHandler<Cursor>? CursorChanged;
-
-		// Transparent background click-through state
-		protected bool cursorOnBackground;
-		protected Cursor cursor;
 
 		public NUCefRenderHandler(Overlay overlay) {
 			this.overlay = overlay;
@@ -49,24 +43,8 @@ namespace NextUIBrowser.Cef.App {
 			width = size.Width;
 			height = size.Height;
 		}
-		
-		public void SetMousePosition(int x, int y) {
-			var alpha = GetAlphaAt(x, y);
 
-			// We treat 0 alpha as click through - if changed, fire off the event
-			var currentlyOnBackground = alpha == 0;
-			if (currentlyOnBackground == cursorOnBackground) {
-				return;
-			}
-
-			cursorOnBackground = currentlyOnBackground;
-
-			// EDGE CASE: if cursor transitions onto alpha:0 _and_ between two native cursor types, I guess this will be a race cond.
-			// Not sure if should have two seperate upstreams for them, or try and prevent the race. consider.
-			CursorChanged?.Invoke(this, currentlyOnBackground ? Cursor.BrowserHostNoCapture : cursor);
-		}
-
-		protected byte GetAlphaAt(int x, int y) {
+		public byte GetAlphaAt(int x, int y) {
 			if (overlay.Resizing || internalBuffer == IntPtr.Zero) {
 				return 255;
 			}

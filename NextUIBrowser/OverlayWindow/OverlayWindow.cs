@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Reactive.Linq;
 using Dalamud.Logging;
@@ -39,8 +38,8 @@ namespace NextUIBrowser.OverlayWindow {
 				WindowlessFrameRate = 60,
 			};
 
-			client.AfterBrowserLoad += cefBrowser => {
-				this.browser = cefBrowser;
+			client.lifeSpanHandler.AfterBrowserLoad += cefBrowser => {
+				browser = cefBrowser;
 				PluginLog.Log(
 					$"BR CREATED {browser.IsLoading} {browser.IsValid} " +
 					$"{browser.FrameCount} {browser.HasDocument} {browser?.GetMainFrame().Url}"
@@ -61,7 +60,7 @@ namespace NextUIBrowser.OverlayWindow {
 					.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
 
 				// Also request cursor if it changes
-				client.renderHandler.CursorChanged += RenderHandlerOnCursorChanged;
+				client.displayHandler.CursorChanged += RenderHandlerOnCursorChanged;
 			};
 
 			CefBrowserHost.CreateBrowser(
@@ -77,14 +76,30 @@ namespace NextUIBrowser.OverlayWindow {
 			// 	browserSettings,
 			// 	overlay.Url
 			// );
-			
+			//
 			// PluginLog.Log(
 			// 	$"BR CREATED {browser.IsLoading} {browser.IsValid} " +
 			// 	$"{browser.FrameCount} {browser.HasDocument} {browser?.GetMainFrame().Url}"
 			// );
-			
+			//
+			// overlay.DebugRequest += Debug;
+			// overlay.ReloadRequest += Reload;
+			//
+			// overlay.UrlChange += Navigate;
+			//
+			// overlay.MouseMoveEvent += HandleMouseMoveEvent;
+			// overlay.MouseClickEvent += HandleMouseClickEvent;
+			// overlay.MouseWheelEvent += HandleMouseWheelEvent;
+			// overlay.MouseLeaveEvent += HandleMouseLeaveEvent;
+			//
+			// overlay.KeyEvent += HandleKeyEvent;
+			// sizeObservableSub = overlay.SizeChange.AsObservable()
+			// 	.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
+			//
+			// // Also request cursor if it changes
+			// client.renderHandler.CursorChanged += RenderHandlerOnCursorChanged;
 
-			
+
 			//browser = new ChromiumWebBrowser(overlay.Url, automaticallyCreateBrowser: false);
 			//browser.RenderHandler = renderHandler;
 			//browser.MenuHandler = new CustomMenuHandler();
@@ -111,7 +126,6 @@ namespace NextUIBrowser.OverlayWindow {
 			//windowInfo.Dispose();
 
 			// Handle any changes done on overlay data
-			
 		}
 
 		protected void RenderHandlerOnCursorChanged(object? sender, Cursor cursor) {
@@ -125,7 +139,7 @@ namespace NextUIBrowser.OverlayWindow {
 
 			overlay.DebugRequest -= Debug;
 			overlay.ReloadRequest -= Reload;
-			client.renderHandler.CursorChanged -= RenderHandlerOnCursorChanged;
+			client.displayHandler.CursorChanged -= RenderHandlerOnCursorChanged;
 
 			overlay.UrlChange -= Navigate;
 			overlay.MouseMoveEvent -= HandleMouseMoveEvent;
@@ -156,12 +170,7 @@ namespace NextUIBrowser.OverlayWindow {
 		}
 
 		protected void Reload() {
-			// browser?.ReloadIgnoreCache();
-			PluginLog.Log(
-				$"BR CREATED 1-{browser.IsLoading} 2-{browser.IsValid} " +
-				$"3-{browser.FrameCount} 4-{browser.HasDocument} 5-{browser?.GetMainFrame().Url} " +
-				$"6-{browser.GetMainFrame().IsValid}"
-			);
+			browser?.ReloadIgnoreCache();
 		}
 
 		protected void Debug() {
@@ -169,15 +178,13 @@ namespace NextUIBrowser.OverlayWindow {
 		}
 
 		protected void ShowDevTools() {
-			PluginLog.Log("Dev tools");
 			if (browser == null) {
 				return;
 			}
-			PluginLog.Log("Dev tools browser exists");
+
 			var host = browser.GetHost();
 			var wi = CefWindowInfo.Create();
 			wi.SetAsPopup(IntPtr.Zero, "DevTools");
-
 			host.ShowDevTools(wi, new DevToolsWebClient(), new CefBrowserSettings(), new CefPoint(0, 0));
 		}
 
@@ -188,7 +195,7 @@ namespace NextUIBrowser.OverlayWindow {
 			// We are disregarding param as Size will adjust based on Fullscreen prop
 			client.renderHandler.Resize(overlay.Size);
 			// if (browser != null) {
-				//browser.Size = overlay.Size;
+			//browser.Size = overlay.Size;
 			// }
 		}
 
@@ -199,8 +206,8 @@ namespace NextUIBrowser.OverlayWindow {
 
 			var cursorX = (int)request.x;
 			var cursorY = (int)request.y;
-			
-			client.renderHandler.SetMousePosition(cursorX, cursorY);
+
+			client.displayHandler.SetMousePosition(cursorX, cursorY);
 
 			var evt = new CefMouseEvent(cursorX, cursorY, DecodeInputModifier(request.modifier));
 
@@ -264,9 +271,9 @@ namespace NextUIBrowser.OverlayWindow {
 			}
 
 			var type = request.keyEventType switch {
-				NextUIShared.Data.KeyEventType.KeyDown => CefKeyEventType.RawKeyDown,
-				NextUIShared.Data.KeyEventType.KeyUp => CefKeyEventType.KeyUp,
-				NextUIShared.Data.KeyEventType.Character => CefKeyEventType.Char,
+				KeyEventType.KeyDown => CefKeyEventType.RawKeyDown,
+				KeyEventType.KeyUp => CefKeyEventType.KeyUp,
+				KeyEventType.Character => CefKeyEventType.Char,
 				_ => throw new ArgumentException($"Invalid KeyEventType {request.keyEventType}")
 			};
 
@@ -316,8 +323,7 @@ namespace NextUIBrowser.OverlayWindow {
 			}
 		}
 	}
-	
+
 	public class DevToolsWebClient : CefClient {
 	}
-
 }
