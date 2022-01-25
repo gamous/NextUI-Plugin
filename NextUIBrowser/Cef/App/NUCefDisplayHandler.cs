@@ -34,6 +34,11 @@ namespace NextUIBrowser.Cef.App {
 			CursorChanged?.Invoke(this, currentlyOnBackground ? Cursor.BrowserHostNoCapture : cursor);
 		}
 
+		protected override bool OnAutoResize(CefBrowser browser, ref CefSize newSize) {
+			PluginLog.Log($"RESIZE FINISHED {newSize.ToString()}");
+			return false;
+		}
+
 		protected override bool OnCursorChange(
 			CefBrowser browser,
 			IntPtr cursorHandle,

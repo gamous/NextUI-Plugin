@@ -4,7 +4,7 @@ using Xilium.CefGlue;
 
 namespace NextUIBrowser.Cef.App {
 	// ReSharper disable once InconsistentNaming
-	public class NUCefClient : CefClient {
+	public class NUCefClient : CefClient, IDisposable {
 		public readonly NUCefLoadHandler loadHandler;
 		public readonly NUCefRenderHandler renderHandler;
 		public readonly NUCefLifeSpanHandler lifeSpanHandler;
@@ -31,6 +31,11 @@ namespace NextUIBrowser.Cef.App {
 
 		protected override CefDisplayHandler GetDisplayHandler() {
 			return displayHandler;
+		}
+
+		public void Dispose() {
+			renderHandler.Dispose();
+			GC.SuppressFinalize(this);
 		}
 	}
 }

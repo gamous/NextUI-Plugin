@@ -151,6 +151,7 @@ namespace NextUIBrowser.OverlayWindow {
 
 			//browser.RenderHandler = null;
 			// renderHandler.Dispose();
+			client.Dispose();
 			browser.Dispose();
 			browser = null;
 			PluginLog.Log("Browser was disposed");
@@ -194,6 +195,7 @@ namespace NextUIBrowser.OverlayWindow {
 			// Need to resize renderer first, the browser will check it (and hence the texture) when browser.
 			// We are disregarding param as Size will adjust based on Fullscreen prop
 			client.renderHandler.Resize(overlay.Size);
+			browser?.GetHost().WasResized();
 			// if (browser != null) {
 			//browser.Size = overlay.Size;
 			// }

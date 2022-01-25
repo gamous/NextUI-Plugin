@@ -4,14 +4,13 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Security;
 using Dalamud.Logging;
-using NextUIShared.Data;
 using NextUIShared.Model;
 using NextUIShared.Request;
 using Xilium.CefGlue;
 
 namespace NextUIBrowser.Cef.App {
 	// ReSharper disable once InconsistentNaming
-	public class NUCefRenderHandler : CefRenderHandler {
+	public class NUCefRenderHandler : CefRenderHandler, IDisposable {
 		// CEF buffers are 32-bit BGRA
 		protected const byte BytesPerPixel = 4;
 
@@ -34,11 +33,6 @@ namespace NextUIBrowser.Cef.App {
 
 		protected override CefAccessibilityHandler GetAccessibilityHandler() {
 			return null;
-		}
-
-		protected override bool GetRootScreenRect(CefBrowser browser, ref CefRectangle rect) {
-			GetViewRect(browser, out rect);
-			return true;
 		}
 
 		public void Resize(Size size) {
@@ -72,6 +66,14 @@ namespace NextUIBrowser.Cef.App {
 			}
 
 			return alpha;
+		}
+
+		protected override bool GetRootScreenRect(CefBrowser browser, ref CefRectangle rect) {
+			rect.X = 0;
+			rect.Y = 0;
+			rect.Width = width;
+			rect.Height = height;
+			return true;
 		}
 
 		protected override void GetViewRect(CefBrowser browser, out CefRectangle rect) {
@@ -175,6 +177,7 @@ namespace NextUIBrowser.Cef.App {
 
 		public void Dispose() {
 			Marshal.FreeHGlobal(internalBuffer);
+			GC.SuppressFinalize(this);
 		}
 	}
 }
