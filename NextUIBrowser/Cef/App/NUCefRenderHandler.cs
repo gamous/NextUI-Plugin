@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Drawing;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using System.Security;
 using Dalamud.Logging;
 using NextUIShared.Data;
 using NextUIShared.Model;
@@ -44,6 +46,7 @@ namespace NextUIBrowser.Cef.App {
 			height = size.Height;
 		}
 
+		[HandleProcessCorruptedStateExceptions, SecurityCritical]
 		public byte GetAlphaAt(int x, int y) {
 			if (overlay.Resizing || internalBuffer == IntPtr.Zero) {
 				return 255;
