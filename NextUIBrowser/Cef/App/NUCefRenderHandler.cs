@@ -17,7 +17,7 @@ namespace NextUIBrowser.Cef.App {
 		protected readonly Overlay overlay;
 
 		// Transparent background click-through state
-		protected IntPtr internalBuffer;
+		protected byte[] internalBuffer = Array.Empty<byte>();
 		protected int bufferWidth;
 		protected int bufferHeight;
 		protected int bufferSize;
@@ -36,36 +36,31 @@ namespace NextUIBrowser.Cef.App {
 		}
 
 		public void Resize(Size size) {
-			width = size.Width;
-			height = size.Height;
+			lock (overlay.renderLock) {
+				width = size.Width;
+				height = size.Height;
+			}
 		}
 
-		[HandleProcessCorruptedStateExceptions, SecurityCritical]
 		public byte GetAlphaAt(int x, int y) {
-			if (overlay.Resizing || internalBuffer == IntPtr.Zero) {
-				return 255;
-			}
-
-			var rowPitch = bufferWidth * BytesPerPixel;
+			lock (overlay.renderLock) {
+				var rowPitch = bufferWidth * BytesPerPixel;
 
 			// Get the offset for the alpha of the cursor's current position.
 			// Bitmap buffer is BGRA, so +3 to get alpha byte
 			var cursorAlphaOffset =
 				0
-				+ (Math.Min(Math.Max(x, 0), bufferWidth - 1) * BytesPerPixel)
-				+ (Math.Min(Math.Max(y, 0), bufferHeight - 1) * rowPitch)
+					+ (Math.Min(Math.Max(x, 0), bufferWidth - 1) * BytesPerPixel)
+					+ (Math.Min(Math.Max(y, 0), bufferHeight - 1) * rowPitch)
 				+ 3;
 
-			byte alpha;
-			try {
-				alpha = Marshal.ReadByte(internalBuffer + cursorAlphaOffset);
-			}
-			catch {
-				// Console.Error.WriteLine("Failed to read alpha value from cef buffer.");
+				if (cursorAlphaOffset < internalBuffer.Length) {
+					return internalBuffer[cursorAlphaOffset];
+				}
+
+				Console.WriteLine("Could not determine alpha value");
 				return 255;
 			}
-
-			return alpha;
 		}
 
 		protected override bool GetRootScreenRect(CefBrowser browser, ref CefRectangle rect) {
@@ -78,10 +73,6 @@ namespace NextUIBrowser.Cef.App {
 
 		protected override void GetViewRect(CefBrowser browser, out CefRectangle rect) {
 			rect = new CefRectangle(0, 0, width, height);
-			// rect.X = 0;
-			// rect.Y = 0;
-			// rect.Width = _windowWidth;
-			// rect.Height = _windowHeight;
 		}
 
 		protected override bool GetScreenPoint(
@@ -111,47 +102,42 @@ namespace NextUIBrowser.Cef.App {
 			int width,
 			int height
 		) {
-			var newSize = width * height * BytesPerPixel;
-			PluginLog.Log($"PAINT REQ {newSize}");
-			// No buffer yet
-			if (internalBuffer == IntPtr.Zero) {
-				internalBuffer = Marshal.AllocHGlobal(newSize);
-				bufferSize = newSize;
+			lock (overlay.renderLock) {
+				if (type == CefPaintElementType.Popup) {
+					return;
+				}
+				
+				// check if lookup buffer is big enough
+				var requiredBufferSize = width * height * BytesPerPixel;
+				bufferWidth = width;
+				bufferHeight = height;
+
+				if (internalBuffer.Length < requiredBufferSize) {
+					internalBuffer = new byte[bufferWidth * bufferHeight * BytesPerPixel];
+				}
+
+				fixed (void* dstBuffer = internalBuffer) {
+					Buffer.MemoryCopy(
+						buffer.ToPointer(),
+						dstBuffer,
+						internalBuffer.Length,
+						requiredBufferSize
+					);
+					
+					// Nasty hack fixed with resizing lock which eliminates race conditions
+					overlay.Resizing = false;
+
+					// var requestType = type == PaintElementType.View ? PaintType.View : PaintType.Popup;
+					// var newRect = new XRect(dirtyRect.X, dirtyRect.Y, dirtyRect.Width, dirtyRect.Height);
+
+					overlay.PaintRequest(new PaintRequest() {
+						buffer = (IntPtr)dstBuffer,
+						height = height,
+						width = width,
+						// dirtyRect = newRect
+					});
+				}
 			}
-
-			if (bufferSize != newSize) {
-				// our buffer changed size
-				Marshal.FreeHGlobal(internalBuffer);
-				internalBuffer = Marshal.AllocHGlobal(newSize);
-				bufferSize = newSize;
-			}
-
-			bufferWidth = width;
-			bufferHeight = height;
-			bufferSize = newSize;
-
-			// var rowPitch = bufferWidth * BytesPerPixel;
-			// var offset = (dirtyRect.X * BytesPerPixel) + (dirtyRect.Y * BytesPerPixel * rowPitch);
-
-			// This is probably faster than trying to calculate exact rects to update
-			Buffer.MemoryCopy(buffer.ToPointer(), internalBuffer.ToPointer(), bufferSize, bufferSize);
-
-			// Nasty hack fixed with resizing lock which eliminates race conditions
-			overlay.Resizing = false;
-
-			// var requestType = type == PaintElementType.View ? PaintType.View : PaintType.Popup;
-			// var newRect = new XRect(dirtyRect.X, dirtyRect.Y, dirtyRect.Width, dirtyRect.Height);
-
-			overlay.PaintRequest(new PaintRequest() {
-				buffer = internalBuffer,
-				height = height,
-				width = width,
-				// dirtyRect = newRect
-			});
-
-			// Save the provided buffer (a bitmap image) as a PNG.
-			// var bitmap = new Bitmap(width, height, width * 4, PixelFormat.Format32bppArgb, buffer);
-			// bitmap.Save("LastOnPaint.png", ImageFormat.Png);
 		}
 
 		protected override void OnAcceleratedPaint(
@@ -176,7 +162,6 @@ namespace NextUIBrowser.Cef.App {
 		}
 
 		public void Dispose() {
-			Marshal.FreeHGlobal(internalBuffer);
 			GC.SuppressFinalize(this);
 		}
 	}
