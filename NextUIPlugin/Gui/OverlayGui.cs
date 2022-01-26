@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Drawing;
+using System.IO;
 using System.Numerics;
 using System.Reactive.Linq;
 using Dalamud.Game.ClientState.Conditions;
@@ -33,37 +34,36 @@ namespace NextUIPlugin.Gui {
 
 		protected D3D11.Texture2D? texture;
 
-		protected IDisposable sizeChangeSub;
-		protected ConcurrentQueue<PaintRequest> paintRequests = new();
+		// protected IDisposable sizeChangeSub;
 
 		public OverlayGui(
 			Overlay overlay
 		) {
 			this.overlay = overlay;
-			BuildTextureWrap();
+			BuildTextureWrap(overlay.Size);
 			overlay.CursorChange += SetCursor;
 			overlay.Paint += OnPaint;
 			overlay.Remove += OnRemove;
 
-			sizeChangeSub = overlay.SizeChange.AsObservable()
-				.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(OnSizeChange);
+			// sizeChangeSub = overlay.SizeChange.AsObservable().Subscribe(OnSizeChange);
+			// .Throttle(TimeSpan.FromMilliseconds(300))
 		}
 
 		protected void OnRemove(object? sender, EventArgs e) {
 			Dispose();
 		}
+		//
+		// protected void OnSizeChange(Size obj) {
+		// 	BuildTextureWrap();
+		// }
 
-		protected void OnSizeChange(Size obj) {
-			BuildTextureWrap();
-		}
-
-		public void BuildTextureWrap() {
-			PluginLog.Log("0 BUILDING " + overlay.Size);
+		public void BuildTextureWrap(Size size) {
+			PluginLog.Log("0 BUILDING " + size);
 			var oldTexture = texture;
 
 			texture = new D3D11.Texture2D(DxHandler.Device, new D3D11.Texture2DDescription() {
-				Width = overlay.Size.Width,
-				Height = overlay.Size.Height,
+				Width = size.Width,
+				Height = size.Height,
 				MipLevels = 1,
 				ArraySize = 1,
 				Format = DXGI.Format.B8G8R8A8_UNorm,
@@ -90,7 +90,7 @@ namespace NextUIPlugin.Gui {
 				oldTexture.Dispose();
 			}
 
-			overlay.Resizing = false;
+			//overlay.Resizing = false;
 			PluginLog.Log("1 BUILT");
 		}
 
@@ -100,7 +100,7 @@ namespace NextUIPlugin.Gui {
 			overlay.CursorChange -= SetCursor;
 			overlay.Paint -= OnPaint;
 			overlay.Remove -= OnRemove;
-			sizeChangeSub?.Dispose();
+			// sizeChangeSub?.Dispose();
 			textureWrap?.Dispose();
 			texture?.Dispose();
 			PluginLog.Log("Disposed overlay GUI");
@@ -278,6 +278,10 @@ namespace NextUIPlugin.Gui {
 
 		protected IntPtr lastBuffer;
 		protected bool needRepaint;
+		protected bool sizeChanged;
+		protected int bufferWidth;
+		protected int bufferHeight;
+
 		protected void OnPaint(object? sender, PaintRequest r) {
 			if (disposing) {
 				return;
@@ -285,52 +289,46 @@ namespace NextUIPlugin.Gui {
 
 			needRepaint = true;
 			lastBuffer = r.buffer;
-			// paintRequests.Enqueue(r);
+			if (r.width != bufferWidth || r.height != bufferHeight) {
+				sizeChanged = true;
+				bufferWidth = r.width;
+				bufferHeight = r.height;
+			}
 		}
 
 		protected unsafe void RenderBuffer() {
-			// var hasRequest = paintRequests.TryDequeue(out var paintRequest);
 			lock (overlay.renderLock) {
+				if (sizeChanged) {
+					BuildTextureWrap(new Size(bufferWidth, bufferHeight));
+					sizeChanged = false;
+				}
+
 				if (needRepaint && lastBuffer != IntPtr.Zero) {
-
-					// we know texture is not null
+					// // we know texture is not null
 					var texDesc = texture!.Description;
-
-					// TESTING
-					// var rowPitch = paintRequest.width * BytesPerPixel;
-					// var depthPitch = rowPitch * paintRequest.height;
-					// var x = paintRequest.dirtyRect.x;
-					// var y = paintRequest.dirtyRect.y;
-					// var height = paintRequest.dirtyRect.height;
-					// var width = paintRequest.dirtyRect.width;
-					// var sourceRegionPtr = lastBuffer + (x * BytesPerPixel) + (y * rowPitch);
-
 					var rowPitch = texDesc.Width * BytesPerPixel;
 					var depthPitch = rowPitch * texDesc.Height;
-					var x = 0;
-					var y = 0;
-					var height = texDesc.Height;
-					var width = texDesc.Width;
-					var sourceRegionPtr = lastBuffer;
-					// TESTING
-
-					var destinationRegion = new D3D11.ResourceRegion {
-						Top = Math.Min(y, texDesc.Height),
-						Bottom = Math.Min(y + height, texDesc.Height),
-						Left = Math.Min(x, texDesc.Width),
-						Right = Math.Min(x + width, texDesc.Width),
-						Front = 0,
-						Back = 1,
-					};
-
-					// Draw to the target
 
 					var context = texture.Device.ImmediateContext;
-					context.MapSubresource(texture, 0, D3D11.MapMode.WriteDiscard, 0, out DataStream mapped);
-					Buffer.MemoryCopy((void*)lastBuffer, (void*)mapped.DataPointer, depthPitch, depthPitch);
+
+					var box = context.MapSubresource(texture, 0, D3D11.MapMode.WriteDiscard, 0, out DataStream mapped);
+
+					if (box.RowPitch == rowPitch) {
+						Buffer.MemoryCopy((void*)lastBuffer, (void*)mapped.DataPointer, mapped.Length, depthPitch);
+					}
+					else {
+						for (var i = 0; i < texDesc.Height; i++) {
+							Buffer.MemoryCopy(
+								(void*)(lastBuffer + (i * rowPitch)),
+								(void*)(mapped.DataPointer + (i * box.RowPitch)),
+								box.RowPitch,
+								rowPitch
+							);
+						}
+					}
+
 					context.UnmapSubresource(texture, 0);
-					
-					// context.UpdateSubresource(texture, 0, destinationRegion, sourceRegionPtr, rowPitch, depthPitch);
+
 					needRepaint = false;
 				}
 			}
@@ -434,6 +432,7 @@ namespace NextUIPlugin.Gui {
 		}
 
 		protected readonly bool[] prevMouseState = new bool[3];
+
 		protected void HandleMouseClickEvent(ImGuiIOPtr io, Vector2 mousePos, InputModifier inputModifier) {
 			for (var i = 0; i < 3; i++) {
 				var stateChanged = io.MouseDown[i] != prevMouseState[i];

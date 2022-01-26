@@ -33,6 +33,7 @@ namespace NextUIBrowser.OverlayWindow {
 			PluginLog.Log($"WindowInfo {overlay.Size.Width}, {overlay.Size.Height}");
 			windowInfo.Bounds = new CefRectangle(0, 0, overlay.Size.Width, overlay.Size.Height);
 			windowInfo.Hidden = false;
+			windowInfo.SharedTextureEnabled = true;
 
 			var browserSettings = new CefBrowserSettings {
 				WindowlessFrameRate = 60,
@@ -196,6 +197,8 @@ namespace NextUIBrowser.OverlayWindow {
 			// We are disregarding param as Size will adjust based on Fullscreen prop
 			client.renderHandler.Resize(overlay.Size);
 			browser?.GetHost().WasResized();
+			browser?.GetHost().NotifyScreenInfoChanged();
+			// browser?.GetHost().Invalidate(CefPaintElementType.View);
 			// if (browser != null) {
 			//browser.Size = overlay.Size;
 			// }

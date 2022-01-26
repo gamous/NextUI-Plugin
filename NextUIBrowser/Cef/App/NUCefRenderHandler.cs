@@ -36,23 +36,24 @@ namespace NextUIBrowser.Cef.App {
 		}
 
 		public void Resize(Size size) {
-			lock (overlay.renderLock) {
-				width = size.Width;
-				height = size.Height;
-			}
+			// lock (overlay.renderLock) {
+			width = size.Width;
+			height = size.Height;
+			PluginLog.Log($"Resize {width} x {height}");
+			// }
 		}
 
 		public byte GetAlphaAt(int x, int y) {
 			lock (overlay.renderLock) {
 				var rowPitch = bufferWidth * BytesPerPixel;
 
-			// Get the offset for the alpha of the cursor's current position.
-			// Bitmap buffer is BGRA, so +3 to get alpha byte
-			var cursorAlphaOffset =
-				0
+				// Get the offset for the alpha of the cursor's current position.
+				// Bitmap buffer is BGRA, so +3 to get alpha byte
+				var cursorAlphaOffset =
+					0
 					+ (Math.Min(Math.Max(x, 0), bufferWidth - 1) * BytesPerPixel)
 					+ (Math.Min(Math.Max(y, 0), bufferHeight - 1) * rowPitch)
-				+ 3;
+					+ 3;
 
 				if (cursorAlphaOffset < internalBuffer.Length) {
 					return internalBuffer[cursorAlphaOffset];
@@ -64,6 +65,7 @@ namespace NextUIBrowser.Cef.App {
 		}
 
 		protected override bool GetRootScreenRect(CefBrowser browser, ref CefRectangle rect) {
+			PluginLog.Log($"GetRootScreenRect {width} x {height}");
 			rect.X = 0;
 			rect.Y = 0;
 			rect.Width = width;
@@ -72,6 +74,7 @@ namespace NextUIBrowser.Cef.App {
 		}
 
 		protected override void GetViewRect(CefBrowser browser, out CefRectangle rect) {
+			PluginLog.Log($"GetViewRect {width} x {height}");
 			rect = new CefRectangle(0, 0, width, height);
 		}
 
@@ -88,7 +91,7 @@ namespace NextUIBrowser.Cef.App {
 		}
 
 		protected override bool GetScreenInfo(CefBrowser browser, CefScreenInfo screenInfo) {
-			return false;
+			return true;
 		}
 
 		protected override void OnPopupSize(CefBrowser browser, CefRectangle rect) {
@@ -102,17 +105,18 @@ namespace NextUIBrowser.Cef.App {
 			int width,
 			int height
 		) {
+			if (type == CefPaintElementType.Popup) {
+				return;
+			}
+
 			lock (overlay.renderLock) {
-				if (type == CefPaintElementType.Popup) {
-					return;
-				}
-				
+				PluginLog.Log($"OnPaint {width} x {height}");
 				// check if lookup buffer is big enough
 				var requiredBufferSize = width * height * BytesPerPixel;
 				bufferWidth = width;
 				bufferHeight = height;
 
-				if (internalBuffer.Length < requiredBufferSize) {
+				if (internalBuffer.Length != requiredBufferSize) {
 					internalBuffer = new byte[bufferWidth * bufferHeight * BytesPerPixel];
 				}
 
@@ -123,7 +127,7 @@ namespace NextUIBrowser.Cef.App {
 						internalBuffer.Length,
 						requiredBufferSize
 					);
-					
+
 					// Nasty hack fixed with resizing lock which eliminates race conditions
 					overlay.Resizing = false;
 
@@ -146,11 +150,11 @@ namespace NextUIBrowser.Cef.App {
 			CefRectangle[] dirtyRects,
 			IntPtr sharedHandle
 		) {
-			throw new NotImplementedException();
+			
 		}
 
 		protected override void OnScrollOffsetChanged(CefBrowser browser, double x, double y) {
-			throw new NotImplementedException();
+			
 		}
 
 		protected override void OnImeCompositionRangeChanged(
@@ -158,7 +162,7 @@ namespace NextUIBrowser.Cef.App {
 			CefRange selectedRange,
 			CefRectangle[] characterBounds
 		) {
-			throw new NotImplementedException();
+			
 		}
 
 		public void Dispose() {
