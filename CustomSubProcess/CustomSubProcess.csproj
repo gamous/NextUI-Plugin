@@ -8,17 +8,15 @@
 		<Configurations>Debug;Release</Configurations>
 	</PropertyGroup>
 
-	<!-- Assembly Configuration -->
 	<PropertyGroup>
-		<AssemblyName>NextUIShared</AssemblyName>
-		<AssemblyVersion>0.3.3.0</AssemblyVersion>
-		<FileVersion>0.3.3.0</FileVersion>
-		<InformationalVersion>0.3.3.0</InformationalVersion>
+		<AssemblyName>CustomSubProcess</AssemblyName>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<FileVersion>1.0.0.0</FileVersion>
+		<InformationalVersion>1.0.0.0</InformationalVersion>
 	</PropertyGroup>
 
-	<!-- Build Configuration -->
 	<PropertyGroup>
-		<OutputType>Library</OutputType>
+		<OutputType>WinExe</OutputType>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 		<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -26,25 +24,32 @@
 		<DebugSymbols>true</DebugSymbols>
 		<DebugType>full</DebugType>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-		<Nullable>enable</Nullable>
 		<ProduceReferenceAssembly>false</ProduceReferenceAssembly>
-		<Prefer32Bit>false</Prefer32Bit>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+
 		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 
 		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
 		<OutputPath>bin\$(Configuration)</OutputPath>
+
+		<RollForward>Major</RollForward>
+		<SelfContained>true</SelfContained>
+		<PublishTrimmed>true</PublishTrimmed>
+		<PublishReadyToRun>false</PublishReadyToRun>
+		<PublishSingleFile>true</PublishSingleFile>
 	</PropertyGroup>
 
-	<!-- Release Configuration -->
-	<PropertyGroup Condition="'$(Configuration)'=='Release'">
-		<Deterministic>true</Deterministic>
-	</PropertyGroup>
+	<Target Name="PublishCustomSubProcess" AfterTargets="Build">
+		<Exec Command="dotnet publish $(ProjectDir) --no-build -c $(Configuration)"
+			  ContinueOnError="false" />
+
+		<Message Text="Published CustomSubProcess" Importance="High" />
+	</Target>
 
 	<ItemGroup>
-		<PackageReference Include="System.Reactive" Version="5.0.0" />
+		<Reference Include="Xilium.CefGlue, Version=96.0.18.0, Culture=neutral, PublicKeyToken=null">
+			<HintPath>..\cefglue\Xilium.CefGlue.dll</HintPath>
+		</Reference>
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="obj" />
-	</ItemGroup>
 </Project>

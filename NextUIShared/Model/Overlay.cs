@@ -11,6 +11,7 @@ namespace NextUIShared.Model {
 	[Serializable]
 	public class Overlay : IDisposable {
 		public Guid Guid { get; set; }
+		public readonly object renderLock = new();
 
 		protected string name = "New Overlay";
 		protected string url = "";

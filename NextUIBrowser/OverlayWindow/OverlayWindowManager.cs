@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using NextUIBrowser.RenderHandlers;
 using NextUIShared;
 using NextUIShared.Model;
 
@@ -20,8 +19,7 @@ namespace NextUIBrowser.OverlayWindow {
 
 		// Requested creation of new overlay
 		protected void CreateOverlayWindow(Overlay overlay) {
-			var textureHandler = new TextureRenderHandler(overlay);
-			var overlayWindow = new OverlayWindow(overlay, textureHandler);
+			var overlayWindow = new OverlayWindow(overlay);
 			overlayWindows.Add(overlayWindow);
 
 			overlay.BrowserDispose += () => {
