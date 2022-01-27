@@ -18,7 +18,7 @@ namespace NextUIPlugin.Service {
 	public static class MicroPluginService {
 		internal const string MicroPluginDirName = "MicroPlugin";
 		// Manually updated, not every new version would require new microplugin
-		internal const string RequiredVersion = "0.2.8.0";
+		internal const string RequiredVersion = "0.4.0.0";
 
 		internal static string? pluginDir;
 		internal static string? configDir;
@@ -29,7 +29,7 @@ namespace NextUIPlugin.Service {
 
 		// Thread zone
 		internal static Thread microPluginThread = null!;
-		internal static readonly ManualResetEventSlim MicroPluginResetEvent = new();
+		internal static readonly ManualResetEventSlim microPluginResetEvent = new();
 
 		// PID zone
 		internal static int lastPid;
@@ -46,7 +46,7 @@ namespace NextUIPlugin.Service {
 		}
 
 		public static void Shutdown() {
-			MicroPluginResetEvent.Set();
+			microPluginResetEvent.Set();
 			microPluginThread.Join(1000);
 		}
 #if RELEASE
@@ -148,7 +148,7 @@ namespace NextUIPlugin.Service {
 			// But we can't wait till it gracefully exits since once CEF is loaded, it's over
 			WriteLastPid();
 
-			MicroPluginResetEvent.Wait();
+			microPluginResetEvent.Wait();
 
 			microPlugin.Shutdown();
 			microPluginLoader.Dispose();

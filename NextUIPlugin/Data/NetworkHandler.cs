@@ -2,8 +2,10 @@
 using Dalamud.Game.Network;
 using System.IO;
 using System.Linq;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Logging;
 using NextUIPlugin.NetworkStructures;
+using NextUIPlugin.NetworkStructures.Server;
 using NextUIPlugin.Socket;
 
 namespace NextUIPlugin.Data {
@@ -82,6 +84,30 @@ namespace NextUIPlugin.Data {
 			}
 
 			var dyn = NetworkBinding.Convert(opcode, dataPtr, targetActorId);
+
+			// if (opcode == (ushort)ServerZoneIpcType.ActorControl) {
+			// 	var actorControl = (XivIpcActorControl)dyn;
+			// 	if (actorControl.category == XivIpcActorControlCategory.OverTime) {
+			// 		var timestamp = ""; // no idea yet
+			// 		var id = dyn.targetActorId.ToString("X4");
+			// 		var name = dyn.targetActorName;
+			// 		var which = actorControl.param2 == 4 ? "HoT" : "DoT";
+			// 		var effectId = "??";
+			// 		var chara = (BattleChara)dyn.chara;
+			// 		var currentHp = chara.CurrentHp;
+			// 		var maxHp = chara.MaxHp;
+			// 		var currentMp = chara.CurrentMp;
+			// 		var maxMp = chara.MaxMp;
+			// 		var x = chara.Position.X;
+			// 		var y = chara.Position.Y;
+			// 		var z = chara.Position.Z;
+			// 		var damage = "??";
+			// 		var heading = "??";
+			// 		var ll = $"24|{timestamp}|{id}|{name}|{which}|{effectId}|{damage}|{currentHp}|{maxHp}|{currentMp}|{maxMp}|[?]|[?]|{x}|{y}|{z}|{heading}"
+			// 		
+			// 	}
+			// }
+			
 			if (dyn != null) {
 				NextUISocket.BroadcastTo(new {
 					@event = eventName,
