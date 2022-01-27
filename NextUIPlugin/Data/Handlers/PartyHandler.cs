@@ -124,7 +124,7 @@ namespace NextUIPlugin.Data.Handlers {
 				jobId = chara.ClassJob,
 				level = chara.Level,
 				rotation = gameObject->Rotation,
-				companyTag = companyTag,
+				companyTag = companyTag.TextValue,
 			};
 		}
 	}
