@@ -39,13 +39,6 @@
 		<PublishSingleFile>true</PublishSingleFile>
 	</PropertyGroup>
 
-	<Target Name="PublishCustomSubProcess" AfterTargets="Build">
-		<Exec Command="dotnet publish $(ProjectDir) --no-build -c $(Configuration)"
-			  ContinueOnError="false" />
-
-		<Message Text="Published CustomSubProcess" Importance="High" />
-	</Target>
-
 	<ItemGroup>
 		<Reference Include="Xilium.CefGlue, Version=96.0.18.0, Culture=neutral, PublicKeyToken=null">
 			<HintPath>..\cefglue\Xilium.CefGlue.dll</HintPath>

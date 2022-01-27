@@ -9,9 +9,11 @@ namespace NextUIBrowser.Cef.App {
 		public readonly NUCefRenderHandler renderHandler;
 		public readonly NUCefLifeSpanHandler lifeSpanHandler;
 		public readonly NUCefDisplayHandler displayHandler;
+		public readonly NUCefContextMenuHandler dialogHandler;
 
 		public NUCefClient(Overlay overlay) {
 			loadHandler = new NUCefLoadHandler();
+			dialogHandler = new NUCefContextMenuHandler();
 			renderHandler = new NUCefRenderHandler(overlay);
 			displayHandler = new NUCefDisplayHandler(renderHandler);
 			lifeSpanHandler = new NUCefLifeSpanHandler();
@@ -31,6 +33,10 @@ namespace NextUIBrowser.Cef.App {
 
 		protected override CefDisplayHandler GetDisplayHandler() {
 			return displayHandler;
+		}
+
+		protected override CefContextMenuHandler GetContextMenuHandler() {
+			return dialogHandler;
 		}
 
 		public void Dispose() {

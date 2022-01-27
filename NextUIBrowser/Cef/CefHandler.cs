@@ -33,7 +33,7 @@ namespace NextUIBrowser.Cef {
 				LogFile = Path.Combine(pluginDir, "cef-debug.log"),
 #else
 				// Don't log useless stuff for release
-				LogSeverity = LogSeverity.Fatal,
+				LogSeverity = CefLogSeverity.Fatal,
 #endif
 			};
 

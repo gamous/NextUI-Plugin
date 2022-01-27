@@ -1,11 +1,11 @@
 ﻿Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextUIPlugin", "NextUIPlugin\NextUIPlugin.csproj", "{8EE468A3-2D76-4942-A3EE-54EFA50344F8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomSubProcess", "CustomSubProcess\CustomSubProcess.csproj", "{06835371-1B2F-43FE-8654-8946BD4F736F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextUIBrowser", "NextUIBrowser\NextUIBrowser.csproj", "{057F2713-68B7-479F-8140-CC2649DC17B7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextUIShared", "NextUIShared\NextUIShared.csproj", "{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextUIPlugin", "NextUIPlugin\NextUIPlugin.csproj", "{8EE468A3-2D76-4942-A3EE-54EFA50344F8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomSubProcess", "CustomSubProcess\CustomSubProcess.csproj", "{06835371-1B2F-43FE-8654-8946BD4F736F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextUIShared", "NextUIShared\NextUIShared.csproj", "{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,21 +13,21 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Debug|x64.ActiveCfg = Debug|x64
-		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Release|x64.ActiveCfg = Release|x64
-		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Release|x64.Build.0 = Release|x64
-		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Debug|x64.Build.0 = Debug|x64
-		{057F2713-68B7-479F-8140-CC2649DC17B7}.Debug|x64.ActiveCfg = Debug|x64
-		{057F2713-68B7-479F-8140-CC2649DC17B7}.Debug|x64.Build.0 = Debug|x64
-		{057F2713-68B7-479F-8140-CC2649DC17B7}.Release|x64.ActiveCfg = Release|x64
-		{057F2713-68B7-479F-8140-CC2649DC17B7}.Release|x64.Build.0 = Release|x64
-		{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}.Debug|x64.ActiveCfg = Debug|x64
-		{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}.Debug|x64.Build.0 = Debug|x64
-		{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}.Release|x64.ActiveCfg = Release|x64
-		{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}.Release|x64.Build.0 = Release|x64
 		{06835371-1B2F-43FE-8654-8946BD4F736F}.Debug|x64.ActiveCfg = Debug|Any CPU
 		{06835371-1B2F-43FE-8654-8946BD4F736F}.Debug|x64.Build.0 = Debug|Any CPU
 		{06835371-1B2F-43FE-8654-8946BD4F736F}.Release|x64.ActiveCfg = Release|Any CPU
 		{06835371-1B2F-43FE-8654-8946BD4F736F}.Release|x64.Build.0 = Release|Any CPU
+		{057F2713-68B7-479F-8140-CC2649DC17B7}.Debug|x64.ActiveCfg = Debug|x64
+		{057F2713-68B7-479F-8140-CC2649DC17B7}.Debug|x64.Build.0 = Debug|x64
+		{057F2713-68B7-479F-8140-CC2649DC17B7}.Release|x64.ActiveCfg = Release|x64
+		{057F2713-68B7-479F-8140-CC2649DC17B7}.Release|x64.Build.0 = Release|x64
+		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Debug|x64.ActiveCfg = Debug|x64
+		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Release|x64.ActiveCfg = Release|x64
+		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Release|x64.Build.0 = Release|x64
+		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Debug|x64.Build.0 = Debug|x64
+		{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}.Debug|x64.ActiveCfg = Debug|x64
+		{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}.Debug|x64.Build.0 = Debug|x64
+		{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}.Release|x64.ActiveCfg = Release|x64
+		{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 EndGlobal

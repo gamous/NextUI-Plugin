@@ -95,6 +95,14 @@
 		<Message Text="Copied CEF files" Importance="High" />
 	</Target>
 
+	<Target Name="PublishCustomSubProcess" AfterTargets="Build">
+		<Exec Command="dotnet publish $(SolutionDir)CustomSubProcess --no-build -c $(Configuration)"
+			  ConsoleToMSBuild="true"
+			  ContinueOnError="false" />
+
+		<Message Text="Published CustomSubProcess" Importance="High" />
+	</Target>
+
 	<!-- Copy custom sub process -->
 	<Target Name="CopySubProcess" AfterTargets="Build">
 		<ItemGroup>

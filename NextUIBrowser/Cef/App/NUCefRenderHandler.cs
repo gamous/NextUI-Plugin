@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Drawing;
-using System.Runtime.ExceptionServices;
-using System.Runtime.InteropServices;
-using System.Security;
 using Dalamud.Logging;
 using NextUIShared.Model;
 using NextUIShared.Request;
@@ -20,7 +17,6 @@ namespace NextUIBrowser.Cef.App {
 		protected byte[] internalBuffer = Array.Empty<byte>();
 		protected int bufferWidth;
 		protected int bufferHeight;
-		protected int bufferSize;
 
 		protected int width;
 		protected int height;
@@ -32,7 +28,7 @@ namespace NextUIBrowser.Cef.App {
 		}
 
 		protected override CefAccessibilityHandler GetAccessibilityHandler() {
-			return null;
+			return null!;
 		}
 
 		public void Resize(Size size) {
@@ -150,11 +146,9 @@ namespace NextUIBrowser.Cef.App {
 			CefRectangle[] dirtyRects,
 			IntPtr sharedHandle
 		) {
-			
 		}
 
 		protected override void OnScrollOffsetChanged(CefBrowser browser, double x, double y) {
-			
 		}
 
 		protected override void OnImeCompositionRangeChanged(
@@ -162,7 +156,6 @@ namespace NextUIBrowser.Cef.App {
 			CefRange selectedRange,
 			CefRectangle[] characterBounds
 		) {
-			
 		}
 
 		public void Dispose() {
