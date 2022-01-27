@@ -95,7 +95,7 @@ namespace NextUIPlugin.Data.Handlers {
 		internal static object BattleCharaRawToObject(HudPartyMember partyMember) {
 			var name = MemoryHelper.ReadSeString((IntPtr)partyMember.Name, 64);
 			var objectId = partyMember.ObjectId;
-			if (partyMember.ObjectId == 0) {
+			if (partyMember.ObjectId == 0 || partyMember.Object == (void*)0) {
 				return new {
 					id = objectId,
 					name = name.TextValue,
