@@ -52,7 +52,12 @@ namespace NextUIBrowser.Cef.App {
 					+ 3;
 
 				if (cursorAlphaOffset < internalBuffer.Length) {
-					return internalBuffer[cursorAlphaOffset];
+					try {
+						return internalBuffer[cursorAlphaOffset];
+					}
+					catch {
+						return 255;
+					}
 				}
 
 				Console.WriteLine("Could not determine alpha value");
