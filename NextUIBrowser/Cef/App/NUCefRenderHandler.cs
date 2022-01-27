@@ -35,7 +35,6 @@ namespace NextUIBrowser.Cef.App {
 			// lock (overlay.renderLock) {
 			width = size.Width;
 			height = size.Height;
-			PluginLog.Log($"Resize {width} x {height}");
 			// }
 		}
 
@@ -66,7 +65,6 @@ namespace NextUIBrowser.Cef.App {
 		}
 
 		protected override bool GetRootScreenRect(CefBrowser browser, ref CefRectangle rect) {
-			PluginLog.Log($"GetRootScreenRect {width} x {height}");
 			rect.X = 0;
 			rect.Y = 0;
 			rect.Width = width;
@@ -75,7 +73,6 @@ namespace NextUIBrowser.Cef.App {
 		}
 
 		protected override void GetViewRect(CefBrowser browser, out CefRectangle rect) {
-			PluginLog.Log($"GetViewRect {width} x {height}");
 			rect = new CefRectangle(0, 0, width, height);
 		}
 
@@ -111,7 +108,6 @@ namespace NextUIBrowser.Cef.App {
 			}
 
 			lock (overlay.renderLock) {
-				PluginLog.Log($"OnPaint {width} x {height}");
 				// check if lookup buffer is big enough
 				var requiredBufferSize = width * height * BytesPerPixel;
 				bufferWidth = width;

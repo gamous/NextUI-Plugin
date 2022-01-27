@@ -12,7 +12,7 @@ namespace NextUIBrowser.Cef.App {
 			if (frame.IsMain) {
 				PluginLog.Log($"START: {browser.GetMainFrame().Url}");
 			}
-			PluginLog.Log($"START WAT: {frame.Url}");
+			//PluginLog.Log($"START WAT: {frame.Url}");
 		}
 
 		protected override void OnLoadEnd(CefBrowser browser, CefFrame frame, int httpStatusCode) {

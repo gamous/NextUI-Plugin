@@ -191,7 +191,7 @@ namespace NextUIBrowser.OverlayWindow {
 		}
 
 		public void Resize(Size size) {
-			PluginLog.Log("CREATED WITH ZIE " + overlay.Size);
+			//PluginLog.Log("CREATED WITH ZIE " + overlay.Size);
 			overlay.Resizing = true;
 			// Need to resize renderer first, the browser will check it (and hence the texture) when browser.
 			// We are disregarding param as Size will adjust based on Fullscreen prop

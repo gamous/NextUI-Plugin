@@ -5,7 +5,7 @@ namespace NextUIBrowser.Cef.App {
 	// ReSharper disable once InconsistentNaming
 	public class NUCefApp : CefApp {
 		protected override void OnBeforeCommandLineProcessing(string processType, CefCommandLine commandLine) {
-			PluginLog.Log("OnBeforeCommandLineProcessing: {0} {1}", processType, commandLine);
+			// PluginLog.Log("OnBeforeCommandLineProcessing: {0} {1}", processType, commandLine);
 
 			// browser (main) process
 			if (!string.IsNullOrEmpty(processType)) {
