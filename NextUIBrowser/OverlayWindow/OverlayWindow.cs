@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Reactive.Linq;
 using Dalamud.Logging;
+using NextUIBrowser.Cef;
 using NextUIBrowser.Cef.App;
 using NextUIShared.Data;
 using NextUIShared.Model;
@@ -39,30 +40,7 @@ namespace NextUIBrowser.OverlayWindow {
 				WindowlessFrameRate = 60,
 			};
 
-			client.lifeSpanHandler.AfterBrowserLoad += cefBrowser => {
-				browser = cefBrowser;
-				PluginLog.Log(
-					$"BR CREATED {browser.IsLoading} {browser.IsValid} " +
-					$"{browser.FrameCount} {browser.HasDocument} {browser?.GetMainFrame().Url}"
-				);
-
-				overlay.DebugRequest += Debug;
-				overlay.ReloadRequest += Reload;
-
-				overlay.UrlChange += Navigate;
-
-				overlay.MouseMoveEvent += HandleMouseMoveEvent;
-				overlay.MouseClickEvent += HandleMouseClickEvent;
-				overlay.MouseWheelEvent += HandleMouseWheelEvent;
-				overlay.MouseLeaveEvent += HandleMouseLeaveEvent;
-
-				overlay.KeyEvent += HandleKeyEvent;
-				sizeObservableSub = overlay.SizeChange.AsObservable()
-					.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
-
-				// Also request cursor if it changes
-				client.displayHandler.CursorChanged += RenderHandlerOnCursorChanged;
-			};
+			client.lifeSpanHandler.AfterBrowserLoad += LifeSpanHandlerOnAfterBrowserLoad;
 
 			CefBrowserHost.CreateBrowser(
 				windowInfo,
@@ -70,63 +48,33 @@ namespace NextUIBrowser.OverlayWindow {
 				browserSettings,
 				overlay.Url
 			);
+		}
 
-			// browser = CefBrowserHost.CreateBrowserSync(
-			// 	windowInfo,
-			// 	client,
-			// 	browserSettings,
-			// 	overlay.Url
-			// );
-			//
-			// PluginLog.Log(
-			// 	$"BR CREATED {browser.IsLoading} {browser.IsValid} " +
-			// 	$"{browser.FrameCount} {browser.HasDocument} {browser?.GetMainFrame().Url}"
-			// );
-			//
-			// overlay.DebugRequest += Debug;
-			// overlay.ReloadRequest += Reload;
-			//
-			// overlay.UrlChange += Navigate;
-			//
-			// overlay.MouseMoveEvent += HandleMouseMoveEvent;
-			// overlay.MouseClickEvent += HandleMouseClickEvent;
-			// overlay.MouseWheelEvent += HandleMouseWheelEvent;
-			// overlay.MouseLeaveEvent += HandleMouseLeaveEvent;
-			//
-			// overlay.KeyEvent += HandleKeyEvent;
-			// sizeObservableSub = overlay.SizeChange.AsObservable()
-			// 	.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
-			//
-			// // Also request cursor if it changes
-			// client.renderHandler.CursorChanged += RenderHandlerOnCursorChanged;
+		protected void LifeSpanHandlerOnAfterBrowserLoad(CefBrowser cefBrowser) {
+			browser = cefBrowser;
+			PluginLog.Log(
+				$"BR CREATED {browser.IsLoading} {browser.IsValid} " +
+				$"{browser.FrameCount} {browser.HasDocument} {browser?.GetMainFrame().Url}"
+			);
 
+			overlay.DebugRequest += Debug;
+			overlay.ReloadRequest += Reload;
 
-			//browser = new ChromiumWebBrowser(overlay.Url, automaticallyCreateBrowser: false);
-			//browser.RenderHandler = renderHandler;
-			//browser.MenuHandler = new CustomMenuHandler();
-			//var size = renderHandler.GetViewRect();
+			overlay.UrlChange += Navigate;
 
-			// General browser config
-			// var windowInfo = new WindowInfo() {
-			// 	Width = size.Width,
-			// 	Height = size.Height,
-			// };
-			//windowInfo.SetAsWindowless(IntPtr.Zero);
+			overlay.MouseMoveEvent += HandleMouseMoveEvent;
+			overlay.MouseClickEvent += HandleMouseClickEvent;
+			overlay.MouseWheelEvent += HandleMouseWheelEvent;
+			overlay.MouseLeaveEvent += HandleMouseLeaveEvent;
 
-			// WindowInfo gets ignored sometimes, be super sure:
-			//browser.BrowserInitialized += (_, _) => { browser.Size = new Size(size.Width, size.Height); };
+			overlay.KeyEvent += HandleKeyEvent;
+			sizeObservableSub = overlay.SizeChange.AsObservable()
+				.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
 
-			// BrowserSettings browserSettings = new() {
-			// 	WindowlessFrameRate = 60,
-			// };
+			// Also request cursor if it changes
+			client.displayHandler.CursorChanged += RenderHandlerOnCursorChanged;
 
-			// Ready, boot up the browser
-			//browser.CreateBrowser(windowInfo, browserSettings);
-
-			//browserSettings.Dispose();
-			//windowInfo.Dispose();
-
-			// Handle any changes done on overlay data
+			client.lifeSpanHandler.AfterBrowserLoad -= LifeSpanHandlerOnAfterBrowserLoad;
 		}
 
 		protected void RenderHandlerOnCursorChanged(object? sender, Cursor cursor) {
@@ -209,12 +157,9 @@ namespace NextUIBrowser.OverlayWindow {
 				return;
 			}
 
-			var cursorX = (int)request.x;
-			var cursorY = (int)request.y;
-
-			client.displayHandler.SetMousePosition(cursorX, cursorY);
-
-			var evt = new CefMouseEvent(cursorX, cursorY, DecodeInputModifier(request.modifier));
+			var cursor = DpiScaling.ScaleViewPoint(request.x, request.y);
+			client.displayHandler.SetMousePosition(cursor.X, cursor.Y);
+			var evt = new CefMouseEvent(cursor.X, cursor.Y, DecodeInputModifier(request.modifier));
 
 			// Ensure the mouse position is up to date
 			browser?.GetHost().SendMouseMoveEvent(evt, false);
@@ -225,10 +170,8 @@ namespace NextUIBrowser.OverlayWindow {
 				return;
 			}
 
-			var cursorX = (int)request.x;
-			var cursorY = (int)request.y;
-
-			var evt = new CefMouseEvent(cursorX, cursorY, DecodeInputModifier(request.modifier));
+			var cursor = DpiScaling.ScaleViewPoint(request.x, request.y);
+			var evt = new CefMouseEvent(cursor.X, cursor.Y, DecodeInputModifier(request.modifier));
 
 			browser?.GetHost().SendMouseClickEvent(
 				evt,
@@ -243,10 +186,8 @@ namespace NextUIBrowser.OverlayWindow {
 				return;
 			}
 
-			var cursorX = (int)request.x;
-			var cursorY = (int)request.y;
-
-			var evt = new CefMouseEvent(cursorX, cursorY, DecodeInputModifier(request.modifier));
+			var cursor = DpiScaling.ScaleViewPoint(request.x, request.y);
+			var evt = new CefMouseEvent(cursor.X, cursor.Y, DecodeInputModifier(request.modifier));
 
 			// CEF treats the wheel delta as mode 0, pixels. Bump up the numbers to match typical in-browser experience.
 			const int deltaMult = 100;
@@ -262,16 +203,14 @@ namespace NextUIBrowser.OverlayWindow {
 				return;
 			}
 
-			var cursorX = (int)request.x;
-			var cursorY = (int)request.y;
-
-			var evt = new CefMouseEvent(cursorX, cursorY, CefEventFlags.None);
+			var cursor = DpiScaling.ScaleViewPoint(request.x, request.y);
+			var evt = new CefMouseEvent(cursor.X, cursor.Y, CefEventFlags.None);
 
 			browser?.GetHost().SendMouseMoveEvent(evt, true);
 		}
 
 		public void HandleKeyEvent(object? sender, KeyEventRequest request) {
-			if (browser == null || browser.IsLoading) {
+			if (BrowserLoading) {
 				return;
 			}
 

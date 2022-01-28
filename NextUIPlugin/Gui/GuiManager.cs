@@ -39,10 +39,11 @@ namespace NextUIPlugin.Gui {
 		}
 
 		protected (bool, long) OnWndProc(WindowsMessage msg, ulong wParam, long lParam) {
-			// Notify all the inlays of the wndproc, respond with the first capturing response (if any)
-			// TODO: Yeah this ain't great but realistically only one will capture at any one time for now.
-			// Revisit if shit breaks or something idfk.
-			var responses = overlays.Select(ov => ov.WndProcMessage(msg, wParam, lParam));
+			var responses = new List<(bool, long)>();
+			foreach (var ov in overlays.ToArray()) {
+				responses.Add(ov.WndProcMessage(msg, wParam, lParam));
+			}
+			// var responses = overlays.Select(ov => ov.WndProcMessage(msg, wParam, lParam));
 			return responses.FirstOrDefault(ov => ov.Item1);
 		}
 

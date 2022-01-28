@@ -73,7 +73,7 @@ namespace NextUIBrowser.Cef.App {
 		}
 
 		protected override void GetViewRect(CefBrowser browser, out CefRectangle rect) {
-			rect = new CefRectangle(0, 0, width, height);
+			rect = DpiScaling.ScaleViewRect(new CefRectangle(0, 0, width, height));
 		}
 
 		protected override bool GetScreenPoint(
@@ -89,6 +89,7 @@ namespace NextUIBrowser.Cef.App {
 		}
 
 		protected override bool GetScreenInfo(CefBrowser browser, CefScreenInfo screenInfo) {
+			screenInfo.DeviceScaleFactor = DpiScaling.GetDeviceScale();
 			return true;
 		}
 

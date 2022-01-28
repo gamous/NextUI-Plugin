@@ -6,7 +6,8 @@ namespace CustomSubProcess {
 		[STAThread]
 		public static int Main(string[] args) {
 			// Load CEF. This checks for the correct CEF version.
-			//CefRuntime.Load();
+			CefRuntime.Load();
+			CefRuntime.EnableHighDpiSupport();
 
 			var mainArgs = new CefMainArgs(args);
 			var cefApp = new DemoApp();
