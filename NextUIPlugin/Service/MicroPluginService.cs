@@ -18,7 +18,7 @@ namespace NextUIPlugin.Service {
 	public static class MicroPluginService {
 		internal const string MicroPluginDirName = "MicroPlugin";
 		// Manually updated, not every new version would require new microplugin
-		internal const string RequiredVersion = "0.4.1.0";
+		internal const string RequiredVersion = "0.4.2.0";
 
 		internal static string? pluginDir;
 		internal static string? configDir;
