@@ -1,4 +1,7 @@
-﻿using System;
+﻿/*
+ * Borrowed from: https://github.com/Styr1x/Browsingway/blob/main/Browsingway.Renderer/DpiScaling.cs
+ */
+using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using Xilium.CefGlue;
