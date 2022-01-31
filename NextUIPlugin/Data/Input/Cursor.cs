@@ -1,4 +1,4 @@
-﻿namespace NextUIShared.Data {
+﻿namespace NextUIPlugin.Data.Input {
 	public enum Cursor {
 		Default,
 		None,

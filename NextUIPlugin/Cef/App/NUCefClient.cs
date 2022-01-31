@@ -1,8 +1,8 @@
 ﻿using System;
-using NextUIShared.Model;
+using NextUIPlugin.Model;
 using Xilium.CefGlue;
 
-namespace NextUIBrowser.Cef.App {
+namespace NextUIPlugin.Cef.App {
 	// ReSharper disable once InconsistentNaming
 	public class NUCefClient : CefClient, IDisposable {
 		public readonly NUCefLoadHandler loadHandler;

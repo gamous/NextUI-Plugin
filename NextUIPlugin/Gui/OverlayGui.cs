@@ -1,18 +1,18 @@
 ﻿using ImGuiNET;
 using System;
-using System.Collections.Concurrent;
 using System.Drawing;
-using System.IO;
 using System.Numerics;
 using System.Reactive.Linq;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Logging;
 using ImGuiScene;
-using NextUIShared;
-using NextUIShared.Data;
-using NextUIShared.Model;
-using NextUIShared.Request;
+using NextUIPlugin.Cef;
+using NextUIPlugin.Cef.App;
+using NextUIPlugin.Data.Input;
+using NextUIPlugin.Model;
+using NextUIPlugin.Service;
 using SharpDX;
+using Xilium.CefGlue;
 using D3D11 = SharpDX.Direct3D11;
 using D3D = SharpDX.Direct3D;
 using DXGI = SharpDX.DXGI;
@@ -36,26 +36,210 @@ namespace NextUIPlugin.Gui {
 
 		// protected IDisposable sizeChangeSub;
 
+		protected readonly NUCefClient client;
+		protected CefBrowser? browser;
+		protected IDisposable? sizeObservableSub;
+		protected bool BrowserLoading => browser == null || browser.IsLoading;
+
 		public OverlayGui(
 			Overlay overlay
 		) {
 			this.overlay = overlay;
 			BuildTextureWrap(overlay.Size);
-			overlay.CursorChange += SetCursor;
-			overlay.Paint += OnPaint;
-			overlay.Remove += OnRemove;
 
+			client = new NUCefClient(overlay);
 			// sizeChangeSub = overlay.SizeChange.AsObservable().Subscribe(OnSizeChange);
 			// .Throttle(TimeSpan.FromMilliseconds(300))
+
+			Initialize();
 		}
 
-		protected void OnRemove(object? sender, EventArgs e) {
-			Dispose();
+		public void Initialize() {
+			var windowInfo = CefWindowInfo.Create();
+			windowInfo.SetAsWindowless(IntPtr.Zero, true);
+			windowInfo.WindowlessRenderingEnabled = true;
+			PluginLog.Log($"WindowInfo {overlay.Size.Width}, {overlay.Size.Height}");
+			windowInfo.Bounds = new CefRectangle(0, 0, overlay.Size.Width, overlay.Size.Height);
+			windowInfo.Hidden = false;
+			windowInfo.SharedTextureEnabled = true;
+
+			var browserSettings = new CefBrowserSettings {
+				WindowlessFrameRate = 60,
+			};
+
+			client.lifeSpanHandler.AfterBrowserLoad += LifeSpanHandlerOnAfterBrowserLoad;
+
+			CefBrowserHost.CreateBrowser(
+				windowInfo,
+				client,
+				browserSettings,
+				overlay.Url
+			);
 		}
-		//
-		// protected void OnSizeChange(Size obj) {
-		// 	BuildTextureWrap();
-		// }
+
+		protected void LifeSpanHandlerOnAfterBrowserLoad(CefBrowser cefBrowser) {
+			browser = cefBrowser;
+			PluginLog.Log(
+				$"BR CREATED {browser.IsLoading} {browser.IsValid} " +
+				$"{browser.FrameCount} {browser.HasDocument} {browser?.GetMainFrame().Url}"
+			);
+
+			overlay.UrlChange += Navigate;
+
+			sizeObservableSub = overlay.SizeChange.AsObservable()
+				.Throttle(TimeSpan.FromMilliseconds(300)).Subscribe(Resize);
+
+			// Also request cursor if it changes
+			client.displayHandler.CursorChanged += SetCursor;
+			client.renderHandler.Paint += OnPaint;
+
+			client.lifeSpanHandler.AfterBrowserLoad -= LifeSpanHandlerOnAfterBrowserLoad;
+		}
+
+		public void Navigate(object? sender, string newUrl) {
+			// If navigating to the same url, force a clean reload
+			if (browser?.GetMainFrame().Url == newUrl) {
+				PluginLog.Log($"RELOAD {newUrl}");
+				browser.ReloadIgnoreCache();
+				return;
+			}
+
+			// Otherwise load regularly
+			browser?.GetMainFrame().LoadUrl(newUrl);
+			PluginLog.Log($"LOAD {newUrl}");
+		}
+
+		public void Reload() {
+			browser?.ReloadIgnoreCache();
+		}
+
+		public void Debug() {
+			ShowDevTools();
+		}
+
+		protected void ShowDevTools() {
+			if (browser == null) {
+				return;
+			}
+
+			var host = browser.GetHost();
+			var wi = CefWindowInfo.Create();
+			wi.SetAsPopup(IntPtr.Zero, "DevTools");
+			host.ShowDevTools(wi, new DevToolsWebClient(), new CefBrowserSettings(), new CefPoint(0, 0));
+		}
+
+		public void Resize(Size size) {
+			//PluginLog.Log("CREATED WITH ZIE " + overlay.Size);
+			overlay.Resizing = true;
+			// Need to resize renderer first, the browser will check it (and hence the texture) when browser.
+			// We are disregarding param as Size will adjust based on Fullscreen prop
+			client.renderHandler.Resize(overlay.Size);
+			browser?.GetHost().WasResized();
+			browser?.GetHost().NotifyScreenInfoChanged();
+			// browser?.GetHost().Invalidate(CefPaintElementType.View);
+			// if (browser != null) {
+			//browser.Size = overlay.Size;
+			// }
+		}
+
+		protected void HandleMouseMoveEvent(
+			float x,
+			float y,
+			InputModifier inputModifier
+		) {
+			if (BrowserLoading) {
+				return;
+			}
+
+			var scaledCursor = DpiScaling.ScaleViewPoint(x, y);
+			client.displayHandler.SetMousePosition(scaledCursor.X, scaledCursor.Y);
+			var evt = new CefMouseEvent(scaledCursor.X, scaledCursor.Y, DecodeInputModifier(inputModifier));
+
+			browser?.GetHost().SendMouseMoveEvent(evt, false);
+		}
+
+		protected void HandleMouseClickEvent(
+			float x, float y,
+			MouseButtonType mouseButtonType,
+			bool isUp,
+			int clickCount,
+			InputModifier inputModifier
+		) {
+			if (BrowserLoading) {
+				return;
+			}
+
+			var scaledCursor = DpiScaling.ScaleViewPoint(x, y);
+			var evt = new CefMouseEvent(scaledCursor.X, scaledCursor.Y, DecodeInputModifier(inputModifier));
+
+			browser?.GetHost().SendMouseClickEvent(
+				evt,
+				DecodeButtonType(mouseButtonType),
+				isUp,
+				clickCount
+			);
+		}
+
+		protected void HandleMouseWheelEvent(
+			float x,
+			float y,
+			float wheelX,
+			float wheelY,
+			InputModifier inputModifier
+		) {
+			if (BrowserLoading) {
+				return;
+			}
+
+			var scaledCursor = DpiScaling.ScaleViewPoint(x, y);
+			var evt = new CefMouseEvent(scaledCursor.X, scaledCursor.Y, DecodeInputModifier(inputModifier));
+
+			// CEF treats the wheel delta as mode 0, pixels. Bump up the numbers to match typical in-browser experience.
+			const int deltaMult = 100;
+			browser?.GetHost().SendMouseWheelEvent(
+				evt,
+				(int)wheelX * deltaMult,
+				(int)wheelY * deltaMult
+			);
+		}
+
+		protected void HandleMouseLeaveEvent(float x, float y) {
+			if (BrowserLoading) {
+				return;
+			}
+
+			var scaledCursor = DpiScaling.ScaleViewPoint(x, y);
+			var evt = new CefMouseEvent(scaledCursor.X, scaledCursor.Y, CefEventFlags.None);
+
+			browser?.GetHost().SendMouseMoveEvent(evt, true);
+		}
+
+		public void HandleKeyEvent(
+			KeyEventType keyEventType,
+			InputModifier inputModifier,
+			int userKeyCode,
+			int nativeKeyCode,
+			bool systemKey
+		) {
+			if (BrowserLoading) {
+				return;
+			}
+
+			var type = keyEventType switch {
+				KeyEventType.KeyDown => CefKeyEventType.RawKeyDown,
+				KeyEventType.KeyUp => CefKeyEventType.KeyUp,
+				KeyEventType.Character => CefKeyEventType.Char,
+				_ => throw new ArgumentException($"Invalid KeyEventType {keyEventType}")
+			};
+
+			browser?.GetHost().SendKeyEvent(new CefKeyEvent {
+				EventType = type,
+				Modifiers = DecodeInputModifier(inputModifier),
+				WindowsKeyCode = userKeyCode,
+				NativeKeyCode = nativeKeyCode,
+				IsSystemKey = systemKey,
+			});
+		}
 
 		public void BuildTextureWrap(Size size) {
 			PluginLog.Log("0 BUILDING " + size);
@@ -97,9 +281,6 @@ namespace NextUIPlugin.Gui {
 		public void Dispose() {
 			PluginLog.Log("Disposing overlay GUI");
 			disposing = true;
-			overlay.CursorChange -= SetCursor;
-			overlay.Paint -= OnPaint;
-			overlay.Remove -= OnRemove;
 			// sizeChangeSub?.Dispose();
 			textureWrap?.Dispose();
 			texture?.Dispose();
@@ -108,32 +289,43 @@ namespace NextUIPlugin.Gui {
 			NextUIPlugin.guiManager.RemoveOverlay(this);
 
 			// After gui has been disposed, dispose browser
-			overlay.BrowserDisposeRequest();
+			BrowserDispose();
+		}
+
+		public void BrowserDispose() {
+			if (browser == null) {
+				return;
+			}
+
+			client.displayHandler.CursorChanged -= SetCursor;
+			client.renderHandler.Paint -= OnPaint;
+
+			overlay.UrlChange -= Navigate;
+			sizeObservableSub?.Dispose();
+
+			client.Dispose();
+			browser.Dispose();
+			browser = null;
+			PluginLog.Log("Browser was disposed");
 		}
 
 		public void Navigate(string newUrl) {
 			overlay.Navigate(newUrl);
 		}
 
-		public void Debug() {
-			overlay.Debug();
-		}
-
 		public void SetCursor(object? sender, Cursor newCursor) {
 			captureCursor = newCursor != Cursor.BrowserHostNoCapture;
 			cursor = DecodeCursor(newCursor);
-			// overlay.SetCursor();
 		}
 
-		public (bool, long) WndProcMessage(WindowsMessage msg, ulong wParam, long lParam) {
+		public (bool, long) WndProcMessage(WindowsMessageS msg, ulong userKeyCode, long nativeKeyCode) {
 			if (disposing) {
 				return (false, 0);
 			}
 
 			// Check if there was a click, and use it to set the window focused state
 			// We're avoiding ImGui for this, as we want to check for clicks entirely outside
-			// ImGui's pervue to defocus inlays
-			if (msg == WindowsMessage.WmLButtonDown) {
+			if (msg == WindowsMessageS.WmLButtonDown) {
 				windowFocused = mouseInWindow && captureCursor;
 			}
 
@@ -144,12 +336,12 @@ namespace NextUIPlugin.Gui {
 			}
 
 			KeyEventType? eventType = msg switch {
-				WindowsMessage.WmKeyDown => KeyEventType.KeyDown,
-				WindowsMessage.WmSysKeyDown => KeyEventType.KeyDown,
-				WindowsMessage.WmKeyUp => KeyEventType.KeyUp,
-				WindowsMessage.WmSysKeyUp => KeyEventType.KeyUp,
-				WindowsMessage.WmChar => KeyEventType.Character,
-				WindowsMessage.WmSysChar => KeyEventType.Character,
+				WindowsMessageS.WmKeyDown => KeyEventType.KeyDown,
+				WindowsMessageS.WmSysKeyDown => KeyEventType.KeyDown,
+				WindowsMessageS.WmKeyUp => KeyEventType.KeyUp,
+				WindowsMessageS.WmSysKeyUp => KeyEventType.KeyUp,
+				WindowsMessageS.WmChar => KeyEventType.Character,
+				WindowsMessageS.WmSysChar => KeyEventType.Character,
 				_ => null,
 			};
 
@@ -159,16 +351,16 @@ namespace NextUIPlugin.Gui {
 			}
 
 			var isSystemKey =
-				msg is WindowsMessage.WmSysKeyDown or WindowsMessage.WmSysKeyUp or WindowsMessage.WmSysChar;
+				msg is WindowsMessageS.WmSysKeyDown or WindowsMessageS.WmSysKeyUp or WindowsMessageS.WmSysChar;
 
 			// TODO: Technically this is only firing once, because we're checking focused before this point,
 			// but having this logic essentially duped per-inlay is a bit eh. Dedupe at higher point?
 			var modifierAdjust = InputModifier.None;
-			if (wParam == (int)VirtualKey.Shift) {
+			if (userKeyCode == (int)VirtualKey.Shift) {
 				modifierAdjust |= InputModifier.Shift;
 			}
 
-			if (wParam == (int)VirtualKey.Control) {
+			if (userKeyCode == (int)VirtualKey.Control) {
 				modifierAdjust |= InputModifier.Control;
 			}
 
@@ -184,13 +376,13 @@ namespace NextUIPlugin.Gui {
 				modifier &= ~modifierAdjust;
 			}
 
-			overlay.RequestKeyEvent(new KeyEventRequest() {
-				keyEventType = eventType.Value,
-				systemKey = isSystemKey,
-				userKeyCode = (int)wParam,
-				nativeKeyCode = (int)lParam,
-				modifier = modifier,
-			});
+			HandleKeyEvent(
+				eventType.Value,
+				modifier,
+				(int)userKeyCode, // userKeyCode
+				(int)nativeKeyCode, // nativeKeyCode
+				isSystemKey
+			);
 
 			// We've handled the input, signal. For these message types, `0` signals a capture.
 			return (acceptFocus, 0);
@@ -282,17 +474,21 @@ namespace NextUIPlugin.Gui {
 		protected int bufferWidth;
 		protected int bufferHeight;
 
-		protected void OnPaint(object? sender, PaintRequest r) {
+		protected void OnPaint(
+			IntPtr buffer,
+			int width,
+			int height
+		) {
 			if (disposing) {
 				return;
 			}
 
 			needRepaint = true;
-			lastBuffer = r.buffer;
-			if (r.width != bufferWidth || r.height != bufferHeight) {
+			lastBuffer = buffer;
+			if (width != bufferWidth || height != bufferHeight) {
 				sizeChanged = true;
-				bufferWidth = r.width;
-				bufferHeight = r.height;
+				bufferWidth = width;
+				bufferHeight = height;
 			}
 		}
 
@@ -365,7 +561,6 @@ namespace NextUIPlugin.Gui {
 		}
 
 		protected void HandleMouseEvents() {
-			// Totally skip mouse handling for click through inlays, as well
 			if (overlay.ClickThrough) {
 				return;
 			}
@@ -374,7 +569,7 @@ namespace NextUIPlugin.Gui {
 			var windowPos = ImGui.GetWindowPos();
 			var mousePos = io.MousePos - windowPos - ImGui.GetWindowContentRegionMin();
 
-			var hovered = HandleMouseLeave(windowPos, mousePos);
+			var hovered = HandleImMouseLeave(windowPos, mousePos);
 
 			// If we are outside of window do not process other events
 			if (!hovered) {
@@ -385,9 +580,9 @@ namespace NextUIPlugin.Gui {
 
 			var inputModifier = GetInputModifier(io);
 
-			HandleMouseMoveEvent(io, mousePos, inputModifier);
-			HandleMouseWheelEvent(io, mousePos, inputModifier);
-			HandleMouseClickEvent(io, mousePos, inputModifier);
+			HandleImMouseMoveEvent(io, mousePos, inputModifier);
+			HandleImMouseWheelEvent(io, mousePos, inputModifier);
+			HandleImMouseClickEvent(io, mousePos, inputModifier);
 		}
 
 		protected static InputModifier GetInputModifier(ImGuiIOPtr io) {
@@ -419,21 +614,21 @@ namespace NextUIPlugin.Gui {
 			return inputModifier;
 		}
 
-		protected void HandleMouseMoveEvent(ImGuiIOPtr io, Vector2 mousePos, InputModifier inputModifier) {
+		protected void HandleImMouseMoveEvent(ImGuiIOPtr io, Vector2 mousePos, InputModifier inputModifier) {
 			if (io.MouseDelta == Vector2.Zero) {
 				return;
 			}
 
-			overlay.RequestMouseMoveEvent(new MouseMoveEventRequest {
-				x = mousePos.X,
-				y = mousePos.Y,
-				modifier = inputModifier,
-			});
+			HandleMouseMoveEvent(
+				mousePos.X,
+				mousePos.Y,
+				inputModifier
+			);
 		}
 
 		protected readonly bool[] prevMouseState = new bool[3];
 
-		protected void HandleMouseClickEvent(ImGuiIOPtr io, Vector2 mousePos, InputModifier inputModifier) {
+		protected void HandleImMouseClickEvent(ImGuiIOPtr io, Vector2 mousePos, InputModifier inputModifier) {
 			for (var i = 0; i < 3; i++) {
 				var stateChanged = io.MouseDown[i] != prevMouseState[i];
 				var isUp = !io.MouseDown[i];
@@ -442,37 +637,34 @@ namespace NextUIPlugin.Gui {
 					continue;
 				}
 
-				overlay.RequestMouseClickEvent(new MouseClickEventRequest {
-					x = mousePos.X,
-					y = mousePos.Y,
-					mouseButtonType = (MouseButtonType)i,
-					isUp = isUp,
-					clickCount = io.MouseDoubleClicked[i] ? 2 : 1,
-					modifier = inputModifier
-				});
+				HandleMouseClickEvent(
+					mousePos.X,
+					mousePos.Y,
+					(MouseButtonType)i,
+					isUp,
+					io.MouseDoubleClicked[i] ? 2 : 1,
+					inputModifier
+				);
 
 				prevMouseState[i] = io.MouseDown[i];
 			}
 		}
 
-		protected bool HandleMouseLeave(Vector2 windowPos, Vector2 mousePos) {
+		protected bool HandleImMouseLeave(Vector2 windowPos, Vector2 mousePos) {
 			var hovered = captureCursor
 				? ImGui.IsWindowHovered()
 				: ImGui.IsMouseHoveringRect(windowPos, windowPos + ImGui.GetWindowSize());
 
 			// If the cursor is outside the window, send a final mouse leave then noop
 			if (!hovered && mouseInWindow) {
-				overlay.RequestMouseLeaveEvent(new MouseLeaveEventRequest {
-					x = mousePos.X,
-					y = mousePos.Y,
-				});
+				HandleMouseLeaveEvent(mousePos.X, mousePos.Y);
 			}
 
 			mouseInWindow = hovered;
 			return hovered;
 		}
 
-		protected void HandleMouseWheelEvent(ImGuiIOPtr io, Vector2 mousePos, InputModifier inputModifier) {
+		protected void HandleImMouseWheelEvent(ImGuiIOPtr io, Vector2 mousePos, InputModifier inputModifier) {
 			var wheelX = io.MouseWheelH;
 			var wheelY = io.MouseWheel;
 
@@ -480,17 +672,54 @@ namespace NextUIPlugin.Gui {
 				return;
 			}
 
-			overlay.RequestMouseWheelEvent(new MouseWheelEventRequest {
-				x = mousePos.X,
-				y = mousePos.Y,
-				wheelX = wheelX,
-				wheelY = wheelY,
-				modifier = inputModifier
-			});
+			HandleMouseWheelEvent(
+				mousePos.X,
+				mousePos.Y,
+				wheelX,
+				wheelY,
+				inputModifier
+			);
 		}
 
 
-		#region serde
+		#region Encoding status stuff
+
+		protected static CefEventFlags DecodeInputModifier(InputModifier modifier) {
+			var result = CefEventFlags.None;
+			if ((modifier & InputModifier.Shift) == InputModifier.Shift) {
+				result |= CefEventFlags.ShiftDown;
+			}
+
+			if ((modifier & InputModifier.Control) == InputModifier.Control) {
+				result |= CefEventFlags.ControlDown;
+			}
+
+			if ((modifier & InputModifier.Alt) == InputModifier.Alt) {
+				result |= CefEventFlags.AltDown;
+			}
+
+			if ((modifier & InputModifier.MouseLeft) == InputModifier.MouseLeft) {
+				result |= CefEventFlags.LeftMouseButton;
+			}
+
+			if ((modifier & InputModifier.MouseRight) == InputModifier.MouseRight) {
+				result |= CefEventFlags.RightMouseButton;
+			}
+
+			if ((modifier & InputModifier.MouseMiddle) == InputModifier.MouseMiddle) {
+				result |= CefEventFlags.MiddleMouseButton;
+			}
+
+			return result;
+		}
+
+		protected static CefMouseButtonType DecodeButtonType(MouseButtonType buttonType) {
+			switch (buttonType) {
+				case MouseButtonType.Middle: return CefMouseButtonType.Middle;
+				case MouseButtonType.Right: return CefMouseButtonType.Right;
+				default: return CefMouseButtonType.Left;
+			}
+		}
 
 		protected MouseButton EncodeMouseButtons(RangeAccessor<bool> buttons) {
 			var result = MouseButton.None;

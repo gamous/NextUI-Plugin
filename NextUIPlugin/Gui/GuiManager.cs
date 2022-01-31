@@ -7,18 +7,16 @@ using Dalamud.Logging;
 using Dalamud.Plugin;
 using ImGuiNET;
 using NextUIPlugin.Configuration;
-using NextUIShared;
-using NextUIShared.Model;
+using NextUIPlugin.Model;
+using NextUIPlugin.Service;
 using D3D11 = SharpDX.Direct3D11;
 
 namespace NextUIPlugin.Gui {
-	public class GuiManager : IDisposable, IGuiManager {
+	public class GuiManager : IDisposable {
 		public readonly List<OverlayGui> overlays = new();
 
 		public long AdapterLuid { get; set; }
 		public bool MicroPluginFullyLoaded { get; set; }
-
-		public event Action<Overlay>? RequestNewOverlay;
 
 		public void Initialize(DalamudPluginInterface pluginInterface) {
 			// Spin up DX handling from the plugin interface
@@ -38,12 +36,12 @@ namespace NextUIPlugin.Gui {
 			LoadOverlays(NextUIPlugin.configuration.overlays);
 		}
 
-		protected (bool, long) OnWndProc(WindowsMessage msg, ulong wParam, long lParam) {
+		protected (bool, long) OnWndProc(WindowsMessageS msg, ulong wParam, long lParam) {
 			var responses = new List<(bool, long)>();
 			foreach (var ov in overlays.ToArray()) {
 				responses.Add(ov.WndProcMessage(msg, wParam, lParam));
 			}
-			// var responses = overlays.Select(ov => ov.WndProcMessage(msg, wParam, lParam));
+
 			return responses.FirstOrDefault(ov => ov.Item1);
 		}
 
@@ -56,9 +54,6 @@ namespace NextUIPlugin.Gui {
 			var overlay = new Overlay(url, size);
 			var fsSize = ImGui.GetMainViewport().Size;
 			overlay.FullScreenSize = new Size((int)fsSize.X, (int)fsSize.Y);
-
-			// Data should be populated here ie texture pointer
-			RequestNewOverlay?.Invoke(overlay);
 
 			var overlayGui = new OverlayGui(overlay);
 			overlays.Add(overlayGui);
@@ -92,7 +87,7 @@ namespace NextUIPlugin.Gui {
 
 		public void ReloadOverlays() {
 			foreach (var ov in overlays) {
-				ov.overlay.Reload();
+				ov.Reload();
 			}
 		}
 
@@ -112,9 +107,6 @@ namespace NextUIPlugin.Gui {
 				// Reload full screen size
 				var fsSize = ImGui.GetMainViewport().Size;
 				overlay.FullScreenSize = new Size((int)fsSize.X, (int)fsSize.Y);
-
-				// Data should be populated here ie texture pointer
-				RequestNewOverlay?.Invoke(overlay);
 
 				var overlayGui = new OverlayGui(overlay);
 				overlays.Add(overlayGui);

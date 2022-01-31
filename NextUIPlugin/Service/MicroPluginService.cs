@@ -11,8 +11,7 @@ using System.Threading.Tasks;
 using Dalamud.Interface.Internal.Notifications;
 using Dalamud.Logging;
 using ImGuiNET;
-using McMaster.NETCore.Plugins;
-using NextUIShared;
+using NextUIPlugin.Cef;
 
 namespace NextUIPlugin.Service {
 	public static class MicroPluginService {
@@ -22,8 +21,6 @@ namespace NextUIPlugin.Service {
 
 		internal static string? pluginDir;
 		internal static string? configDir;
-		internal static PluginLoader? microPluginLoader;
-		internal static INuPlugin? microPlugin;
 
 		static float downloadProgress = -1;
 
@@ -123,26 +120,29 @@ namespace NextUIPlugin.Service {
 			Copy(baseMicroPluginDir, microPluginDir);
 #endif
 
-			microPluginLoader = PluginLoader.CreateFromAssemblyFile(
-				assemblyFile: dllPath,
-				sharedTypes: new[] { typeof(INuPlugin), typeof(IGuiManager) },
-				isUnloadable: false,
-				configure: config => {
-					config.IsUnloadable = false;
-					config.LoadInMemory = false;
-				}
-			);
+			// microPluginLoader = PluginLoader.CreateFromAssemblyFile(
+			// 	assemblyFile: dllPath,
+			// 	sharedTypes: new[] { typeof(INuPlugin), typeof(IGuiManager) },
+			// 	isUnloadable: false,
+			// 	configure: config => {
+			// 		config.IsUnloadable = false;
+			// 		config.LoadInMemory = false;
+			// 	}
+			// );
 			PluginLog.Log("Loaded MicroPlugin");
 
-			var assembly = microPluginLoader.LoadDefaultAssembly();
-			microPlugin = (INuPlugin?)assembly.CreateInstance("NextUIBrowser.BrowserPlugin");
-			if (microPlugin == null) {
-				PluginLog.Warning("Unable to load BrowserPlugin");
-				return;
-			}
+			// var assembly = microPluginLoader.LoadDefaultAssembly();
+			// microPlugin = (INuPlugin?)assembly.CreateInstance("NextUIBrowser.BrowserPlugin");
+			// if (microPlugin == null) {
+			// 	PluginLog.Warning("Unable to load BrowserPlugin");
+			// 	return;
+			// }
+			//
+			// microPlugin.Initialize(microPluginDir, cefDir, NextUIPlugin.guiManager);
 
-			microPlugin.Initialize(microPluginDir, cefDir, NextUIPlugin.guiManager);
-			PluginLog.Log("Successfully loaded BrowserPlugin");
+			InitializeBrowser(microPluginDir, cefDir);
+			
+			// PluginLog.Log("Successfully loaded BrowserPlugin");
 
 			// Saving pid once micro plugin loads in case of any errors inside of it
 			// If plugin doesn't load, we don't have to save pid because CEF was not loaded
@@ -151,15 +151,37 @@ namespace NextUIPlugin.Service {
 
 			microPluginResetEvent.Wait();
 
-			microPlugin.Shutdown();
-			microPluginLoader.Dispose();
+			// microPlugin.Shutdown();
+			// microPluginLoader.Dispose();
 
-			microPlugin = null;
-			microPluginLoader = null;
+			// microPlugin = null;
+			// microPluginLoader = null;
 
 			GC.Collect(); // collects all unused memory
 			GC.WaitForPendingFinalizers(); // wait until GC has finished its work
 			GC.Collect();
+		}
+		
+		public static void InitializeBrowser(
+			string pluginDir, 
+			string cefDir
+		) {
+			PluginLog.Log("Initializing Browser");
+
+			string cacheDir = Path.Combine(
+				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+				"NUCefSharp\\Cache"
+			);
+			CefHandler.Initialize(cacheDir, cefDir, pluginDir);
+
+			// Notify gui manager that micro plugin is ready to go
+			NextUIPlugin.guiManager.MicroPluginLoaded();
+		}
+
+		public static void ShutdownBrowser() {
+			CefHandler.Shutdown();
+			PluginLog.Log("Cef was shut down");
+			// TODO: FIX THIS
 		}
 
 		#region Utils

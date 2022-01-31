@@ -1,7 +1,7 @@
 ﻿using System;
 // ReSharper disable InconsistentNaming
 
-namespace NextUIShared.Model {
+namespace NextUIPlugin.Model {
 	[Flags]
 	public enum OverlayVisibility {
 		DuringCutscene = 1,

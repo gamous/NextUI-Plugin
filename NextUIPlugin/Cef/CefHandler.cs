@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
-using NextUIBrowser.Cef.App;
+using NextUIPlugin.Cef.App;
 using Xilium.CefGlue;
 
 #if DEBUG
@@ -9,7 +9,7 @@ using Dalamud.Logging;
 using System.Diagnostics;
 #endif
 
-namespace NextUIBrowser.Cef {
+namespace NextUIPlugin.Cef {
 	internal static class CefHandler {
 		public static void Initialize(
 			string cacheDir,

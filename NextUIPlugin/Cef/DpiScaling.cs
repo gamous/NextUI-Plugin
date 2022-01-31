@@ -6,7 +6,7 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using Xilium.CefGlue;
 
-namespace NextUIBrowser.Cef {
+namespace NextUIPlugin.Cef {
 	public static class DpiScaling {
 		internal static float cachedDeviceScale;
 

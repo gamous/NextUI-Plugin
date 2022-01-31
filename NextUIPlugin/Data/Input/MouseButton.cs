@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace NextUIShared.Data {
+namespace NextUIPlugin.Data.Input {
 	[Flags]
 	public enum MouseButton {
 		None = 0,

@@ -1,6 +1,6 @@
 ﻿using Xilium.CefGlue;
 
-namespace NextUIBrowser.Cef.App {
+namespace NextUIPlugin.Cef.App {
 	public class NUCefContextMenuHandler : CefContextMenuHandler {
 		protected override void OnBeforeContextMenu(
 			CefBrowser browser, 

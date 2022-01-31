@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Drawing;
-using NextUIShared.Model;
+using NextUIPlugin.Model;
 
 using Newtonsoft.Json;
 

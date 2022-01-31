@@ -1,7 +1,7 @@
 ﻿using Dalamud.Logging;
 using Xilium.CefGlue;
 
-namespace NextUIBrowser.Cef.App {
+namespace NextUIPlugin.Cef.App {
 	// ReSharper disable once InconsistentNaming
 	public class NUCefApp : CefApp {
 		protected override void OnBeforeCommandLineProcessing(string processType, CefCommandLine commandLine) {

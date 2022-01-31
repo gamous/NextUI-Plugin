@@ -5,7 +5,7 @@ using System.Numerics;
 using Dalamud.Logging;
 using ImGuiNET;
 using NextUIPlugin.Gui;
-using NextUIShared.Model;
+using NextUIPlugin.Model;
 
 namespace NextUIPlugin.Configuration {
 	public static class ConfigWindow {
@@ -251,19 +251,19 @@ namespace NextUIPlugin.Configuration {
 			}
 
 			if (ImGui.Button("Reload")) {
-				selectedOverlay.overlay.Reload();
+				selectedOverlay.Reload();
 			}
 
 			ImGui.SameLine();
 			if (ImGui.Button("Open Dev Tools")) {
-				selectedOverlay.overlay.Debug();
+				selectedOverlay.Debug();
 			}
 
 			ImGui.SameLine();
 			ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(1f, 0, 0, 1));
 			if (ImGui.Button("Delete")) {
 				PluginLog.Log("Start remove");
-				selectedOverlay.overlay.RemoveRequest();
+				selectedOverlay.Dispose();
 			}
 
 			ImGui.PopStyleColor();

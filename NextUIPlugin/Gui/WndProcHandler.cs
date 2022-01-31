@@ -1,19 +1,20 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using NextUIShared;
+using NextUIPlugin.Service;
 
 namespace NextUIPlugin.Gui {
 	public static class WndProcHandler {
-		public delegate (bool, long) WndProcMessageDelegate(WindowsMessage msg, ulong wParam, long lParam);
+		public delegate (bool, long) WndProcMessageDelegate(WindowsMessageS msg, ulong wParam, long lParam);
+
 		public static event WndProcMessageDelegate? WndProcMessage;
 
 		public delegate long WndProcDelegate(IntPtr hWnd, uint msg, ulong wParam, long lParam);
 
-		static WndProcDelegate? wndProcDelegate;
+		internal static WndProcDelegate? wndProcDelegate;
 
-		static IntPtr hWnd;
-		static IntPtr oldWndProcPtr;
-		static IntPtr detourPtr;
+		internal static IntPtr hWnd;
+		internal static IntPtr oldWndProcPtr;
+		internal static IntPtr detourPtr;
 
 		public static void Initialize(IntPtr newHWnd) {
 			hWnd = newHWnd;
@@ -38,13 +39,15 @@ namespace NextUIPlugin.Gui {
 
 		static long WndProcDetour(IntPtr nhWnd, uint msg, ulong wParam, long lParam) {
 			// Ignore things not targeting the current window handle
-			if (nhWnd == hWnd) {
-				var resp = WndProcMessage?.Invoke((WindowsMessage)msg, wParam, lParam);
+			if (nhWnd != hWnd) {
+				return NativeMethods.CallWindowProc(oldWndProcPtr, nhWnd, msg, wParam, lParam);
+			}
 
-				// Item1 is a bool, where true == capture event. If false, we're falling through default handling.
-				if (resp.HasValue && resp.Value.Item1) {
-					return resp.Value.Item2;
-				}
+			var resp = WndProcMessage?.Invoke((WindowsMessageS)msg, wParam, lParam);
+
+			// Item1 is a bool, where true == capture event. If false, we're falling through default handling.
+			if (resp.HasValue && resp.Value.Item1) {
+				return resp.Value.Item2;
 			}
 
 			return NativeMethods.CallWindowProc(oldWndProcPtr, nhWnd, msg, wParam, lParam);

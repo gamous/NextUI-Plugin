@@ -1,15 +1,14 @@
 ﻿using System;
 using System.Drawing;
 using System.Reactive.Subjects;
-using NextUIShared.Data;
-using NextUIShared.Request;
+using NextUIPlugin.Data.Input;
 
-namespace NextUIShared.Model {
+namespace NextUIPlugin.Model {
 	/**
 	 * Pure overlay data
 	 */
 	[Serializable]
-	public class Overlay : IDisposable {
+	public class Overlay {
 		public Guid Guid { get; set; }
 		public readonly object renderLock = new();
 
@@ -18,7 +17,6 @@ namespace NextUIShared.Model {
 		protected Size size;
 		protected bool fullscreen;
 		protected Point position;
-		protected Cursor cursor;
 
 		public string Name {
 			get { return name; }
@@ -77,18 +75,6 @@ namespace NextUIShared.Model {
 			}
 		}
 
-		public Cursor Cursor {
-			get { return cursor; }
-			set {
-				if (cursor == value) {
-					return;
-				}
-
-				cursor = value;
-				CursorChange?.Invoke(this, cursor);
-			}
-		}
-
 		public bool FullScreen {
 			get { return fullscreen; }
 			set {
@@ -115,27 +101,28 @@ namespace NextUIShared.Model {
 		public event EventHandler<string>? NameChange;
 		public event EventHandler<string>? UrlChange;
 		public event EventHandler<Point>? PositionChange;
-		public event EventHandler<Cursor>? CursorChange;
 
-		public event EventHandler<MouseMoveEventRequest>? MouseMoveEvent;
-		public event EventHandler<MouseClickEventRequest>? MouseClickEvent;
-		public event EventHandler<MouseLeaveEventRequest>? MouseLeaveEvent;
-		public event EventHandler<MouseWheelEventRequest>? MouseWheelEvent;
+		// public event EventHandler<Cursor>? CursorChange;
 
-		public event EventHandler<KeyEventRequest>? KeyEvent;
-		public event EventHandler<PaintRequest>? Paint;
-		public event EventHandler<PopupSizeRequest>? PopupSize;
-		public event EventHandler<bool>? PopupShow;
+		// public event EventHandler<MouseMoveEventRequest>? MouseMoveEvent;
+		// public event EventHandler<MouseClickEventRequest>? MouseClickEvent;
+		// public event EventHandler<MouseLeaveEventRequest>? MouseLeaveEvent;
+		// public event EventHandler<MouseWheelEventRequest>? MouseWheelEvent;
+		//
+		// public event EventHandler<KeyEventRequest>? KeyEvent;
+		// public event EventHandler<PaintRequest>? Paint;
+		// public event EventHandler<PopupSizeRequest>? PopupSize;
+		// public event EventHandler<bool>? PopupShow;
 
 		// This thing needs special handling
 		public Subject<Size> SizeChange = new();
 		// ReSharper restore InconsistentNaming
 
-		public event Action? DebugRequest;
-		public event Action? ReloadRequest;
-		public event Action? DisposeRequest;
-		public event EventHandler? Remove;
-		public event Action? BrowserDispose;
+		// public event Action? DebugRequest;
+		// public event Action? ReloadRequest;
+		// public event Action? DisposeRequest;
+		// public event EventHandler? Remove;
+		// public event Action? BrowserDispose;
 
 		public Overlay(string url, Size newSize) {
 			Guid = Guid.NewGuid();
@@ -153,60 +140,60 @@ namespace NextUIShared.Model {
 			Url = newUrl;
 		}
 
-		public void Reload() {
-			ReloadRequest?.Invoke();
-		}
+		// public void Reload() {
+		// 	ReloadRequest?.Invoke();
+		// }
+		//
+		// public void Debug() {
+		// 	DebugRequest?.Invoke();
+		// }
+		//
+		// public void Dispose() {
+		// 	DisposeRequest?.Invoke();
+		// }
+		//
+		// public void RemoveRequest() {
+		// 	Remove?.Invoke(this, EventArgs.Empty);
+		// }
+		//
+		// public void BrowserDisposeRequest() {
+		// 	BrowserDispose?.Invoke();
+		// }
 
-		public void Debug() {
-			DebugRequest?.Invoke();
-		}
+		// public void SetCursor(Cursor newCursor) {
+		// 	Cursor = newCursor;
+		// }
 
-		public void Dispose() {
-			DisposeRequest?.Invoke();
-		}
-
-		public void RemoveRequest() {
-			Remove?.Invoke(this, EventArgs.Empty);
-		}
-
-		public void BrowserDisposeRequest() {
-			BrowserDispose?.Invoke();
-		}
-
-		public void SetCursor(Cursor newCursor) {
-			Cursor = newCursor;
-		}
-
-		public void RequestMouseMoveEvent(MouseMoveEventRequest request) {
-			MouseMoveEvent?.Invoke(this, request);
-		}
-
-		public void RequestMouseClickEvent(MouseClickEventRequest request) {
-			MouseClickEvent?.Invoke(this, request);
-		}
-
-		public void RequestMouseLeaveEvent(MouseLeaveEventRequest request) {
-			MouseLeaveEvent?.Invoke(this, request);
-		}
-
-		public void RequestMouseWheelEvent(MouseWheelEventRequest request) {
-			MouseWheelEvent?.Invoke(this, request);
-		}
-
-		public void RequestKeyEvent(KeyEventRequest request) {
-			KeyEvent?.Invoke(this, request);
-		}
-
-		public void PaintRequest(PaintRequest paintRequest) {
-			Paint?.Invoke(this, paintRequest);
-		}
-
-		public void ShowPopup(bool show) {
-			PopupShow?.Invoke(this, show);
-		}
-
-		public void PopupSizeChange(PopupSizeRequest popupSizeRequest) {
-			PopupSize?.Invoke(this, popupSizeRequest);
-		}
+		// public void RequestMouseMoveEvent(MouseMoveEventRequest request) {
+		// 	MouseMoveEvent?.Invoke(this, request);
+		// }
+		//
+		// public void RequestMouseClickEvent(MouseClickEventRequest request) {
+		// 	MouseClickEvent?.Invoke(this, request);
+		// }
+		//
+		// public void RequestMouseLeaveEvent(MouseLeaveEventRequest request) {
+		// 	MouseLeaveEvent?.Invoke(this, request);
+		// }
+		//
+		// public void RequestMouseWheelEvent(MouseWheelEventRequest request) {
+		// 	MouseWheelEvent?.Invoke(this, request);
+		// }
+		//
+		// public void RequestKeyEvent(KeyEventRequest request) {
+		// 	KeyEvent?.Invoke(this, request);
+		// }
+		//
+		// public void PaintRequest(PaintRequest paintRequest) {
+		// 	Paint?.Invoke(this, paintRequest);
+		// }
+		//
+		// public void ShowPopup(bool show) {
+		// 	PopupShow?.Invoke(this, show);
+		// }
+		//
+		// public void PopupSizeChange(PopupSizeRequest popupSizeRequest) {
+		// 	PopupSize?.Invoke(this, popupSizeRequest);
+		// }
 	}
 }

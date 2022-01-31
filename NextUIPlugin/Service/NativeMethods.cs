@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace NextUIShared {
+namespace NextUIPlugin.Service {
 	// Enums are not comprehensive for the sake of omitting stuff I won't use.
 	public enum WindowLongType {
 		GwlWndProc = -4
 	}
 
-	public enum WindowsMessage {
+	public enum WindowsMessageS {
 		WmKeyDown = 0x0100,
 		WmKeyUp = 0x0101,
 		WmChar = 0x0102,

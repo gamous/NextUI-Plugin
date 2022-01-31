@@ -2,7 +2,7 @@
 using Dalamud.Logging;
 using Xilium.CefGlue;
 
-namespace NextUIBrowser.Cef.App {
+namespace NextUIPlugin.Cef.App {
 	// ReSharper disable once InconsistentNaming
 	public class NUCefLifeSpanHandler : CefLifeSpanHandler {
 		public event Action<CefBrowser>? AfterBrowserLoad;

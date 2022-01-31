@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Drawing;
-using Dalamud.Logging;
-using NextUIShared.Model;
-using NextUIShared.Request;
+using NextUIPlugin.Model;
 using Xilium.CefGlue;
 
-namespace NextUIBrowser.Cef.App {
+namespace NextUIPlugin.Cef.App {
 	// ReSharper disable once InconsistentNaming
 	public class NUCefRenderHandler : CefRenderHandler, IDisposable {
 		// CEF buffers are 32-bit BGRA
@@ -20,6 +18,8 @@ namespace NextUIBrowser.Cef.App {
 
 		protected int width;
 		protected int height;
+
+		public event Action<IntPtr, int, int>? Paint;
 
 		public NUCefRenderHandler(Overlay overlay) {
 			this.overlay = overlay;
@@ -101,8 +101,8 @@ namespace NextUIBrowser.Cef.App {
 			CefPaintElementType type,
 			CefRectangle[] dirtyRects,
 			IntPtr buffer,
-			int width,
-			int height
+			int paintWidth,
+			int paintHeight
 		) {
 			if (type == CefPaintElementType.Popup) {
 				return;
@@ -110,9 +110,9 @@ namespace NextUIBrowser.Cef.App {
 
 			lock (overlay.renderLock) {
 				// check if lookup buffer is big enough
-				var requiredBufferSize = width * height * BytesPerPixel;
-				bufferWidth = width;
-				bufferHeight = height;
+				var requiredBufferSize = paintWidth * paintHeight * BytesPerPixel;
+				bufferWidth = paintWidth;
+				bufferHeight = paintHeight;
 
 				if (internalBuffer.Length != requiredBufferSize) {
 					internalBuffer = new byte[bufferWidth * bufferHeight * BytesPerPixel];
@@ -132,12 +132,7 @@ namespace NextUIBrowser.Cef.App {
 					// var requestType = type == PaintElementType.View ? PaintType.View : PaintType.Popup;
 					// var newRect = new XRect(dirtyRect.X, dirtyRect.Y, dirtyRect.Width, dirtyRect.Height);
 
-					overlay.PaintRequest(new PaintRequest() {
-						buffer = (IntPtr)dstBuffer,
-						height = height,
-						width = width,
-						// dirtyRect = newRect
-					});
+					Paint?.Invoke((IntPtr)dstBuffer, paintWidth, paintHeight);
 				}
 			}
 		}

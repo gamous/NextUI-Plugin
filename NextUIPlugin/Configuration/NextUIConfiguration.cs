@@ -4,7 +4,7 @@ using System.Drawing;
 using Dalamud.Configuration;
 using Dalamud.Logging;
 using ImGuiNET;
-using NextUIShared.Model;
+using NextUIPlugin.Model;
 
 namespace NextUIPlugin.Configuration {
 	[Serializable]

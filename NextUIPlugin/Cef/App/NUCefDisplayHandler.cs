@@ -1,9 +1,9 @@
 ﻿using System;
 using Dalamud.Logging;
-using NextUIShared.Data;
+using NextUIPlugin.Data.Input;
 using Xilium.CefGlue;
 
-namespace NextUIBrowser.Cef.App {
+namespace NextUIPlugin.Cef.App {
 	// ReSharper disable once InconsistentNaming
 	public class NUCefDisplayHandler : CefDisplayHandler {
 		protected NUCefRenderHandler renderHandler;

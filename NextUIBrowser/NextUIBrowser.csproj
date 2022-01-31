@@ -67,9 +67,6 @@
 		<Reference Include="ImGuiScene">
 			<Private>false</Private>
 		</Reference>
-		<Reference Include="Xilium.CefGlue, Version=96.0.18.0, Culture=neutral, PublicKeyToken=null">
-			<HintPath>..\cefglue\Xilium.CefGlue.dll</HintPath>
-		</Reference>
 	</ItemGroup>
 
 	<!-- NuGet Packages -->
@@ -96,9 +93,7 @@
 	</Target>
 
 	<Target Name="PublishCustomSubProcess" AfterTargets="Build">
-		<Exec Command="dotnet publish $(SolutionDir)CustomSubProcess --no-build -c $(Configuration)"
-			  ConsoleToMSBuild="true"
-			  ContinueOnError="false" />
+		<Exec Command="dotnet publish $(SolutionDir)CustomSubProcess --no-build -c $(Configuration)" ConsoleToMSBuild="true" ContinueOnError="false" />
 
 		<Message Text="Published CustomSubProcess" Importance="High" />
 	</Target>
