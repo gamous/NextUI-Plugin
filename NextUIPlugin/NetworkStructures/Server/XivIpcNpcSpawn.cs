@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using Dalamud.Utility;
 using Newtonsoft.Json;
 using NextUIPlugin.NetworkStructures.Common;
 
 namespace NextUIPlugin.NetworkStructures.Server {
-
 	[Serializable]
 	[StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Unicode)]
 	public struct XivIpcNpcSpawn {
@@ -92,7 +92,12 @@ namespace NextUIPlugin.NetworkStructures.Server {
 
 		// ReSharper disable once InconsistentNaming
 		public string name {
-			get { return StructUtil.FixedUTF8String(nameRaw); }
+			get {
+				var bNpcName = NextUIPlugin.npcNameSheet?.GetRow(bNPCName);
+				return bNpcName != null
+					? bNpcName.Singular.ToDalamudString().TextValue
+					: StructUtil.FixedUTF8String(nameRaw);
+			}
 		}
 
 		[MarshalAs(UnmanagedType.ByValArray, ArraySubType = UnmanagedType.U1, SizeConst = 26)]

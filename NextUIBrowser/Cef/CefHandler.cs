@@ -46,6 +46,7 @@ namespace NextUIBrowser.Cef {
 			
 			var mainArgs = new CefMainArgs(Array.Empty<string>());
 			var cefApp = new NUCefApp();
+			//CefRuntime.Load(cefDir);
 			CefRuntime.EnableHighDpiSupport();
 			CefRuntime.Initialize(mainArgs, settings, cefApp, IntPtr.Zero);
 

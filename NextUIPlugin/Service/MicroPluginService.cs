@@ -49,6 +49,7 @@ namespace NextUIPlugin.Service {
 			microPluginResetEvent.Set();
 			microPluginThread.Join(1000);
 		}
+
 #if RELEASE
 		public static async void LoadMicroPlugin() {
 #else

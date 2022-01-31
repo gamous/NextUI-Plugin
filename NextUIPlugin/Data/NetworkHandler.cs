@@ -10,6 +10,8 @@ using NextUIPlugin.Socket;
 
 namespace NextUIPlugin.Data {
 	public class NetworkHandler : IDisposable {
+		public static event Action<ushort, string, NetworkMessageDirection, object, uint?>? NetworkListener;
+
 #if DEBUG
 		protected string logDir;
 		protected uint[] ignoredOpcodes = new[] { 0x0296u, 0x0097u, 0x02E6u };
@@ -78,46 +80,41 @@ namespace NextUIPlugin.Data {
 				return;
 			}
 
+			var needsConversion = false;
+
 			var sockets = NextUIPlugin.socketServer.GetEventSubscriptions(eventName);
-			if (sockets == null || sockets.Count == 0) {
+			if (sockets != null && sockets.Count > 0) {
+				needsConversion = true;
+			}
+
+			if (NetworkListener?.GetInvocationList().Length > 0) {
+				needsConversion = true;
+			}
+
+			if (!needsConversion) {
 				return;
 			}
 
-			var dyn = NetworkBinding.Convert(opcode, dataPtr, targetActorId);
+			var dyn = NetworkBinding.Convert(opcode, dataPtr);
 
-			// if (opcode == (ushort)ServerZoneIpcType.ActorControl) {
-			// 	var actorControl = (XivIpcActorControl)dyn;
-			// 	if (actorControl.category == XivIpcActorControlCategory.OverTime) {
-			// 		var timestamp = ""; // no idea yet
-			// 		var id = dyn.targetActorId.ToString("X4");
-			// 		var name = dyn.targetActorName;
-			// 		var which = actorControl.param2 == 4 ? "HoT" : "DoT";
-			// 		var effectId = "??";
-			// 		var chara = (BattleChara)dyn.chara;
-			// 		var currentHp = chara.CurrentHp;
-			// 		var maxHp = chara.MaxHp;
-			// 		var currentMp = chara.CurrentMp;
-			// 		var maxMp = chara.MaxMp;
-			// 		var x = chara.Position.X;
-			// 		var y = chara.Position.Y;
-			// 		var z = chara.Position.Z;
-			// 		var damage = "??";
-			// 		var heading = "??";
-			// 		var ll = $"24|{timestamp}|{id}|{name}|{which}|{effectId}|{damage}|{currentHp}|{maxHp}|{currentMp}|{maxMp}|[?]|[?]|{x}|{y}|{z}|{heading}"
-			// 		
-			// 	}
-			// }
-			
-			if (dyn != null) {
-				NextUISocket.BroadcastTo(new {
-					@event = eventName,
-					data = new {
-						opcode,
-						dir,
-						data = dyn
-					}
-				}, sockets);
+			if (dyn == null) {
+				return;
 			}
+			NetworkListener?.Invoke(opcode, eventName, direction, dyn, targetActorId);
+
+			if (sockets == null) {
+				return;
+			}
+
+			NextUISocket.BroadcastTo(new {
+				@event = eventName,
+				data = new {
+					opcode,
+					dir,
+					targetActorId,
+					data = dyn
+				}
+			}, sockets);
 		}
 
 		public void Dispose() {

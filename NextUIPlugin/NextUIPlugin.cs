@@ -2,7 +2,6 @@
 using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.ClientState;
-using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Command;
@@ -11,6 +10,8 @@ using Dalamud.Game.Network;
 using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
+using Lumina.Excel;
+using Lumina.Excel.GeneratedSheets;
 using Newtonsoft.Json;
 using NextUIPlugin.Configuration;
 using NextUIPlugin.Data;
@@ -18,6 +19,7 @@ using NextUIPlugin.Gui;
 using NextUIPlugin.Service;
 using NextUIPlugin.Socket;
 using XivCommon;
+using Condition = Dalamud.Game.ClientState.Conditions.Condition;
 
 [assembly:AllowPartiallyTrustedCallers]
 namespace NextUIPlugin {
@@ -55,10 +57,12 @@ namespace NextUIPlugin {
 		public readonly DataHandler dataHandler;
 		public readonly NetworkHandler networkHandler;
 		public static XivCommonBase xivCommon { get; set; } = null!;
+		public static ExcelSheet<BNpcName>? npcNameSheet;
 
 		public NextUIPlugin() {
 			pluginInterface.UiBuilder.DisableCutsceneUiHide = true;
 
+			npcNameSheet = dataManager.GetExcelSheet<BNpcName>();
 			xivCommon = new XivCommonBase();
 			mouseOverService = new MouseOverService();
 
@@ -79,6 +83,7 @@ namespace NextUIPlugin {
 			guiManager.Initialize(pluginInterface);
 
 			MicroPluginService.Initialize();
+			IPCService.InitIpc();
 
 			commandManager.AddHandler("/nu", new CommandInfo(OnCommandDebugCombo) {
 				HelpMessage = "Open NextUI Plugin configuration. \n" +
@@ -108,6 +113,7 @@ namespace NextUIPlugin {
 			socketServer.Dispose();
 			guiManager?.Dispose();
 			MicroPluginService.Shutdown();
+			IPCService.Deinit();
 			mouseOverService.Dispose();
 
 			xivCommon?.Dispose();

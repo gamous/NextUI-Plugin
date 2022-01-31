@@ -39,22 +39,7 @@ namespace NextUIPlugin.Data {
 			{ (ushort)ClientZoneIpcType.UpdatePositionInstance, "updatePositionInstance" },
 		};
 
-		public static dynamic ToDynamic(object obj) {
-			IDictionary<string, object?> expando = new ExpandoObject();
-			var type = obj.GetType();
-
-			foreach (var fieldInfo in type.GetFields()) {
-				expando.Add(fieldInfo.Name, fieldInfo.GetValue(obj));
-			}
-
-			foreach (var propertyInfo in type.GetProperties()) {
-				expando.Add(propertyInfo.Name, propertyInfo.GetValue(obj));
-			}
-
-			return (ExpandoObject)expando;
-		}
-
-		public static dynamic? Convert(ushort opcode, IntPtr dataPtr, uint targetActorId) {
+		public static object? Convert(ushort opcode, IntPtr dataPtr) {
 			object strObj;
 			switch (opcode) {
 				case (ushort)ServerZoneIpcType.ActorCast:
@@ -131,27 +116,7 @@ namespace NextUIPlugin.Data {
 					return null;
 			}
 
-			var dyn = ToDynamic(strObj);
-
-			var target = NextUIPlugin.objectTable.SearchById(targetActorId);
-			dyn.targetActorId = targetActorId;
-			if (target != null && target is BattleChara chara) {
-				dyn.targetActorName = target.Name.TextValue ?? "";
-				// dyn.effects = chara.StatusList[0].
-			}
-
-
-			if (opcode == (ushort)ServerZoneIpcType.NpcSpawn) {
-				var bNpcName = NextUIPlugin.dataManager.GetExcelSheet<BNpcName>()?.GetRow(
-					((XivIpcNpcSpawn)strObj).bNPCName
-				);
-
-				if (bNpcName != null) {
-					dyn.name = bNpcName.Singular.ToDalamudString().TextValue;
-				}
-			}
-
-			return dyn;
+			return strObj;
 		}
 	}
 }

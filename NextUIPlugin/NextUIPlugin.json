@@ -1,15 +1,15 @@
 {
-    "Name": "NextUIPlugin",
-    "InternalName": "NextUIPlugin",
-    "Author": "Kaminaris",
-    "Description": "OverlayPlugin replacement for Dalamud, works similarly to BrowserHost with addition to having more options and built in websocket server.",
-    "RepoUrl": "https://gitlab.com/kaminariss/nextui-plugin",
-    "Tags": [
-        "UI"
-    ],
-    "AssemblyVersion": "0.4.2.0",
-    "ApplicableVersion": "any",
-    "Punchline": "OverlayPlugin for Dalamud with built in HUD replacement",
-    "IconUrl": "https://gitlab.com/kaminariss/nextui-plugin/-/raw/master/icon.png",
-    "DalamudApiLevel": 5
+	"Name": "NextUIPlugin",
+	"InternalName": "NextUIPlugin",
+	"Author": "Kaminaris",
+	"Description": "OverlayPlugin replacement for Dalamud, works similarly to BrowserHost with addition to having more options and built in websocket server.",
+	"RepoUrl": "https://gitlab.com/kaminariss/nextui-plugin",
+	"Tags": [
+		"UI"
+	],
+	"AssemblyVersion": "0.4.2.0",
+	"ApplicableVersion": "any",
+	"Punchline": "OverlayPlugin for Dalamud with built in HUD replacement",
+	"IconUrl": "https://gitlab.com/kaminariss/nextui-plugin/-/raw/master/icon.png",
+	"DalamudApiLevel": 5
 }

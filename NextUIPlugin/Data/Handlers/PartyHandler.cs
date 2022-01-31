@@ -14,6 +14,8 @@ namespace NextUIPlugin.Data.Handlers {
 
 		internal static UIModule* uiModule;
 		internal static AgentHUD* agentHud;
+		
+		public static event Action<uint, List<object>>? PartyChanged;
 
 		#region Commands
 
@@ -61,7 +63,10 @@ namespace NextUIPlugin.Data.Handlers {
 
 		public static void Watch() {
 			var sockets = NextUIPlugin.socketServer.GetEventSubscriptions("partyChanged");
-			if (sockets == null || sockets.Count == 0) {
+			if (
+				(sockets == null || sockets.Count == 0) && 
+			    (PartyChanged == null || PartyChanged.GetInvocationList().Length == 0)
+			) {
 				return;
 			}
 
@@ -70,7 +75,13 @@ namespace NextUIPlugin.Data.Handlers {
 			if (party.Count != currentParty.Count || partyLeader != NextUIPlugin.partyList.PartyLeaderIndex) {
 				partyLeader = NextUIPlugin.partyList.PartyLeaderIndex;
 				party = currentParty;
-				BroadcastPartyChanged(sockets, partyLeader);
+				
+				var currentPartyObjects = GetPartyList();
+				PartyChanged?.Invoke(partyLeader, currentPartyObjects);
+				if (sockets is { Count: > 0 }) {
+					BroadcastPartyChanged(sockets, currentPartyObjects, partyLeader);
+				}
+
 				return;
 			}
 
@@ -78,14 +89,21 @@ namespace NextUIPlugin.Data.Handlers {
 			if (eq) {
 				return;
 			}
-
-			BroadcastPartyChanged(sockets, NextUIPlugin.partyList.PartyLeaderIndex);
+			
+			var currentPartyObjects2 = GetPartyList();
+			PartyChanged?.Invoke(partyLeader, currentPartyObjects2);
+			if (sockets is { Count: > 0 }) {
+				BroadcastPartyChanged(sockets, currentPartyObjects2, NextUIPlugin.partyList.PartyLeaderIndex);				
+			}
+			
 			party = currentParty;
 		}
 
-		internal static void BroadcastPartyChanged(List<IWebSocketConnection> sockets, uint newPartyLeader) {
-			var currentParty = GetPartyList();
-
+		internal static void BroadcastPartyChanged(
+			List<IWebSocketConnection> sockets, 
+			List<object>? currentParty, 
+			uint newPartyLeader
+		) {
 			NextUISocket.BroadcastTo(new {
 				@event = "partyChanged",
 				data = new { currentParty, newPartyLeader },
