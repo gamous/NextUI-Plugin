@@ -108,7 +108,6 @@ namespace NextUIPlugin {
 
 		public void Dispose() {
 			commandManager.RemoveHandler("/nu");
-			// pluginInterface.Dispose();
 			dataHandler.Dispose();
 			socketServer.Dispose();
 			guiManager?.Dispose();
