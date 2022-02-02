@@ -17,7 +17,7 @@ namespace NextUIPlugin.Service {
 	public static class MicroPluginService {
 		internal const string MicroPluginDirName = "MicroPlugin";
 		// Manually updated, not every new version would require new microplugin
-		internal const string RequiredVersion = "0.4.2.0";
+		internal const string RequiredVersion = "0.5.0.0";
 
 		internal static string? pluginDir;
 		internal static string? configDir;
@@ -44,7 +44,7 @@ namespace NextUIPlugin.Service {
 
 		public static void Shutdown() {
 			microPluginResetEvent.Set();
-			microPluginThread.Join(1000);
+			microPluginThread.Join(100);
 		}
 
 #if RELEASE
@@ -119,26 +119,7 @@ namespace NextUIPlugin.Service {
 
 			Copy(baseMicroPluginDir, microPluginDir);
 #endif
-
-			// microPluginLoader = PluginLoader.CreateFromAssemblyFile(
-			// 	assemblyFile: dllPath,
-			// 	sharedTypes: new[] { typeof(INuPlugin), typeof(IGuiManager) },
-			// 	isUnloadable: false,
-			// 	configure: config => {
-			// 		config.IsUnloadable = false;
-			// 		config.LoadInMemory = false;
-			// 	}
-			// );
 			PluginLog.Log("Loaded MicroPlugin");
-
-			// var assembly = microPluginLoader.LoadDefaultAssembly();
-			// microPlugin = (INuPlugin?)assembly.CreateInstance("NextUIBrowser.BrowserPlugin");
-			// if (microPlugin == null) {
-			// 	PluginLog.Warning("Unable to load BrowserPlugin");
-			// 	return;
-			// }
-			//
-			// microPlugin.Initialize(microPluginDir, cefDir, NextUIPlugin.guiManager);
 
 			InitializeBrowser(microPluginDir, cefDir);
 			
@@ -151,11 +132,7 @@ namespace NextUIPlugin.Service {
 
 			microPluginResetEvent.Wait();
 
-			// microPlugin.Shutdown();
-			// microPluginLoader.Dispose();
-
-			// microPlugin = null;
-			// microPluginLoader = null;
+			ShutdownBrowser();
 
 			GC.Collect(); // collects all unused memory
 			GC.WaitForPendingFinalizers(); // wait until GC has finished its work
@@ -207,7 +184,6 @@ namespace NextUIPlugin.Service {
 
 				using var webClient = new WebClient();
 				webClient.DownloadProgressChanged += (s, e) => {
-					// DrawProgress(e.ProgressPercentage);
 					downloadProgress = e.ProgressPercentage;
 					PluginLog.Log("MicroPlugin progress " + e.ProgressPercentage);
 				};

@@ -5,7 +5,6 @@ const v = process.argv[2];
 const projsToUpdate = [
 	'./NextUIPlugin/NextUIPlugin.csproj',
 	'./NextUIBrowser/NextUIBrowser.csproj',
-	'./NextUIShared/NextUIShared.csproj',
 ]
 
 for (const csproj of projsToUpdate) {

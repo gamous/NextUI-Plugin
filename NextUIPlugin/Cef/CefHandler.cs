@@ -37,10 +37,9 @@ namespace NextUIPlugin.Cef {
 			CefRuntime.EnableHighDpiSupport();
 			CefRuntime.Initialize(mainArgs, settings, cefApp, IntPtr.Zero);
 
-			// Otherwise it's a rare chance that making new browser window hangs up
-			Thread.Sleep(100);
+			// Maybe we dont need this anymore
+			// Thread.Sleep(100);
 #if DEBUG
-			// PluginLog.Log("Cef initialized " + CefSharp.Cef.IsInitialized + " " + CefSharp.Cef.CefVersion);
 			PluginLog.Log("Cef initialized " + " " + CefRuntime.ChromeVersion);
 #endif
 		}

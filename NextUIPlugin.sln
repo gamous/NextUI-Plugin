@@ -5,8 +5,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextUIBrowser", "NextUIBrow
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextUIPlugin", "NextUIPlugin\NextUIPlugin.csproj", "{8EE468A3-2D76-4942-A3EE-54EFA50344F8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextUIShared", "NextUIShared\NextUIShared.csproj", "{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -25,9 +23,5 @@ Global
 		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Release|x64.ActiveCfg = Release|x64
 		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Release|x64.Build.0 = Release|x64
 		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Debug|x64.Build.0 = Debug|x64
-		{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}.Debug|x64.ActiveCfg = Debug|x64
-		{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}.Debug|x64.Build.0 = Debug|x64
-		{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}.Release|x64.ActiveCfg = Release|x64
-		{2EC133B0-50C7-44BF-A1AA-AEC6DC085E82}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 EndGlobal
