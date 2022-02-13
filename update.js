@@ -22,10 +22,9 @@ const dec = JSON.parse(manifest);
 
 dec.AssemblyVersion = v;
 
-const repl = JSON.stringify(dec, null, 4)
-.replace('    ', '\t');
+const repl = JSON.stringify(dec, null, '\t');
 
-fs.writeFileSync('./NextUIPlugin/NextUIPlugin.json', JSON.stringify(dec, null, 4));
+fs.writeFileSync('./NextUIPlugin/NextUIPlugin.json', JSON.stringify(dec, null, '\t'));
 
 // const execSync = require('child_process').execSync;
 
