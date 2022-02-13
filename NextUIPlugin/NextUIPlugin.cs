@@ -99,6 +99,7 @@ namespace NextUIPlugin {
 		public void Render() {
 			guiManager?.Render();
 			MicroPluginService.DrawProgress();
+			MicroPluginService.DrawWarningWindow();
 			if (!ConfigWindow.isConfigOpen) {
 				return;
 			}

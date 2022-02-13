@@ -14,7 +14,7 @@ namespace NextUIPlugin.Cef {
 		public static void Initialize(
 			string cacheDir,
 			string cefDir,
-			string pluginDir
+			string logDir
 		) {
 			var settings = new CefSettings() {
 				CachePath = cacheDir,
@@ -23,9 +23,8 @@ namespace NextUIPlugin.Cef {
 				WindowlessRenderingEnabled = true,
 				// BrowserSubprocessPath = Path.Combine(cefDir, "CefSharp.BrowserSubprocess.exe"),
 				BrowserSubprocessPath = Path.Combine(cefDir, "CustomSubProcess.exe"),
-#if DEBUG
-				LogFile = Path.Combine(pluginDir, "cef-debug.log"),
-#else
+				LogFile = Path.Combine(logDir, "cef-debug.log"),
+#if !DEBUG
 				LogSeverity = CefLogSeverity.Fatal,
 #endif
 			};
@@ -65,6 +64,8 @@ namespace NextUIPlugin.Cef {
 #else
 			// However in prod we gotta shutdown in order to save user data to cache.
 			CefRuntime.Shutdown();
+			// We need entire one second delay to close all the cef
+			Thread.Sleep(1000);
 #endif
 		}
 	}

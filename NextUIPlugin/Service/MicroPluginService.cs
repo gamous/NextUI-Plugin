@@ -1,28 +1,37 @@
 ﻿//#define RELEASE_TEST
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using Dalamud.Interface.Internal.Notifications;
 using Dalamud.Logging;
 using ImGuiNET;
 using NextUIPlugin.Cef;
+
+#if RELEASE
+using System.Diagnostics;
+#endif
 
 namespace NextUIPlugin.Service {
 	public static class MicroPluginService {
 		internal const string MicroPluginDirName = "MicroPlugin";
 		// Manually updated, not every new version would require new microplugin
-		internal const string RequiredVersion = "0.5.0.0";
+		internal const string RequiredVersion = "0.5.2.0";
 
 		internal static string? pluginDir;
-		internal static string? configDir;
+		internal static readonly string baseDir = Path.Combine(
+			Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+			"NUCefSharp"
+		);
+		internal static readonly string pidFile = Path.Combine(baseDir, "pid.txt");
+		internal static readonly string cacheDir = Path.Combine(baseDir, "Cache");
 
 		static float downloadProgress = -1;
+		static bool showWindowWarning;
+		static string warningMessage = "";
 
 		// Thread zone
 		internal static Thread microPluginThread = null!;
@@ -33,7 +42,6 @@ namespace NextUIPlugin.Service {
 
 		public static void Initialize() {
 			pluginDir = NextUIPlugin.pluginInterface.AssemblyLocation.DirectoryName;
-			configDir = NextUIPlugin.pluginInterface.GetPluginConfigDirectory();
 
 			ReadLastPid();
 
@@ -53,13 +61,17 @@ namespace NextUIPlugin.Service {
 		public static void LoadMicroPlugin() {
 #endif
 			// This shouldn't realistically ever occur
-			if (pluginDir == null || configDir == null) {
+			if (pluginDir == null) {
 				PluginLog.Error("Unable to load MicroPlugin, unexpected error");
 				return;
 			}
 
+			if (!Directory.Exists(baseDir)) {
+				Directory.CreateDirectory(baseDir);
+			}
+
 #if RELEASE
-			var microPluginDir = Path.Combine(configDir, MicroPluginDirName);
+			var microPluginDir = Path.Combine(baseDir, MicroPluginDirName);
 			var dllName = "NextUIBrowser.dll";
 			var dllPath = Path.Combine(microPluginDir, dllName);
 			var cefDir = microPluginDir;
@@ -86,14 +98,18 @@ namespace NextUIPlugin.Service {
 				}
 				else {
 					// We cannot do anything, bail
-					NextUIPlugin.pluginInterface.UiBuilder.AddNotification(
-						"Unable to update, plugin please restart the game",
-						"NextUI Error",
-						NotificationType.Error
-					);
-					PluginLog.Error("Unable to download micro plugin while not in cold boot");
+					warningMessage = "Unable to update, plugin please restart the game";
+					showWindowWarning = true;
+					PluginLog.Error(warningMessage);
 					return;
 				}
+			}
+			
+			if (!IsColdBoot()) {
+				warningMessage = "This plugin is not possible to reload, please restart the game";
+				showWindowWarning = true;
+				PluginLog.Error(warningMessage);
+				return;
 			}
 #else
 			var timestamp = DateTime.Now.ToFileTime();
@@ -111,19 +127,15 @@ namespace NextUIPlugin.Service {
 				}
 			}
 
-			var dllName = "NextUIBrowser.dll";
 			var baseMicroPluginDir = Path.Combine(pluginDir, MicroPluginDirName);
 			var microPluginDir = Path.Combine(pluginDir, $"{MicroPluginDirName}-{timestamp}");
 			var cefDir = microPluginDir;
-			var dllPath = Path.Combine(microPluginDir, dllName);
 
 			Copy(baseMicroPluginDir, microPluginDir);
 #endif
 			PluginLog.Log("Loaded MicroPlugin");
 
-			InitializeBrowser(microPluginDir, cefDir);
-			
-			// PluginLog.Log("Successfully loaded BrowserPlugin");
+			InitializeBrowser(cefDir);
 
 			// Saving pid once micro plugin loads in case of any errors inside of it
 			// If plugin doesn't load, we don't have to save pid because CEF was not loaded
@@ -139,17 +151,10 @@ namespace NextUIPlugin.Service {
 			GC.Collect();
 		}
 		
-		public static void InitializeBrowser(
-			string pluginDir, 
-			string cefDir
-		) {
+		public static void InitializeBrowser(string cefDir) {
 			PluginLog.Log("Initializing Browser");
 
-			string cacheDir = Path.Combine(
-				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-				"NUCefSharp\\Cache"
-			);
-			CefHandler.Initialize(cacheDir, cefDir, pluginDir);
+			CefHandler.Initialize(cacheDir, cefDir, baseDir);
 
 			// Notify gui manager that micro plugin is ready to go
 			NextUIPlugin.guiManager.MicroPluginLoaded();
@@ -158,18 +163,13 @@ namespace NextUIPlugin.Service {
 		public static void ShutdownBrowser() {
 			CefHandler.Shutdown();
 			PluginLog.Log("Cef was shut down");
-			// TODO: FIX THIS
 		}
 
 		#region Utils
 
 		internal static async Task DownloadMicroPlugin(string microPluginDir) {
-			if (configDir == null) {
-				return;
-			}
-
 			try {
-				var downloadPath = Path.Combine(configDir, "mp.zip");
+				var downloadPath = Path.Combine(baseDir, "mp.zip");
 				if (File.Exists(downloadPath)) {
 					File.Delete(downloadPath);
 				}
@@ -183,11 +183,11 @@ namespace NextUIPlugin.Service {
 #endif
 
 				using var webClient = new WebClient();
-				webClient.DownloadProgressChanged += (s, e) => {
+				webClient.DownloadProgressChanged += (_, e) => {
 					downloadProgress = e.ProgressPercentage;
 					PluginLog.Log("MicroPlugin progress " + e.ProgressPercentage);
 				};
-				webClient.DownloadFileCompleted += (s, e) => {
+				webClient.DownloadFileCompleted += (_, _) => {
 					downloadProgress = 100;
 				};
 
@@ -231,12 +231,23 @@ namespace NextUIPlugin.Service {
 			ImGui.End();
 		}
 
-		internal static void ReadLastPid() {
-			if (configDir == null) {
+		public static void DrawWarningWindow() {
+			if (!showWindowWarning) {
 				return;
 			}
 
-			var pidFile = Path.Combine(configDir, "pid.txt");
+			ImGui.SetNextWindowSize(new Vector2(500, 80));
+			ImGui.Begin(
+				"NextUI",
+				ref showWindowWarning,
+				ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoScrollbar
+			);
+
+			ImGui.TextColored(new Vector4(1f, 0f, 0f, 1f), warningMessage);
+			ImGui.End();
+		}
+
+		internal static void ReadLastPid() {
 			if (!File.Exists(pidFile)) {
 				return;
 			}
@@ -251,11 +262,9 @@ namespace NextUIPlugin.Service {
 		}
 
 		internal static void WriteLastPid() {
-			if (configDir == null) {
-				return;
+			if (!Directory.Exists(baseDir)) {
+				Directory.CreateDirectory(baseDir);
 			}
-
-			var pidFile = Path.Combine(configDir, "pid.txt");
 
 			File.WriteAllText(pidFile, Environment.ProcessId.ToString());
 		}
