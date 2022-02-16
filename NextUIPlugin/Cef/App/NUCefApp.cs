@@ -5,7 +5,7 @@ namespace NextUIPlugin.Cef.App {
 	// ReSharper disable once InconsistentNaming
 	public class NUCefApp : CefApp {
 		protected override void OnBeforeCommandLineProcessing(string processType, CefCommandLine commandLine) {
-			// PluginLog.Log("OnBeforeCommandLineProcessing: {0} {1}", processType, commandLine);
+			// PluginLog.Log($"OnBeforeCommandLineProcessing: {processType} {commandLine}");
 
 			// browser (main) process
 			if (!string.IsNullOrEmpty(processType)) {
@@ -13,6 +13,15 @@ namespace NextUIPlugin.Cef.App {
 			}
 
 			commandLine.AppendSwitch("autoplay-policy", "no-user-gesture-required");
+
+			if (commandLine.HasSwitch("disable-features")) {
+				var switchValue = commandLine.GetSwitchValue("disable-features");
+				switchValue += ",ForcedColors";
+				commandLine.AppendSwitch("disable-features", switchValue);	
+			}
+			else {
+				commandLine.AppendSwitch("disable-features", "ForcedColors");				
+			}
 
 			if (!commandLine.HasSwitch("disable-gpu")) {
 				commandLine.AppendSwitch("disable-gpu");

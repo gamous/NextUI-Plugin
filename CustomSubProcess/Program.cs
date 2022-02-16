@@ -29,8 +29,7 @@ namespace CustomSubProcess {
 	}
 
 	internal sealed class DemoApp : CefApp {
-		protected override void OnBeforeCommandLineProcessing(string processType, CefCommandLine commandLine) {
-			Console.WriteLine("SUB PROC");
-		}
+		// protected override void OnBeforeCommandLineProcessing(string processType, CefCommandLine commandLine) {
+		// }
 	}
 }
