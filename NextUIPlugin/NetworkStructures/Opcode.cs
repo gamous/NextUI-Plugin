@@ -71,20 +71,20 @@
 		Logout = 0x0295, // updated 6.1 hotfix
 		Examine = 0x03E2, // updated 6.08
 		
-		NpcSpawn2 = 0x008F, // updated 6.08
+		NpcSpawn2 = 0x020A, // updated 6.1
 		
 		CFPreferredRole = 0x02DA, // updated 6.08
 
-		StatusEffectList2 = 0x01FF, // updated 6.08
-		StatusEffectList3 = 0x02AF, // updated 6.08
+		StatusEffectList2 = 0x031E, // updated 6.1
+		StatusEffectList3 = 0x0357, // updated 6.1
 
-		EffectResultBasic = 0x03A3, // updated 6.08
+		EffectResultBasic = 0x03A3, // updated 6.1
 
-		ActionEffect1 = 0x03C7, // updated 6.08
-		ActionEffect8 = 0x0149, // updated 6.08
-		ActionEffect16 = 0x00C1, // updated 6.08
-		ActionEffect24 = 0x0213, // updated 6.08
-		ActionEffect32 = 0x038B, // updated 6.08
+		ActionEffect1 = 0x021B, // updated 6.1
+		ActionEffect8 = 0x030E, // updated 6.1
+		ActionEffect16 = 0x0153, // updated 6.1
+		ActionEffect24 = 0x00E1, // updated 6.1
+		ActionEffect32 = 0x0356, // updated 6.1
 
 		WeatherChange = 0x017D, // updated 6.08
 
