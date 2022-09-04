@@ -10,9 +10,9 @@
 	<!-- Assembly Configuration -->
 	<PropertyGroup>
 		<AssemblyName>NextUIBrowser</AssemblyName>
-		<AssemblyVersion>7.0.0.2</AssemblyVersion>
-		<FileVersion>7.0.0.2</FileVersion>
-		<InformationalVersion>7.0.0.2</InformationalVersion>
+		<AssemblyVersion>7.0.0.3</AssemblyVersion>
+		<FileVersion>7.0.0.3</FileVersion>
+		<InformationalVersion>7.0.0.3</InformationalVersion>
 	</PropertyGroup>
 
 	<!-- Build Configuration -->

@@ -10,9 +10,9 @@
 	<!-- Assembly Configuration -->
 	<PropertyGroup>
 		<AssemblyName>NextUIPlugin</AssemblyName>
-		<AssemblyVersion>7.0.0.2</AssemblyVersion>
-		<FileVersion>7.0.0.2</FileVersion>
-		<InformationalVersion>7.0.0.2</InformationalVersion>
+		<AssemblyVersion>7.0.0.3</AssemblyVersion>
+		<FileVersion>7.0.0.3</FileVersion>
+		<InformationalVersion>7.0.0.3</InformationalVersion>
 	</PropertyGroup>
 
 	<!-- Build Configuration -->
@@ -104,9 +104,9 @@
 
 	<!-- NuGet Packages -->
 	<ItemGroup>
-		<PackageReference Include="DalamudPackager" Version="2.1.7" />
+		<PackageReference Include="DalamudPackager" Version="2.1.8" />
 		<PackageReference Include="Fleck" Version="1.2.0" />
-		<PackageReference Include="XivCommon" Version="5.0.1-alpha.1" />
+		<PackageReference Include="XivCommon" Version="6.0.2" />
 		<PackageReference Include="System.Reactive" Version="5.0.0" />
 	</ItemGroup>
 
