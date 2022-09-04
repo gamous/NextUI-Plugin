@@ -45,7 +45,7 @@
 		NpcSpawn = 0x019B, // Updated 6.2 hotfix
 		ItemMarketBoardInfo = 0x00E8, // Updated 6.2 hotfix
 		ObjectSpawn = 0x02F7, // Updated 6.2 hotfix
-        EffectResultBasic = 0x1070, // Updated 6.2 hotfix
+        EffectResultBasic = 0x0089, // Updated 6.2 hotfix
 		Effect = 0x0094, // Updated 6.2 hotfix
 		StatusEffectList = 0x0265, // Updated 6.2 hotfix
 		ActorGauge = 0x02AB, // Updated 6.2 hotfix
