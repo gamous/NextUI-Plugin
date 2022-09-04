@@ -12,7 +12,7 @@ using NextUIPlugin.Socket;
 namespace NextUIPlugin.Data.Handlers {
 	public static unsafe class ContextHandler {
 		internal static class Signatures {
-			internal const string SendTellCommandSig = "E8 ?? ?? ?? ?? B3 01 48 8B 74 24 ??";
+			internal const string SendTellCommandSig = "E8 ?? ?? ?? ?? 40 B6 01 48 8B 5C 24 ?? 48 8B 7C 24 ??";
 			internal const string ExecuteCommandSig = "E8 ?? ?? ?? ?? 8D 43 0A";
 		}
 
