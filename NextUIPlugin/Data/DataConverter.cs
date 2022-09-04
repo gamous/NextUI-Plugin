@@ -47,7 +47,7 @@ namespace NextUIPlugin.Data {
 				id = status.StatusId,
 				name = status.GameData.Name.ToString(),
 				remains = status.RemainingTime,
-				sourceId = status.SourceID,
+				sourceId = status.SourceId,
 				stack = status.StackCount
 			};
 		}
