@@ -10,9 +10,9 @@
 	<!-- Assembly Configuration -->
 	<PropertyGroup>
 		<AssemblyName>NextUIPlugin</AssemblyName>
-		<AssemblyVersion>7.0.0.1</AssemblyVersion>
-		<FileVersion>7.0.0.1</FileVersion>
-		<InformationalVersion>7.0.0.1</InformationalVersion>
+		<AssemblyVersion>7.0.0.2</AssemblyVersion>
+		<FileVersion>7.0.0.2</FileVersion>
+		<InformationalVersion>7.0.0.2</InformationalVersion>
 	</PropertyGroup>
 
 	<!-- Build Configuration -->

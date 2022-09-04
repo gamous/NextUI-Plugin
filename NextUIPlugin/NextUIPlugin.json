@@ -7,9 +7,9 @@
 	"Tags": [
 		"UI"
 	],
-	"AssemblyVersion": "7.0.0.1",
+	"AssemblyVersion": "7.0.0.2",
 	"ApplicableVersion": "any",
 	"Punchline": "OverlayPlugin for Dalamud with built in HUD replacement",
 	"IconUrl": "https://gitlab.com/kaminariss/nextui-plugin/-/raw/master/icon.png",
-	"DalamudApiLevel": 6
+	"DalamudApiLevel": 7
 }
