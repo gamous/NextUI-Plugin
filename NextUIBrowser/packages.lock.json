@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net6.0-windows7.0": {
+      "cef.redist.x64": {
+        "type": "Direct",
+        "requested": "[96.0.18, )",
+        "resolved": "96.0.18",
+        "contentHash": "5/0XWE+DSxDs00v4A2KB3kOkqWuwAC9lptZb/0clX40r+zd0dK682cys6GWWc4WPk+LXU1kiyHkLP+7oWJOGsg=="
+      }
+    },
+    "net6.0-windows7.0/win-x64": {}
+  }
+}

@@ -33,6 +33,7 @@
 		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
 		<OutputPath>bin\$(Configuration)</OutputPath>
 		<SelfContained>false</SelfContained>
+		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
 	</PropertyGroup>
 
 	<!-- Release Configuration -->
@@ -45,6 +46,7 @@
 		<DalamudVersion>dev</DalamudVersion>
 		<DalamudLocal>../dalamud/</DalamudLocal>
 		<DalamudXIVLauncher>$(APPDATA)\XIVLauncher\addon\Hooks\$(DalamudVersion)</DalamudXIVLauncher>
+		<DalamudLibPath>$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
 	</PropertyGroup>
 
 	<!-- Assembly Reference Locations -->
@@ -53,6 +55,7 @@
 			$(AssemblySearchPaths);
 			$(DalamudLocal);
 			$(DalamudXIVLauncher);
+			$(DalamudLibPath);
 		</AssemblySearchPaths>
 	</PropertyGroup>
 
