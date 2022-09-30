@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Dalamud.Game.Network;
 using System.IO;
 using System.Linq;

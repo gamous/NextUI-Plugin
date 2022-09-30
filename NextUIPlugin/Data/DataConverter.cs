@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.ClientState.Party;
@@ -47,7 +47,7 @@ namespace NextUIPlugin.Data {
 				id = status.StatusId,
 				name = status.GameData.Name.ToString(),
 				remains = status.RemainingTime,
-				sourceId = status.SourceId,
+				sourceId = status.SourceID,
 				stack = status.StackCount
 			};
 		}

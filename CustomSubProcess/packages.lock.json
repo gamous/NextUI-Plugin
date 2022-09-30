@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    "net6.0-windows7.0": {
+    "net5.0-windows7.0": {
       "NSubsys": {
         "type": "Direct",
         "requested": "[1.0.0, )",
@@ -9,6 +9,6 @@
         "contentHash": "Sr8d+a6xMkqF9ao4UsxWXPXb9+LIgMjef7TLkPWRYrfxnwdrSABHEZ+8WjaoE7cN8RT3m4h8irWQ4NOcAC2kYw=="
       }
     },
-    "net6.0-windows7.0/win-x64": {}
+    "net5.0-windows7.0/win-x64": {}
   }
 }

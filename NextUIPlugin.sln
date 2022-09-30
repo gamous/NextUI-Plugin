@@ -1,9 +1,13 @@
-﻿Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomSubProcess", "CustomSubProcess\CustomSubProcess.csproj", "{06835371-1B2F-43FE-8654-8946BD4F736F}"
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32819.101
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CustomSubProcess", "CustomSubProcess\CustomSubProcess.csproj", "{06835371-1B2F-43FE-8654-8946BD4F736F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextUIBrowser", "NextUIBrowser\NextUIBrowser.csproj", "{057F2713-68B7-479F-8140-CC2649DC17B7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NextUIBrowser", "NextUIBrowser\NextUIBrowser.csproj", "{057F2713-68B7-479F-8140-CC2649DC17B7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextUIPlugin", "NextUIPlugin\NextUIPlugin.csproj", "{8EE468A3-2D76-4942-A3EE-54EFA50344F8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NextUIPlugin", "NextUIPlugin\NextUIPlugin.csproj", "{8EE468A3-2D76-4942-A3EE-54EFA50344F8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,8 +15,8 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{06835371-1B2F-43FE-8654-8946BD4F736F}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{06835371-1B2F-43FE-8654-8946BD4F736F}.Debug|x64.Build.0 = Debug|Any CPU
+		{06835371-1B2F-43FE-8654-8946BD4F736F}.Debug|x64.ActiveCfg = Debug|x64
+		{06835371-1B2F-43FE-8654-8946BD4F736F}.Debug|x64.Build.0 = Debug|x64
 		{06835371-1B2F-43FE-8654-8946BD4F736F}.Release|x64.ActiveCfg = Release|Any CPU
 		{06835371-1B2F-43FE-8654-8946BD4F736F}.Release|x64.Build.0 = Release|Any CPU
 		{057F2713-68B7-479F-8140-CC2649DC17B7}.Debug|x64.ActiveCfg = Debug|x64
@@ -20,8 +24,14 @@ Global
 		{057F2713-68B7-479F-8140-CC2649DC17B7}.Release|x64.ActiveCfg = Release|x64
 		{057F2713-68B7-479F-8140-CC2649DC17B7}.Release|x64.Build.0 = Release|x64
 		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Debug|x64.ActiveCfg = Debug|x64
+		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Debug|x64.Build.0 = Debug|x64
 		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Release|x64.ActiveCfg = Release|x64
 		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Release|x64.Build.0 = Release|x64
-		{8EE468A3-2D76-4942-A3EE-54EFA50344F8}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F575A35A-A87D-447E-8233-D4108F51DF31}
 	EndGlobalSection
 EndGlobal

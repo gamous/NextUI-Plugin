@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Runtime.InteropServices;
@@ -20,22 +20,22 @@ namespace NextUIPlugin.Data {
 			{ (ushort)ServerZoneIpcType.ActorControlSelf, "actorControlSelf" },
 			{ (ushort)ServerZoneIpcType.ActorControlTarget, "actorControlTarget" },
 			{ (ushort)ServerZoneIpcType.ActorSetPos, "actorSetPos" },
-			{ (ushort)ServerZoneIpcType.ActionEffect1, "actionEffect1" },
-			{ (ushort)ServerZoneIpcType.ActionEffect8, "actionEffect8" },
-			{ (ushort)ServerZoneIpcType.ActionEffect16, "actionEffect16" },
-			{ (ushort)ServerZoneIpcType.ActionEffect24, "actionEffect24" },
-			{ (ushort)ServerZoneIpcType.ActionEffect32, "actionEffect32" },
+			//{ (ushort)ServerZoneIpcType.ActionEffect1, "actionEffect1" },
+			//{ (ushort)ServerZoneIpcType.ActionEffect8, "actionEffect8" },
+			//{ (ushort)ServerZoneIpcType.ActionEffect16, "actionEffect16" },
+			//{ (ushort)ServerZoneIpcType.ActionEffect24, "actionEffect24" },
+			//{ (ushort)ServerZoneIpcType.ActionEffect32, "actionEffect32" },
 			{ (ushort)ServerZoneIpcType.EffectResult, "effectResult" },
-			{ (ushort)ServerZoneIpcType.EffectResultBasic, "effectResultBasic" },
+			//{ (ushort)ServerZoneIpcType.EffectResultBasic, "effectResultBasic" },
 			{ (ushort)ServerZoneIpcType.StatusEffectList, "statusEffectList" },
 			{ (ushort)ServerZoneIpcType.StatusEffectList2, "statusEffectList2" },
 			{ (ushort)ServerZoneIpcType.StatusEffectList3, "statusEffectList3" },
 			{ (ushort)ServerZoneIpcType.UpdateHpMpTp, "updateHpMpTp" },
 			{ (ushort)ServerZoneIpcType.NpcSpawn, "npcSpawn" },
 			{ (ushort)ServerZoneIpcType.PlayerSpawn, "playerSpawn" },
-			{ (ushort)ServerZoneIpcType.ObjectDespawn, "objectDespawn" },
+			//{ (ushort)ServerZoneIpcType.ObjectDespawn, "objectDespawn" },
 			// Client zone events
-			{ (ushort)ClientZoneIpcType.UpdatePosition, "updatePosition" },
+			{ (ushort)ClientZoneIpcType.UpdatePositionHandler, "updatePosition" },
 			{ (ushort)ClientZoneIpcType.UpdatePositionInstance, "updatePositionInstance" },
 		};
 
@@ -63,27 +63,27 @@ namespace NextUIPlugin.Data {
 				case (ushort)ServerZoneIpcType.ActorSetPos:
 					strObj = Marshal.PtrToStructure<XivIpcActorSetPos>(dataPtr);
 					break;
-				case (ushort)ServerZoneIpcType.ActionEffect1:
-					strObj = Marshal.PtrToStructure<XivIpcActionEffect1>(dataPtr);
-					break;
-				case (ushort)ServerZoneIpcType.ActionEffect8:
-					strObj = Marshal.PtrToStructure<XivIpcActionEffect8>(dataPtr);
-					break;
-				case (ushort)ServerZoneIpcType.ActionEffect16:
-					strObj = Marshal.PtrToStructure<XivIpcActionEffect16>(dataPtr);
-					break;
-				case (ushort)ServerZoneIpcType.ActionEffect24:
-					strObj = Marshal.PtrToStructure<XivIpcActionEffect24>(dataPtr);
-					break;
-				case (ushort)ServerZoneIpcType.ActionEffect32:
-					strObj = Marshal.PtrToStructure<XivIpcActionEffect32>(dataPtr);
-					break;
+				//case (ushort)ServerZoneIpcType.ActionEffect1:
+				//	strObj = Marshal.PtrToStructure<XivIpcActionEffect1>(dataPtr);
+				//	break;
+				//case (ushort)ServerZoneIpcType.ActionEffect8:
+				//	strObj = Marshal.PtrToStructure<XivIpcActionEffect8>(dataPtr);
+				//	break;
+				//case (ushort)ServerZoneIpcType.ActionEffect16:
+				//	strObj = Marshal.PtrToStructure<XivIpcActionEffect16>(dataPtr);
+				//	break;
+				//case (ushort)ServerZoneIpcType.ActionEffect24:
+				//	strObj = Marshal.PtrToStructure<XivIpcActionEffect24>(dataPtr);
+				//	break;
+				//case (ushort)ServerZoneIpcType.ActionEffect32:
+				//	strObj = Marshal.PtrToStructure<XivIpcActionEffect32>(dataPtr);
+				//	break;
 				case (ushort)ServerZoneIpcType.EffectResult:
 					strObj = Marshal.PtrToStructure<XivIpcEffectResult>(dataPtr);
 					break;
-				case (ushort)ServerZoneIpcType.EffectResultBasic:
-					strObj = Marshal.PtrToStructure<XivIpcEffectResultBasic>(dataPtr);
-					break;
+				//case (ushort)ServerZoneIpcType.EffectResultBasic:
+				//	strObj = Marshal.PtrToStructure<XivIpcEffectResultBasic>(dataPtr);
+				//	break;
 				case (ushort)ServerZoneIpcType.StatusEffectList:
 					strObj = Marshal.PtrToStructure<XivIpcStatusEffectList>(dataPtr);
 					break;
@@ -102,11 +102,11 @@ namespace NextUIPlugin.Data {
 				case (ushort)ServerZoneIpcType.PlayerSpawn:
 					strObj = Marshal.PtrToStructure<XivIpcPlayerSpawn>(dataPtr);
 					break;
-				case (ushort)ServerZoneIpcType.ObjectDespawn:
-					strObj = Marshal.PtrToStructure<XivIpcObjectDespawn>(dataPtr);
-					break;
+				//case (ushort)ServerZoneIpcType.ObjectDespawn:
+				//	strObj = Marshal.PtrToStructure<XivIpcObjectDespawn>(dataPtr);
+				//	break;
 				// Client side
-				case (ushort)ClientZoneIpcType.UpdatePosition:
+				case (ushort)ClientZoneIpcType.UpdatePositionHandler:
 					strObj = Marshal.PtrToStructure<XivIpcUpdatePosition>(dataPtr);
 					break;
 				case (ushort)ClientZoneIpcType.UpdatePositionInstance:

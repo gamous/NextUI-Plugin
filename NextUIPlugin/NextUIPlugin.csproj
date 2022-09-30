@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup Label="Target">
 		<PlatformTarget>x64</PlatformTarget>
-		<TargetFramework>net6.0-windows</TargetFramework>
+		<TargetFramework>net5.0-windows</TargetFramework>
 		<LangVersion>latest</LangVersion>
 		<Platforms>x64</Platforms>
 		<Configurations>Debug;Release</Configurations>
@@ -33,7 +33,7 @@
 		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 
 		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-		<OutputPath>bin\$(Configuration)</OutputPath>
+		<OutputPath>D:\Games\FFXIVLauncher\XIVLauncherCN\Roaming\devPlugins\NextUI</OutputPath>
 		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
 	</PropertyGroup>
 
@@ -109,8 +109,8 @@
 	<ItemGroup>
 		<PackageReference Include="DalamudPackager" Version="2.1.8" />
 		<PackageReference Include="Fleck" Version="1.2.0" />
-		<PackageReference Include="XivCommon" Version="6.0.2" />
 		<PackageReference Include="System.Reactive" Version="5.0.0" />
+		<PackageReference Include="XivCommon" Version="5.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -1,5 +1,7 @@
 ﻿# NextUI Plugin
 
+**Fork from [kaminariss/nextui-plugin](https://gitlab.com/kaminariss/nextui-plugin/) for CN version by GPL**.
+
 [![](https://i.imgur.com/C14liOC.png)](https://discord.gg/2mMbXD4HQN)
 
 Key differences between `NU` and `BrowserHost`:

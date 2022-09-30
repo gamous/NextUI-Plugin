@@ -1,4 +1,4 @@
-﻿//#define RELEASE_TEST
+//#define RELEASE_TEST
 
 using System;
 using System.IO;
@@ -22,12 +22,9 @@ namespace NextUIPlugin.Service {
 		internal const string RequiredVersion = "0.5.2.0";
 
 		internal static string? pluginDir;
-		internal static readonly string baseDir = Path.Combine(
-			Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-			"NUCefSharp"
-		);
-		internal static readonly string pidFile = Path.Combine(baseDir, "pid.txt");
-		internal static readonly string cacheDir = Path.Combine(baseDir, "Cache");
+		internal static string baseDir;
+		internal static string pidFile;
+		internal static string cacheDir;
 
 		static float downloadProgress = -1;
 		static bool showWindowWarning;
@@ -41,8 +38,13 @@ namespace NextUIPlugin.Service {
 		internal static int lastPid;
 
 		public static void Initialize() {
-			pluginDir = NextUIPlugin.pluginInterface.AssemblyLocation.DirectoryName;
-
+			pluginDir = NextUIPlugin.pluginInterface.AssemblyLocation.DirectoryName ?? "";
+			if (String.IsNullOrEmpty(pluginDir)) {
+				throw new Exception("Could not determine plugin directory");
+			}
+			baseDir = Path.Combine(NextUIPlugin.pluginInterface.GetPluginConfigDirectory(), "NUCefSharp");
+			pidFile = Path.Combine(baseDir, "pid.txt");
+			cacheDir = Path.Combine(baseDir, "Cache");
 			ReadLastPid();
 
 			var microPluginThreadStart = new ThreadStart(LoadMicroPlugin);
@@ -127,7 +129,7 @@ namespace NextUIPlugin.Service {
 				}
 			}
 
-			var baseMicroPluginDir = Path.Combine(pluginDir, MicroPluginDirName);
+			var baseMicroPluginDir = Path.Combine(baseDir, MicroPluginDirName);
 			var microPluginDir = Path.Combine(pluginDir, $"{MicroPluginDirName}-{timestamp}");
 			var cefDir = microPluginDir;
 
